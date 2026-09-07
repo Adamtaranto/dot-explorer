@@ -150,10 +150,12 @@ def test_method_registry_consistent():
 
 
 def _two_assemblies():
+    from core.seqs import InMemoryProvider
+
     seq = 'ACGTTGCAAGGCTTAACCGGTTAACGGCCAATT' * 8
     q = parse_fasta_bytes(f'>q1\n{seq}\n>q2\n{seq[::-1]}\n'.encode())
     t = parse_fasta_bytes(f'>t1\n{seq}\n'.encode())
-    return q, t
+    return InMemoryProvider(q), InMemoryProvider(t)
 
 
 def test_kmer_index_builds_and_caches():

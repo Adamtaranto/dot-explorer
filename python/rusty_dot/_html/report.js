@@ -838,8 +838,11 @@
         '*'
       );
     } else {
-      detailSeq.textContent = '';
-      detailSeq.hidden = true;
+      // Standalone report without embedded sequences: coordinates only.
+      detailSeq.textContent =
+        'Sequences not embedded in this report — re-export with ' +
+        'embed_sequences=True to preview and copy match sequences.';
+      detailSeq.hidden = false;
     }
     detail.hidden = false;
 

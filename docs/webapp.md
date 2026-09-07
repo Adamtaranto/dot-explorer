@@ -43,7 +43,11 @@ from the docs site.
   assembly pairs): the **k-mer** method completes at 90 Mb combined and
   crashes the Python runtime at 100 Mb, so beyond **~80 Mb combined** the
   app removes the k-mer method from the selector (and warns above 40 Mb
-  that big runs take minutes) — at that scale, use minimap2/nucmer here or
+  that big runs take minutes). A native memory audit
+  (`scripts/mem_profile_index.py`) confirms this ceiling comes from the
+  k-mer index's CSR tables (~15 B/bp) plus match-record objects — not from
+  stored alignment sequences — so it is inherent to the method at this heap
+  size — at that scale, use minimap2/nucmer here or
   run the [rusty-dot Python library](tutorials/quickstart.md) locally.
   **minimap2** and **nucmer** run in their own workers: minimap2
   completed at **200 MB combined** and nucmer at **250 MB**; at 300 MB the
@@ -62,8 +66,56 @@ from the docs site.
 
 ## Run it locally
 
-The app is a standard Shiny for Python app and can be run natively (with the
-installed rusty-dot instead of the wasm wheel) or exported as a static
-Shinylive site. See
+The app is a standard Shiny for Python app: the hosted version above is a
+Shinylive/WebAssembly export of the same `app/app.py`, which also runs
+natively on a workstation or HPC node with the installed rusty-dot instead
+of the wasm wheel.
+
+### Install and run
+
+From a repository checkout:
+
+```bash
+git clone https://github.com/Adamtaranto/rusty-dot.git
+cd rusty-dot
+pip install ".[app]"                    # rusty-dot + shiny + pyfaidx
+shiny run --launch-browser app/app.py
+```
+
+Run `shiny run` from the repo root (or from `app/`): the app uses
+path-relative `core.*` imports that resolve when Shiny puts `app/` on
+`sys.path`. Developers building the Rust extension from source use
+`maturin develop --release` plus `pip install shiny pyfaidx` instead — see
 [`app/README.md`](https://github.com/Adamtaranto/rusty-dot/blob/main/app/README.md)
-in the repository for the development and export recipes.
+for the development and Shinylive-export recipes, or `environment.yml` for
+the conda route.
+
+### On a remote server / HPC
+
+The same command works headless — bind a port and tunnel to it:
+
+```bash
+shiny run --host 127.0.0.1 --port 8000 app/app.py   # on the server
+ssh -L 8000:localhost:8000 user@server              # from your laptop
+# then open http://localhost:8000
+```
+
+Prefer `--host 127.0.0.1` plus the SSH tunnel on shared systems so the app
+is not exposed to other users on the network.
+
+### Local vs. in-browser differences
+
+| | Hosted web app | Local Shiny app |
+|---|---|---|
+| rusty-dot engine | wasm wheel in Pyodide | your installed rusty-dot (native speed, multi-core) |
+| Uploads | never leave the browser | sent to the (local) Shiny server process |
+| Size limits | k-mer disabled above ~80 Mb combined; warnings at 200 MB for aligners | **none** — memory is bounded by your machine |
+| Memory readout | live wasm-heap usage vs the 4 GB cap | peak RSS of the server process |
+| minimap2 / nucmer | in the browser tab via the biowasm CDN | same — still browser-side, still needs network access to biowasm.com |
+| Sequence access | pyfaidx over the browser's in-memory filesystem | pyfaidx over the uploaded temp file on disk |
+
+The k-mer method and PAF import work fully offline locally; only the
+minimap2/nucmer buttons need a network connection (they fetch the tool
+binaries from the biowasm CDN into your browser tab, even for a local app).
+For very large genomes, align outside the app with native minimap2 and use
+the **Alignment (PAF)** input mode.

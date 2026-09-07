@@ -88,7 +88,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install maturin and dependencies
         run: |
-          pip install maturin pytest pytest-cov matplotlib numpy shiny
+          pip install maturin pytest pytest-cov matplotlib numpy shiny pyfaidx
       - name: Build and install rusty-dot
         run: |
           maturin build --release
@@ -124,9 +124,10 @@ jobs:
       - name: Install maturin and dependencies
         # No shiny here, unlike the GIL build: it pulls orjson, which has no
         # free-threaded wheel and fails to build from source.  The suite does
-        # not need it (same 741 passed / 6 skipped either way).
+        # not need it (same 741 passed / 6 skipped either way).  pyfaidx is
+        # pure Python, so it is safe on 3.14t (tests/test_app_seqs.py).
         run: |
-          pip install maturin pytest pytest-cov matplotlib numpy
+          pip install maturin pytest pytest-cov matplotlib numpy pyfaidx
       - name: Build and install rusty-dot
         # The wheel is tagged cp314-cp314t (python tag cp314, abi tag cp314t).
         run: |

@@ -1883,6 +1883,20 @@ class CrossIndex:
         internal = self._make_internal(group, name) if group is not None else name
         return self._index.get_sequence(internal)
 
+    def approx_bytes(self) -> dict[str, int]:
+        """Return the underlying index's approximate heap footprint in bytes.
+
+        Delegates to :meth:`SequenceIndex.approx_bytes`; Python-side record
+        objects (:class:`PafRecord`) are not included.
+
+        Returns
+        -------
+        dict[str, int]
+            Keys ``'seq_bytes'``, ``'kmer_index'``, ``'pair_cache'`` and
+            ``'total'``.
+        """
+        return self._index.approx_bytes()
+
     def write_fasta(
         self,
         path: str | Path,

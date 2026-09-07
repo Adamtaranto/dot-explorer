@@ -275,9 +275,22 @@ def test_empty_match_panel_serialized(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_sequences_embedded_for_sequence_index(html_index, tmp_path):
+def test_sequences_not_embedded_by_default(html_index, tmp_path):
+    """embed_sequences defaults to False even when the index has sequences."""
     out = tmp_path / 'report.html'
     fig = DotPlotter(html_index).to_html(out)
+    plt.close(fig)
+
+    payload = _read_payload(out)
+    assert payload['has_sequences'] is False
+    assert all('seqs' not in p for p in payload['panels'].values())
+    # Coordinates are still present.
+    assert _segment_count(payload) > 0
+
+
+def test_sequences_embedded_for_sequence_index(html_index, tmp_path):
+    out = tmp_path / 'report.html'
+    fig = DotPlotter(html_index).to_html(out, embed_sequences=True)
     plt.close(fig)
 
     payload = _read_payload(out)
@@ -313,7 +326,7 @@ def test_sequence_embedding_cap(html_index, tmp_path):
     plotter = DotPlotter(html_index)
 
     # Rebuild the payload from a real capture with a tiny cap.
-    fig = plotter.to_html(out)
+    fig = plotter.to_html(out, embed_sequences=True)
     plt.close(fig)
     assert _read_payload(out)['has_sequences'] is True
 
@@ -379,7 +392,7 @@ def test_n_run_sequences(tmp_path):
     idx.add_sequence('n_seq', 'ACGTANNNNNACGTACGTANNNNNACGTA')
     idx.add_sequence('other', 'ACGTAACGTACGTAACGTA')
     out = tmp_path / 'nrun.html'
-    fig = DotPlotter(idx).to_html(out)
+    fig = DotPlotter(idx).to_html(out, embed_sequences=True)
     plt.close(fig)
 
     payload = _read_payload(out)
@@ -455,7 +468,9 @@ def _revcomp(seq):
 def test_reverse_contigs_sequences_match_display_orientation(html_index, tmp_path):
     """Mirrored panels embed the revcomp of the original mirrored region."""
     out = tmp_path / 'rev.html'
-    fig = DotPlotter(html_index).to_html(out, reverse_contigs={'seq1'})
+    fig = DotPlotter(html_index).to_html(
+        out, reverse_contigs={'seq1'}, embed_sequences=True
+    )
     plt.close(fig)
 
     payload = _read_payload(out)

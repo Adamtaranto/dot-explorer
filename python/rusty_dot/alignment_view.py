@@ -33,7 +33,7 @@ def revcomp(seq: str) -> str:
     return seq.translate(_COMPLEMENT)[::-1]
 
 
-def clip_sequence(seq: str, max_len: int = 20_000) -> str:
+def clip_sequence(seq: str, max_len: int = 1_000) -> str:
     """Return *seq*, truncated with a notice when longer than *max_len*.
 
     Parameters
@@ -60,7 +60,7 @@ def aligned_text(
     target_seq: str,
     *,
     width: int = 80,
-    max_cols: int = 20_000,
+    max_cols: int = 1_000,
 ) -> dict[str, Any]:
     """Build a text rendering of one alignment from its CIGAR.
 

@@ -15,10 +15,10 @@ class TestHelpers:
         assert clip_sequence('ACGT', 10) == 'ACGT'
 
     def test_clip_sequence_truncates_with_notice(self):
-        out = clip_sequence('A' * 25_000)
-        assert out.startswith('A' * 20_000)
-        assert out.endswith('[truncated at 20,000 bases]')
-        assert len(out) < 25_000
+        out = clip_sequence('A' * 2_500)
+        assert out.startswith('A' * 1_000)
+        assert out.endswith('[truncated at 1,000 bases]')
+        assert len(out) < 2_500
 
 
 def _rec(cigar, *, q_start=0, q_end=10, t_start=0, t_end=10, strand='+', q_len=10):

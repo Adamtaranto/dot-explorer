@@ -6,3 +6,6 @@
 # working on any host path without hard-coded wheel URLs).
 matplotlib
 numpy
+# Pure-Python; indexes uploaded FASTA on the (RAM-backed) Pyodide FS so
+# sequences are fetched per-window instead of held as decoded strings.
+pyfaidx

@@ -13,7 +13,7 @@ from collections import OrderedDict
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .fasta import FastaInput
+from .seqs import SequenceProvider
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
     from rusty_dot import CrossIndex
@@ -78,8 +78,8 @@ class SessionCache:
     def kmer_index(
         self,
         k: int,
-        query: FastaInput,
-        target: FastaInput,
+        query: SequenceProvider,
+        target: SequenceProvider,
         merge: bool = True,
         min_block_len: int = 0,
     ) -> CrossIndex:
@@ -89,10 +89,10 @@ class SessionCache:
         ----------
         k : int
             K-mer size.
-        query : FastaInput
-            Parsed query assembly (rows / y-axis).
-        target : FastaInput
-            Parsed target assembly (columns / x-axis).
+        query : SequenceProvider
+            Query assembly provider (rows / y-axis).
+        target : SequenceProvider
+            Target assembly provider (columns / x-axis).
         merge : bool, optional
             Merge adjacent k-mer hits into runs.  Default is ``True``.
         min_block_len : int, optional
@@ -118,13 +118,16 @@ class SessionCache:
         logger.info(
             'Building k-mer index (k=%d) for %d query / %d target contigs',
             k,
-            len(query.records),
-            len(target.records),
+            len(query.names),
+            len(target.names),
         )
         index = CrossIndex(k)
-        for name, seq in query.records:
+        # iter_records() serves one contig at a time; with a faidx-backed
+        # provider each Python string is released right after Rust takes its
+        # own copy, so peak Python-side residency stays at one contig.
+        for name, seq in query.iter_records():
             index.add_sequence(name, seq, group=QUERY_GROUP)
-        for name, seq in target.records:
+        for name, seq in target.iter_records():
             index.add_sequence(name, seq, group=TARGET_GROUP)
         index.compute_matches(
             query_group=QUERY_GROUP,

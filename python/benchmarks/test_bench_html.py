@@ -73,7 +73,7 @@ def test_bench_to_html(benchmark, html_bench_index, tmp_path):
     out = tmp_path / 'bench_report.html'
 
     def run():
-        fig = DotPlotter(html_bench_index).to_html(out)
+        fig = DotPlotter(html_bench_index).to_html(out, embed_sequences=True)
         plt.close(fig)
 
     benchmark(run)

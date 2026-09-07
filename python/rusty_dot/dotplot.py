@@ -667,6 +667,7 @@ class DotPlotter:
         hide_internal_axes: bool = False,
         identity_colorbar: bool = False,
         highlight_regions: Optional[list[dict]] = None,
+        embed_sequences: bool = False,
     ) -> matplotlib.figure.Figure:
         """Plot an all-vs-all dotplot grid.
 
@@ -853,6 +854,13 @@ class DotPlotter:
             When ``True`` and *color_by_identity* is on, append a vertical
             identity colour key (0-100 %) at the right of the figure.
             Ignored without *color_by_identity*.  Default is ``False``.
+        embed_sequences : bool, optional
+            HTML output only: when ``True``, embed the matched query
+            subsequences in the report so its sequence preview / copy
+            buttons work in a standalone file (requires an index that
+            stores sequences and at most ~2 Mb of total match residues).
+            Default is ``False`` — coordinates only, keeping reports small
+            even with many alignments.
 
         Returns
         -------
@@ -1394,7 +1402,14 @@ class DotPlotter:
             pos = axes[0][0].get_position()
             fig._suptitle.set_x((pos.x0 + pos.x1) / 2)
         if output_path is not None:
-            self._save_figure(fig, output_path, dpi=dpi, format=format, title=title)
+            self._save_figure(
+                fig,
+                output_path,
+                dpi=dpi,
+                format=format,
+                title=title,
+                embed_sequences=embed_sequences,
+            )
         return fig
 
     def _draw_highlight_bands(
@@ -2454,6 +2469,7 @@ class DotPlotter:
         dpi: int,
         format: Optional[str] = None,
         title: Optional[str] = None,
+        embed_sequences: bool = False,
     ) -> None:
         """Save a figure, dispatching on the requested output format.
 
@@ -2475,6 +2491,9 @@ class DotPlotter:
         title : str, optional
             Report title for HTML output (unused otherwise).  ``None``
             (default) uses a generic title.
+        embed_sequences : bool, optional
+            HTML output only: embed matched query subsequences in the
+            report payload.  Default is ``False``.
 
         Raises
         ------
@@ -2498,7 +2517,13 @@ class DotPlotter:
 
                 # SequenceIndex and CrossIndex expose get_sequence();
                 # PafAlignment does not, so its reports omit sequences.
-                get_seq = getattr(self.index, 'get_sequence', None)
+                # Embedding is opt-in: coordinates-only payloads keep
+                # reports small even with many alignments.
+                get_seq = (
+                    getattr(self.index, 'get_sequence', None)
+                    if embed_sequences
+                    else None
+                )
                 payload = build_panel_payload(capture, get_sequence=get_seq)
                 render_html_report(
                     fig,
@@ -2521,10 +2546,11 @@ class DotPlotter:
 
         Convenience wrapper around :meth:`plot` that always produces a
         single self-contained HTML file: the figure is embedded as inline
-        SVG together with the match coordinates (and, when the index stores
-        sequences, the matched query subsequences).  In a browser, panels
-        can be zoomed by clicking or scrolling and individual match lines
-        can be clicked to inspect their coordinates.
+        SVG together with the match coordinates (and, when
+        ``embed_sequences=True`` and the index stores sequences, the
+        matched query subsequences).  In a browser, panels can be zoomed
+        by clicking or scrolling and individual match lines can be clicked
+        to inspect their coordinates.
 
         Parameters
         ----------
@@ -2533,7 +2559,8 @@ class DotPlotter:
             if the suffix differs.
         **plot_kwargs : object
             Additional keyword arguments forwarded to :meth:`plot`
-            (e.g. ``query_names``, ``title``, ``color_by_identity``).
+            (e.g. ``query_names``, ``title``, ``color_by_identity``,
+            ``embed_sequences``).
 
         Returns
         -------

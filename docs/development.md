@@ -241,6 +241,37 @@ pytest python/benchmarks --codspeed
 
 They cover FASTA byte parsing, the `CrossIndex` build + `compute_matches` path, contig reordering, dotplot rendering, and HTML report generation.
 
+### K-mer memory profile
+
+CodSpeed measures instructions, not memory. `scripts/mem_profile_index.py`
+builds `CrossIndex` pairs over synthetic homologous sequences in clean
+subprocesses and reports peak RSS plus the index's own accounting
+(`SequenceIndex.approx_bytes()`: retained sequence bytes, the CSR k-mer
+tables, and the pairwise coordinate cache):
+
+```bash
+python scripts/mem_profile_index.py --mb 10 50 100
+```
+
+Measured natively (macOS arm64, k=15, 2 % divergence, per-side sizes; the
+audit that sized the web app's limits):
+
+| Per side | Peak RSS | Index total | seq bytes | CSR tables | Records |
+|---:|---:|---:|---:|---:|---:|
+| 10 Mb | 1.6 GB | 0.31 GB | 19 MB | 303 MB | 2.3 M |
+| 50 Mb | 4.9 GB | 1.53 GB | 95 MB | 1.47 GB | 15.1 M |
+| 100 Mb | 6.4 GB | 2.97 GB | 191 MB | 2.85 GB | 39.2 M |
+
+Take-aways: match records store **coordinates only** (no sequence copies);
+the fixed cost is the CSR tables at ~15 B/bp, the retained raw sequence
+copies are minor (~1 B/bp), and the rest of the peak is the materialised
+Python `PafRecord` objects — `min_block_len` cuts the record count (39 M →
+1.0 M at 25 bp here) without changing the index size. This matches the
+in-browser measurement (~32 B/bp of combined input at the 2.9 GB peak for a
+90 Mb run), which is why the web app's k-mer gate sits at 80 Mb combined:
+the 4 GB wasm heap minus the Pyodide baseline supports ~110 Mb in theory,
+and 80 Mb keeps a ~30 % margin.
+
 ## Building the documentation locally
 
 The site is built with [Zensical](https://zensical.org) (configured in

@@ -215,6 +215,7 @@ impl KmerIndex {
         }
         idx.starts.push(idx.entries.len() as u32);
         idx.hashes.shrink_to_fit();
+        idx.starts.shrink_to_fit();
         idx.entries.shrink_to_fit();
         idx
     }
@@ -222,6 +223,16 @@ impl KmerIndex {
     /// Whether the index contains no windows.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Approximate heap footprint of the three CSR arrays, in bytes.
+    ///
+    /// Sums allocated capacities (not just lengths), so the number reflects
+    /// what the allocator actually holds for this index.
+    pub fn approx_bytes(&self) -> usize {
+        self.hashes.capacity() * std::mem::size_of::<u64>()
+            + self.starts.capacity() * std::mem::size_of::<u32>()
+            + self.entries.capacity() * std::mem::size_of::<u32>()
     }
 
     /// Iterate `(canonical_hash, packed_entries)` groups in ascending hash
@@ -643,6 +654,20 @@ mod tests {
     fn empty_when_seq_shorter_than_k() {
         let idx = KmerIndex::build(b"ACG", 4);
         assert!(idx.is_empty());
+    }
+
+    #[test]
+    fn approx_bytes_counts_csr_arrays() {
+        let idx = KmerIndex::build(b"ACGTACGTACGT", 5);
+        let n_groups = idx.iter_groups().count();
+        let n_entries: usize = idx.iter_groups().map(|(_, e)| e.len()).sum();
+        // Capacities are shrunk to fit after build, so the lower bound from
+        // lengths is exact here: 8B/hash + 4B/start (groups+1) + 4B/entry.
+        assert_eq!(
+            idx.approx_bytes(),
+            n_groups * 8 + (n_groups + 1) * 4 + n_entries * 4
+        );
+        assert!(KmerIndex::default().approx_bytes() == 0);
     }
 
     #[test]

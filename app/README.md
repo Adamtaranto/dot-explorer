@@ -22,14 +22,34 @@ native dev environment (`environment.yml`, see
 below.
 
 ```bash
-pip install shiny            # plus a native rusty-dot:
+pip install ".[app]"         # shiny + pyfaidx; plus a native rusty-dot:
 maturin develop --release    # from the repo root
 shiny run --launch-browser app/app.py
 ```
 
+Run `shiny run` from the repo root (or the `app/` directory): `app.py` uses
+path-relative `core.*` imports that resolve when Shiny puts `app/` on
+`sys.path`.
+
 Everything works except the k-mer method's provenance: it uses your local
 rusty-dot instead of the wheel. `minimap2`/`nucmer` still run in the browser
-via biowasm, so they behave identically.
+via biowasm, so they behave identically — note this means the aligners need
+network access to the biowasm CDN even when the app itself runs locally.
+The k-mer upload-size gate is wasm-only; native runs are bounded by machine
+RAM instead.
+
+### Run on a remote server / HPC
+
+The same command works headless — bind a port and tunnel to it:
+
+```bash
+shiny run --host 0.0.0.0 --port 8000 app/app.py   # on the server
+ssh -L 8000:localhost:8000 user@server            # from your laptop
+# then open http://localhost:8000
+```
+
+On shared systems, prefer `--host 127.0.0.1` plus the SSH tunnel so the app
+is not exposed to other users on the network.
 
 ## Build the static Shinylive site
 

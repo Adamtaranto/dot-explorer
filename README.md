@@ -17,11 +17,14 @@ assemblies never leave your machine. Align with the k-mer engine, minimap2,
 or nucmer (or import a PAF file), overlay GFF3 annotations, and download SVG/PDF
 plots, PAF alignments, and a reordered/reoriented query FASTA.
 
-In-browser computation is memory limited (~2GB), larger genomes should use
-minimap2 instead of k-mer based plotting. Alternatively, generate plots using
-the python API localy or on google colab.
+In-browser computation is memory limited (the wasm heap caps at ~4 GB, so
+the k-mer method is gated above ~80 Mb of combined input); larger genomes
+should use minimap2 instead of k-mer based plotting. Alternatively, run the
+same app locally with no size limits (`pip install "rusty-dot[app]"`, then
+`shiny run --launch-browser app/app.py` from a checkout), or generate plots
+using the Python API locally or on Google Colab.
 
-See [docs/webapp.md](https://adamtaranto.github.io/rusty-dot/webapp/) for capabilities and limits, and
+See [docs/webapp.md](https://adamtaranto.github.io/rusty-dot/webapp/) for capabilities, limits, and the local/HPC run guide, and
 [Python library tutorials](https://adamtaranto.github.io/rusty-dot/tutorials/quickstart/) to run analysis locally.
 
 ## Installation

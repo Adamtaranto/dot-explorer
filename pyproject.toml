@@ -39,6 +39,13 @@ dev = [
     "ruff",
 ]
 
+# Local Shiny front end: `pip install "rusty-dot[app]"` (or `.[app]` from a
+# checkout), then `shiny run --launch-browser app/app.py` from the repo root.
+app = [
+    "shiny",
+    "pyfaidx",
+]
+
 docs = [
     "zensical>=0.0.57",
     "mkdocstrings-python>=2.0",

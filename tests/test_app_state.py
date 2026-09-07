@@ -50,7 +50,11 @@ def kmer_setup():
         f'>qB\n{b}\n>qRevA\n{reverse_complement(c)}\n>qA\n{a}\n'.encode()
     )
     t_fa = parse_fasta_bytes(f'>t1\n{a + c}\n>t2\n{b}\n'.encode())
-    idx = SessionCache().kmer_index(11, q_fa, t_fa)
+    from core.seqs import InMemoryProvider
+
+    idx = SessionCache().kmer_index(
+        11, InMemoryProvider(q_fa), InMemoryProvider(t_fa)
+    )
     return idx, q_fa, t_fa
 
 
@@ -340,13 +344,14 @@ def test_self_align_kmer_index_and_plot():
     """Self-alignment reuses one FastaInput for both groups."""
     from core.cache import SessionCache
     from core.fasta import parse_fasta_bytes
+    from core.seqs import InMemoryProvider
     import matplotlib.pyplot as plt
 
     from rusty_dot import DotPlotter
     from rusty_dot.paf_io import PafAlignment
 
     seq = 'ACGTTGCAAGGCTTAACCGGTTAACGGCCAATT' * 8
-    q = parse_fasta_bytes(f'>c1\n{seq}\n>c2\n{seq[::-1]}\n'.encode())
+    q = InMemoryProvider(parse_fasta_bytes(f'>c1\n{seq}\n>c2\n{seq[::-1]}\n'.encode()))
     cache = SessionCache()
     idx = cache.kmer_index(11, q, q)
     # Same digest on both sides: the cache key is still well-formed and a

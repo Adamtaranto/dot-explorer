@@ -604,6 +604,43 @@ impl SequenceIndex {
         self.sequences.keys().cloned().collect()
     }
 
+    /// Approximate heap footprint of the index, in bytes, by component.
+    ///
+    /// Sums allocated vector capacities, so the numbers reflect what the
+    /// allocator actually holds. Used to size memory budgets (e.g. the
+    /// browser app's upload limits) from measured data rather than RSS
+    /// deltas alone.
+    ///
+    /// Returns
+    /// -------
+    /// dict[str, int]
+    ///     Keys: ``'seq_bytes'`` (retained raw sequence copies),
+    ///     ``'kmer_index'`` (the CSR hash tables), ``'pair_cache'``
+    ///     (cached pairwise coordinate results) and ``'total'``.
+    pub fn approx_bytes(&self) -> std::collections::HashMap<String, usize> {
+        let seq_bytes: usize = self
+            .sequences
+            .values()
+            .map(|d| d.seq_bytes.capacity())
+            .sum();
+        let kmer_index: usize = self
+            .sequences
+            .values()
+            .map(|d| d.index.approx_bytes())
+            .sum();
+        let pair_cache: usize = self
+            .pair_cache
+            .values()
+            .map(|v| v.capacity() * std::mem::size_of::<CoordPair>())
+            .sum();
+        let mut out = std::collections::HashMap::new();
+        out.insert("seq_bytes".to_string(), seq_bytes);
+        out.insert("kmer_index".to_string(), kmer_index);
+        out.insert("pair_cache".to_string(), pair_cache);
+        out.insert("total".to_string(), seq_bytes + kmer_index + pair_cache);
+        out
+    }
+
     /// Get the k-mer set for a named sequence.
     ///
     /// Parameters

@@ -10,6 +10,12 @@ and this project adheres to
 
 ### Added — library
 
+- `SequenceIndex.approx_bytes()` (and `CrossIndex.approx_bytes()`): exact
+  per-component heap accounting for the k-mer index (sequence bytes, CSR
+  tables, pair cache), plus `scripts/mem_profile_index.py` to measure peak
+  RSS and index size for synthetic pairs — the audit behind the web app's
+  size limits is recorded in docs/development.md.
+
 - Interactive single-file HTML dotplot reports (`DotPlotter.to_html()`, or an
   `.html` output path): click a panel to focus it, scroll/drag to pan and
   zoom, drag a box to zoom to a region, click a match for coordinates,
@@ -107,6 +113,25 @@ and this project adheres to
 
 ### Changed
 
+- HTML reports no longer embed match sequences by default: `to_html()` /
+  `plot()` gained `embed_sequences` (default `False`), keeping exported
+  files small with large alignment sets. Pass `embed_sequences=True` to
+  restore the standalone sequence preview/copy buttons (subject to the
+  existing ~2 Mb residue cap); a standalone report without embedded
+  sequences now shows a notice instead of an empty detail pane. The match
+  detail preview is clipped at 1,000 bases/columns (was 20,000).
+- App: status and warning copy is now platform-aware — the local Shiny app
+  no longer claims "everything runs in your browser" or a 4 GB heap limit,
+  and states that it has no upload size limits (the k-mer size gate and
+  wasm-heap messaging remain browser-only; biowasm aligner warnings apply on
+  both platforms since those tools run in the browser tab either way).
+- App: uploaded assemblies are now served through a lazy sequence provider
+  (`app/core/seqs.py`) backed by a pyfaidx index over the uploaded file
+  instead of resident Python strings — previews, copies and the k-mer index
+  build fetch only the windows/contigs they need. Falls back to in-memory
+  parsing when pyfaidx cannot index the input. New `pip install
+  "rusty-dot[app]"` extra (shiny + pyfaidx) for running the app locally or
+  on an HPC (`shiny run --launch-browser app/app.py`).
 - Releases publish real binary wheels: maturin builds for Linux
   (x86_64/aarch64), macOS (arm64/x86_64) and Windows (x64) across CPython
   3.12–3.14 and 3.14t, plus an sdist. The free-threaded wheel declares

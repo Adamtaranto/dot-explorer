@@ -170,6 +170,21 @@ class SequenceIndex:
         """
         ...
 
+    def approx_bytes(self) -> dict[str, int]:
+        """Return the index's approximate heap footprint in bytes.
+
+        Sums allocated vector capacities per component, so the numbers
+        reflect what the allocator actually holds.
+
+        Returns
+        -------
+        dict[str, int]
+            Keys ``'seq_bytes'`` (retained raw sequence copies),
+            ``'kmer_index'`` (CSR hash tables), ``'pair_cache'`` (cached
+            pairwise coordinate results) and ``'total'``.
+        """
+        ...
+
     def get_kmer_set(self, name: str) -> set[str]:
         """Return the set of unique k-mers for a named sequence.
 

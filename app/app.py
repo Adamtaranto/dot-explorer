@@ -50,7 +50,7 @@ from core.annotation_state import (
 )
 from core.cache import QUERY_GROUP, TARGET_GROUP, SessionCache
 from core.export import reordered_fasta_text
-from core.fasta import FastaInput, content_digest, parse_fasta_bytes
+from core.fasta import content_digest
 from core.genbank import parse_genbank_bytes
 from core.panels import (
     filter_by_min_length,
@@ -58,6 +58,11 @@ from core.panels import (
     nav_tips,
     panel_pair,
     resolve_orders,
+)
+from core.seqs import (
+    SequenceProvider,
+    provider_from_fasta_input,
+    provider_from_path,
 )
 from core.state import ORDER_CHOICES, PlotConfig
 from core.validate import validate_annotation_names, validate_query_names
@@ -800,7 +805,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     cache = SessionCache()
     ready = reactive.value(False)
     boot_error = reactive.value('')
-    # (kind, alignment-object, {'query': FastaInput|None, 'target': ...})
+    # (kind, alignment-object, {'query': SequenceProvider|None, 'target': ...})
     result = reactive.value(None)
 
     @reactive.effect
@@ -812,14 +817,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         except RuntimeError as exc:
             boot_error.set(str(exc))
 
-    def _parse_upload(file_input, label: str) -> FastaInput:
+    def _parse_upload(file_input, label: str) -> SequenceProvider:
         files = file_input()
         if not files:
             raise ValueError(f'Please upload a {label} assembly.')
-        raw = Path(files[0]['datapath']).read_bytes()
-        return parse_fasta_bytes(raw)
+        return provider_from_path(Path(files[0]['datapath']))
 
-    def _parse_seq_upload(role: str) -> FastaInput:
+    def _parse_seq_upload(role: str) -> SequenceProvider:
         """Parse one assembly upload for the current input mode.
 
         GenBank carries its annotations in the same file, so parsing also
@@ -834,7 +838,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         files = gbk_input()
         if not files:
             raise ValueError(f'Please upload a {role} assembly.')
-        parsed = parse_genbank_bytes(Path(files[0]['datapath']).read_bytes())
+        datapath = Path(files[0]['datapath'])
+        parsed = parse_genbank_bytes(datapath.read_bytes())
         # digest is over the raw upload, so an unchanged file re-run keeps the
         # existing annotation source (and the user's annotation choices).
         _set_ann_source(
@@ -844,9 +849,11 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             parsed.gff_text,
             key=(parsed.fasta.digest, files[0]['name']),
         )
-        return parsed.fasta
+        # Re-serve the ORIGIN sequences through a faidx index so the parsed
+        # strings can be released.
+        return provider_from_fasta_input(parsed.fasta, datapath.parent)
 
-    def _parse_inputs(progress=None) -> tuple[FastaInput, FastaInput]:
+    def _parse_inputs(progress=None) -> tuple[SequenceProvider, SequenceProvider]:
         """Parse the query (and target, or reuse query when self-aligning)."""
         if progress is not None:
             progress.set(0, message='Parsing query assembly…')
@@ -866,7 +873,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     _KMER_HARD_LIMIT = 80 * 1024 * 1024
     _KMER_WARN_LIMIT = 40 * 1024 * 1024
 
-    def _check_kmer_memory(query: FastaInput, target: FastaInput) -> None:
+    def _check_kmer_memory(
+        query: SequenceProvider, target: SequenceProvider
+    ) -> None:
         if sys.platform != 'emscripten':
             return  # native runs are bounded by system RAM, not the wasm heap
         total = query.total_length + (0 if target is query else target.total_length)
@@ -1018,7 +1027,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     2,
                     message=(
                         f'Building k-mer index (k={input.k()}, '
-                        f'{len(query.records)}×{len(target.records)} contigs)…'
+                        f'{len(query.names)}×{len(target.names)} contigs)…'
                     ),
                 )
                 index = cache.kmer_index(
@@ -1122,13 +1131,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             'nosimplify': bool(input.nucmer_nosimplify()),
         }
 
-    async def _send_dataset(data: FastaInput) -> None:
+    async def _send_dataset(data: SequenceProvider) -> None:
         """Ship a parsed assembly to aligners.js once, keyed by digest."""
         if data.digest in sent_datasets:
             return
         await session.send_custom_message(
             'rd_mount_fasta',
-            {'dataset_id': data.digest, 'text': fasta_text(data.records)},
+            {'dataset_id': data.digest, 'text': fasta_text(data.iter_records())},
         )
         sent_datasets.add(data.digest)
 
@@ -1160,10 +1169,12 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return
         if query.total_length + target.total_length > _BIOWASM_SIZE_WARN:
             ui.notification_show(
-                'Combined input exceeds ~200 MB — inputs this large can '
-                'crash the browser tab outright (300 MB did in testing). '
-                'Consider aligning locally and uploading the PAF via the '
-                '"Alignment (PAF)" input mode instead.',
+                'Combined input exceeds ~200 MB — the in-app aligners run '
+                'inside the browser tab (biowasm), and inputs this large '
+                'can crash the tab outright (300 MB did in testing). '
+                'Consider aligning outside the app with native minimap2 and '
+                'uploading the PAF via the "Alignment (PAF)" input mode '
+                'instead.',
                 type='warning',
                 duration=12,
             )
@@ -1604,7 +1615,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         for role in ANNOTATION_ROLES:
             ann = gff_raw_for(role)
             fasta = meta.get(role)
-            if ann is None or not isinstance(fasta, FastaInput):
+            if ann is None or not isinstance(fasta, SequenceProvider):
                 continue
             for warning in validate_annotation_names(
                 fasta.names, ann.sequence_names(), role
@@ -1933,8 +1944,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         if kind == 'kmer':
             q_in = list(meta['query'].names)
             t_in = list(meta['target'].names)
-            lengths = {n: len(s) for n, s in meta['target'].records}
-            lengths.update({n: len(s) for n, s in meta['query'].records})
+            lengths = dict(meta['target'].lengths())
+            lengths.update(meta['query'].lengths())
         else:
             q_in = list(obj.query_names)
             t_in = list(obj.target_names)
@@ -2107,6 +2118,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             kwargs['query_names'] = list(q_names)
             kwargs['target_names'] = list(t_names)
         if output_path is not None:
+            # embed_sequences stays at its False default: the in-app report
+            # fetches previews/copies lazily over the bridge, so embedding
+            # would only bloat the payload.
             return plotter.to_html(output_path, **kwargs)
         return plotter.plot(**kwargs)
 
@@ -2551,14 +2565,14 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     def _preview_slice(seq: str, start: int, end: int, minus: bool) -> str:
         """Return an alignment-oriented preview of ``seq[start:end]``.
 
-        Clipped to 20,000 bases *before* any copy or revcomp so megabase
+        Clipped to 1,000 bases *before* any copy or revcomp so megabase
         matches never materialise a full slice for the preview.  On the
         minus strand the alignment-oriented sequence begins at the genomic
         end, so the window is taken from there.
         """
         from rusty_dot.alignment_view import revcomp
 
-        cap = 20_000
+        cap = 1_000
         n = end - start
         if n <= cap:
             s = seq[start:end]
@@ -2570,16 +2584,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         return s + f'… [truncated at {cap:,} bases]'
 
     def _sequence_for(meta: dict, name: str, side: str):
-        """Look up a full sequence by name, preferring *side*'s FASTA.
+        """Look up a lazily sliceable sequence by name, preferring *side*.
 
         Falls back to the other assembly so self-align mode (one file) and
-        PAF uploads with a single FASTA still resolve.
+        PAF uploads with a single FASTA still resolve.  The returned object
+        supports ``len()`` and ``[start:stop]`` slicing to ``str``; with a
+        faidx-backed provider only the sliced windows are ever read.
         """
         order = ('query', 'target') if side == 'query' else ('target', 'query')
         for key in order:
-            fasta = meta.get(key)
-            if fasta is not None:
-                seq = next((s for n, s in fasta.records if n == name), None)
+            provider = meta.get(key)
+            if provider is not None:
+                seq = provider.get_lazy(name)
                 if seq is not None:
                     return seq
         return None
@@ -2754,20 +2770,32 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         if boot_error():
             return ui.div(boot_error(), class_='rd-status rd-status-error')
         if not ready():
-            return ui.div(
+            msg = (
                 'Loading rusty-dot (first visit compiles the WASM runtime — '
-                'this can take a few seconds)…',
-                class_='rd-status',
+                'this can take a few seconds)…'
+                if sys.platform == 'emscripten'
+                else 'Loading rusty-dot…'
             )
+            return ui.div(msg, class_='rd-status')
         if result() is None:
-            return ui.div(
-                'Upload two assemblies (or a PAF file) and press '
-                '"Run comparison". Everything runs in your browser — '
-                'files are never uploaded to a server. Large genomes are '
-                'limited by browser memory (the Python heap can grow to '
-                '≈4 GB); bacterial/fungal-scale assemblies work best.',
-                class_='rd-status',
-            )
+            if sys.platform == 'emscripten':
+                msg = (
+                    'Upload two assemblies (or a PAF file) and press '
+                    '"Run comparison". Everything runs in your browser — '
+                    'files are never uploaded to a server. Large genomes are '
+                    'limited by browser memory (the Python heap can grow to '
+                    '≈4 GB); bacterial/fungal-scale assemblies work best.'
+                )
+            else:
+                msg = (
+                    'Upload two assemblies (or a PAF file) and press '
+                    '"Run comparison". This local app has no upload size '
+                    'limits — memory is bounded by your machine. The '
+                    'minimap2/nucmer aligners still run in your browser tab '
+                    '(fetched from the biowasm CDN), so they need network '
+                    'access and large inputs can still strain the tab.'
+                )
+            return ui.div(msg, class_='rd-status')
         return None
 
     @output(suspend_when_hidden=False)
@@ -2780,10 +2808,19 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         # this reports the high-water mark of the Python runtime's heap —
         # the constrained resource (Pyodide 0.27 can grow it to ~4 GB;
         # a 90 Mb k-mer run was observed at 2.9 GB before the ceiling).
-        # Native runs (and non-Pyodide environments) show nothing.
+        # Native runs show resident set size instead (no fixed ceiling).
         reactive.invalidate_later(5)
         if sys.platform != 'emscripten':
-            return ''
+            try:
+                import resource  # noqa: PLC0415 - unavailable on some hosts
+
+                rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                # ru_maxrss is bytes on macOS, KiB on Linux.
+                if sys.platform != 'darwin':
+                    rss *= 1024
+                return f'App memory: {rss / 1048576:.0f} MB peak RSS'
+            except Exception:  # noqa: BLE001 - readout is best-effort only
+                return ''
         try:
             import pyodide_js  # noqa: PLC0415 - pyodide-only module
 
@@ -2825,7 +2862,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         kind, _obj, meta = res
         return (
             kind == 'kmer'
-            or isinstance(meta.get('query'), FastaInput)
+            or isinstance(meta.get('query'), SequenceProvider)
             or bool(input.paf_query_fasta())
         )
 
@@ -2938,7 +2975,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             # from the query assembly sequences when they are available —
             # either attached to the result or from the sidebar upload.
             query = meta.get('query')
-            if not isinstance(query, FastaInput):
+            if not isinstance(query, SequenceProvider):
                 try:
                     query = _parse_upload(input.paf_query_fasta, 'query')
                 except ValueError:
@@ -2952,7 +2989,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     duration=8,
                 )
                 req(False)
-            yield reordered_fasta_text(query.records, order, reverse)
+            yield reordered_fasta_text(list(query.iter_records()), order, reverse)
 
 
 app = App(app_ui, server, static_assets=APP_DIR / 'www')

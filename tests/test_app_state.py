@@ -52,9 +52,7 @@ def kmer_setup():
     t_fa = parse_fasta_bytes(f'>t1\n{a + c}\n>t2\n{b}\n'.encode())
     from core.seqs import InMemoryProvider
 
-    idx = SessionCache().kmer_index(
-        11, InMemoryProvider(q_fa), InMemoryProvider(t_fa)
-    )
+    idx = SessionCache().kmer_index(11, InMemoryProvider(q_fa), InMemoryProvider(t_fa))
     return idx, q_fa, t_fa
 
 

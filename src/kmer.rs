@@ -2,7 +2,7 @@
 // pyo3 pyfunction return types trigger a false-positive useless_conversion lint.
 #![allow(clippy::useless_conversion)]
 
-use crate::error::RustyDotError;
+use crate::error::DotExplorerError;
 use crate::strand::revcomp;
 use ahash::{AHashMap, AHashSet};
 use bio::alphabets::dna;
@@ -58,8 +58,8 @@ impl FmIdx {
     ///
     /// # Errors
     ///
-    /// Returns a `RustyDotError` if construction fails.
-    pub fn new(text: Vec<u8>) -> Result<Self, RustyDotError> {
+    /// Returns a `DotExplorerError` if construction fails.
+    pub fn new(text: Vec<u8>) -> Result<Self, DotExplorerError> {
         let alphabet = dna::n_alphabet();
         let sa = suffix_array(&text);
         let bwt_data = bwt(&text, &sa);
@@ -137,10 +137,10 @@ impl FmIdx {
 ///
 /// # Errors
 ///
-/// Returns `RustyDotError::InvalidKmerLength` if `k == 0`.
-pub fn build_kmer_set(seq: &str, k: usize) -> Result<AHashSet<String>, RustyDotError> {
+/// Returns `DotExplorerError::InvalidKmerLength` if `k == 0`.
+pub fn build_kmer_set(seq: &str, k: usize) -> Result<AHashSet<String>, DotExplorerError> {
     if k == 0 {
-        return Err(RustyDotError::InvalidKmerLength(k));
+        return Err(DotExplorerError::InvalidKmerLength(k));
     }
     let bytes = seq.as_bytes();
     if k > bytes.len() {

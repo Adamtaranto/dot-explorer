@@ -1,4 +1,4 @@
-# Zensical configuration for the rusty-dot documentation site.
+# Zensical configuration for the dot-explorer documentation site.
 #
 # Replaces the previous mkdocs.yml (MkDocs + Material).  Two things about this
 # project are not standard:
@@ -6,17 +6,17 @@
 #   * The Tutorials section is generated: docs/tutorials/*.ipynb are converted
 #     to Markdown by scripts/notebooks_to_md.py before the build (Zensical has
 #     no notebook support).  The .md files are gitignored build products.
-#   * The API pages use mkdocstrings, which imports rusty_dot — so the package
+#   * The API pages use mkdocstrings, which imports dot_explorer — so the package
 #     must be installed (built) before building the docs.
 #
 # The site is deployed to gh-pages by .github/workflows/docs.yml, which also
 # exports the Shinylive browser app into site/app *after* this build runs.
 [project]
-site_name = "rusty-dot"
+site_name = "dot-explorer"
 site_description = "Fast dot plot comparisons of DNA sequences using a rolling-hash k-mer index"
-site_url = "https://adamtaranto.github.io/rusty-dot/"
-repo_url = "https://github.com/Adamtaranto/rusty-dot"
-repo_name = "Adamtaranto/rusty-dot"
+site_url = "https://adamtaranto.github.io/dot-explorer/"
+repo_url = "https://github.com/Adamtaranto/dot-explorer"
+repo_name = "Adamtaranto/dot-explorer"
 site_dir = "site"
 
 nav = [

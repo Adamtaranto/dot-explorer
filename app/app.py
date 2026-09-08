@@ -1,8 +1,8 @@
-"""rusty-dot assembly comparison — browser app (Shiny for Python / Shinylive).
+"""dot-explorer assembly comparison — browser app (Shiny for Python / Shinylive).
 
 Runs entirely client-side: uploads never leave the browser.  Under Pyodide
-the rusty-dot wasm wheel bundled in ``wheels/`` is installed at startup;
-run natively (``shiny run app/app.py``) it uses the installed rusty-dot.
+the dot-explorer wasm wheel bundled in ``wheels/`` is installed at startup;
+run natively (``shiny run app/app.py``) it uses the installed dot-explorer.
 """
 
 from __future__ import annotations
@@ -79,28 +79,28 @@ import numpy  # noqa: F401
 from shiny import App, reactive, render, req, ui
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('rusty_dot_app')
+logger = logging.getLogger('dot_explorer_app')
 
 APP_DIR = Path(__file__).parent
 
 _boot_done = False
 
 
-async def ensure_rusty_dot() -> None:
-    """Make :mod:`rusty_dot` importable, installing the wasm wheel if needed.
+async def ensure_dot_explorer() -> None:
+    """Make :mod:`dot_explorer` importable, installing the wasm wheel if needed.
 
     Under Pyodide (Shinylive) the wheel bundled in the app's ``wheels/``
     directory is installed with micropip on first call.  Natively this is a
-    no-op when rusty-dot is already installed.
+    no-op when dot-explorer is already installed.
 
     Raises
     ------
     RuntimeError
-        If rusty-dot is unavailable and cannot be installed (no bundled
+        If dot-explorer is unavailable and cannot be installed (no bundled
         wheel under Pyodide, or not pip-installed natively).
     """
     global _boot_done
-    if _boot_done or importlib.util.find_spec('rusty_dot') is not None:
+    if _boot_done or importlib.util.find_spec('dot_explorer') is not None:
         _boot_done = True
         return
     if sys.platform == 'emscripten':
@@ -113,12 +113,12 @@ async def ensure_rusty_dot() -> None:
         await micropip.install(f'emfs:{wheel}')
         # find_spec() above already cached a FileFinder for site-packages
         # that predates the install, so without this the very next
-        # `import rusty_dot` can still raise ModuleNotFoundError.
+        # `import dot_explorer` can still raise ModuleNotFoundError.
         importlib.invalidate_caches()
         _boot_done = True
         return
     raise RuntimeError(
-        'rusty-dot is not installed — run `pip install rusty-dot` '
+        'dot-explorer is not installed — run `pip install dot-explorer` '
         '(or `maturin develop` from the repo).'
     )
 
@@ -158,7 +158,7 @@ def _lbl(text: str, tip: str):
     return ui.span(
         text,
         ' ',
-        ui.tooltip(ui.tags.span('ⓘ', class_='rd-info'), tip, placement='right'),
+        ui.tooltip(ui.tags.span('ⓘ', class_='de-info'), tip, placement='right'),
     )
 
 
@@ -181,13 +181,13 @@ _PANEL_DBLCLICK_JS = """
     var node = ev.target;
     var m = null;
     while (node && node.nodeType === 1) {
-      m = /^rd-panel-(\\d+)-(\\d+)$/.exec(node.id || '');
+      m = /^de-panel-(\\d+)-(\\d+)$/.exec(node.id || '');
       if (m) { break; }
       node = node.parentNode;
     }
     if (!m) { return; }
     window.parent.postMessage(
-      {type: 'rd-panel-dblclick',
+      {type: 'de-panel-dblclick',
        row: parseInt(m[1], 10),
        col: parseInt(m[2], 10)},
       '*'
@@ -303,23 +303,23 @@ def debounce(delay_secs: float):
 # it was drawn.  Standalone to_html exports are unaffected.
 _HIDE_REPORT_HEADER_CSS = (
     '<style>'
-    '#rd-header{display:none}'
+    '#de-header{display:none}'
     'body{padding-bottom:0}'
-    '#rd-figure{padding:0.5rem}'
-    '#rd-figure svg{width:100%;height:calc(100vh - 1rem)}'
+    '#de-figure{padding:0.5rem}'
+    '#de-figure svg{width:100%;height:calc(100vh - 1rem)}'
     '</style>'
 )
 
 # Fullscreen-toggle icons (expand / collapse corners); www/app.css shows
-# exactly one of the pair depending on the html.rd-fullscreen class.
+# exactly one of the pair depending on the html.de-fullscreen class.
 _FS_EXPAND_SVG = (
-    '<svg class="rd-fs-expand" width="15" height="15" viewBox="0 0 24 24"'
+    '<svg class="de-fs-expand" width="15" height="15" viewBox="0 0 24 24"'
     ' fill="none" stroke="currentColor" stroke-width="2.4"'
     ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     '<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>'
 )
 _FS_COLLAPSE_SVG = (
-    '<svg class="rd-fs-collapse" width="15" height="15" viewBox="0 0 24 24"'
+    '<svg class="de-fs-collapse" width="15" height="15" viewBox="0 0 24 24"'
     ' fill="none" stroke="currentColor" stroke-width="2.4"'
     ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     '<path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5"/></svg>'
@@ -330,7 +330,7 @@ def strip_report_header(html: str) -> str:
     """Hide the report's built-in title/navigation header for embedding.
 
     The standalone HTML report carries its own header with navigation hints
-    (``#rd-header`` in ``_html/template.html``); inside the app that
+    (``#de-header`` in ``_html/template.html``); inside the app that
     duplicates the app-level hint bar, so the embed hides it with CSS.
     Standalone ``to_html`` exports are unaffected.
 
@@ -929,9 +929,9 @@ app_ui = ui.page_sidebar(
                     ),
                     ui.span(
                         'Setting edits are held until you apply them.',
-                        class_='rd-ft-apply-note',
+                        class_='de-ft-apply-note',
                     ),
-                    class_='rd-ft-apply',
+                    class_='de-ft-apply',
                 ),
             ),
         ),
@@ -987,9 +987,9 @@ app_ui = ui.page_sidebar(
     ),
     # Fixed memory note (bottom-right; hidden while the readout is empty,
     # e.g. on native runs where the wasm heap does not exist).
-    ui.div(ui.output_text('app_memory'), class_='rd-mem-fixed'),
-    ui.div(ui.output_text('result_kind'), class_='rd-hidden'),
-    ui.div(ui.output_text('gff_mode'), class_='rd-hidden'),
+    ui.div(ui.output_text('app_memory'), class_='de-mem-fixed'),
+    ui.div(ui.output_text('result_kind'), class_='de-hidden'),
+    ui.div(ui.output_text('gff_mode'), class_='de-hidden'),
     ui.output_ui('status'),
     # --- W2: interactive plot ---
     ui.output_ui('plot_area'),
@@ -1024,19 +1024,19 @@ app_ui = ui.page_sidebar(
     ui.head_content(ui.include_js(APP_DIR / 'www' / 'aligners.js', method='inline')),
     title=ui.div(
         ui.span(
-            'rusty',
-            ui.span('·dot', class_='rd-wordmark-dot'),
-            class_='rd-wordmark',
+            'dot',
+            ui.span('·explorer', class_='de-wordmark-dot'),
+            class_='de-wordmark',
         ),
-        ui.span('live assembly comparison', class_='rd-wordmark-sub'),
+        ui.span('live assembly comparison', class_='de-wordmark-sub'),
         # Filled by www/task-status.js with the active ui.Progress message.
-        ui.span(id='rd-task-status', class_='rd-task-status'),
+        ui.span(id='de-task-status', class_='de-task-status'),
         # Manual light/dark toggle; defaults to the system preference and
-        # stamps data-bs-theme on <html>, which the --rd-* palette keys off.
-        ui.span(ui.input_dark_mode(id='dark_mode'), class_='rd-theme-toggle'),
-        class_='rd-header-flex',
+        # stamps data-bs-theme on <html>, which the --de-* palette keys off.
+        ui.span(ui.input_dark_mode(id='dark_mode'), class_='de-theme-toggle'),
+        class_='de-header-flex',
     ),
-    window_title='rusty-dot · assembly comparison',
+    window_title='dot-explorer · assembly comparison',
     fillable=True,
 )
 
@@ -1051,9 +1051,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     @reactive.effect
     async def _boot():
         try:
-            await ensure_rusty_dot()
+            await ensure_dot_explorer()
             ready.set(True)
-            logger.info('rusty-dot ready (platform=%s)', sys.platform)
+            logger.info('dot-explorer ready (platform=%s)', sys.platform)
         except RuntimeError as exc:
             boot_error.set(str(exc))
 
@@ -1132,7 +1132,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 duration=10,
             )
 
-    _TUTORIALS_URL = 'https://adamtaranto.github.io/rusty-dot/tutorials/quickstart/'
+    _TUTORIALS_URL = 'https://adamtaranto.github.io/dot-explorer/tutorials/quickstart/'
 
     def _combined_upload_size() -> int | None:
         """Return the combined uploaded-assembly size from file metadata.
@@ -1190,7 +1190,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         f'Combined upload is ~{total / 1e6:.0f} MB — beyond '
                         'the ~80 Mb the in-browser k-mer index can handle, '
                         'so that method is disabled here. Use minimap2 or '
-                        'nucmer, or run the rusty-dot Python library '
+                        'nucmer, or run the dot-explorer Python library '
                         'locally — see the '
                         f'<a href="{_TUTORIALS_URL}" target="_blank" '
                         'rel="noopener">tutorial notebooks</a>.'
@@ -1625,7 +1625,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         re-setting the reactive value would rebuild the feature-type controls
         and wipe the user's toggles, colours and per-feature overrides.
         """
-        from rusty_dot.annotation import GffAnnotation  # noqa: PLC0415
+        from dot_explorer.annotation import GffAnnotation  # noqa: PLC0415
 
         entries = ann_sources[role]()
         # Cheap identity check first, so an unchanged GenBank upload does not
@@ -1646,7 +1646,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         _reset_feature_overrides()
 
     def _parse_gff_upload(file_input, role: str) -> None:
-        from rusty_dot.annotation import GffAnnotation  # noqa: PLC0415
+        from dot_explorer.annotation import GffAnnotation  # noqa: PLC0415
 
         files = file_input()
         if not files:
@@ -1936,7 +1936,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         controls = []
         for row in rows:
             badges = ''.join(
-                f'<span class="rd-gff-role" title="{r} annotations">'
+                f'<span class="de-gff-role" title="{r} annotations">'
                 f'{r[0].upper()}</span>'
                 for r in row['roles']
             )
@@ -1945,10 +1945,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     ui.input_checkbox(f'gtyp_{slugs[row["key"]]}', row['label'], True),
                     ui.HTML(badges),
                     ui.HTML(
-                        f'<input type="color" class="rd-color-input" '
+                        f'<input type="color" class="de-color-input" '
                         f'id="gcol_{slugs[row["key"]]}" value="{row["color"]}">'
                     ),
-                    class_='rd-gff-type-row',
+                    class_='de-gff-type-row',
                 )
             )
         # Deliberately depends on gff_type_index() alone.  The gff_diagonal /
@@ -1967,10 +1967,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 ui.input_action_button(
                     'apply_gff_types',
                     'Apply changes',
-                    class_='btn-primary btn-sm rd-gff-apply',
+                    class_='btn-primary btn-sm de-gff-apply',
                     disabled=True,
                 ),
-                class_='rd-gff-section',
+                class_='de-gff-section',
             ),
         )
 
@@ -2335,7 +2335,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         files = input.tree_file()
         if not files:
             return None
-        from rusty_dot import Tree  # noqa: PLC0415 - after ensure_rusty_dot
+        from dot_explorer import Tree  # noqa: PLC0415 - after ensure_dot_explorer
 
         try:
             return Tree.read(files[0]['datapath'])
@@ -2446,7 +2446,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return True
         ui.notification_show(
             'Clustering needs sourmash and scipy — install them with: '
-            'pip install "rusty-dot[cluster]"',
+            'pip install "dot-explorer[cluster]"',
             type='error',
             duration=12,
         )
@@ -2505,7 +2505,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
 
     @reactive.calc
     def sketch_params():
-        from rusty_dot import SketchParams  # noqa: PLC0415
+        from dot_explorer import SketchParams  # noqa: PLC0415
 
         settings = cluster_settings() or {}
         return SketchParams(
@@ -2520,7 +2520,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         req(clustering_on())
         prov = query_provider()
         req(prov)
-        from rusty_dot import compute_sketches  # noqa: PLC0415
+        from dot_explorer import compute_sketches  # noqa: PLC0415
 
         with ui.Progress(min=0, max=1) as progress:
             progress.set(0, message='Sketching contigs (sourmash)…')
@@ -2533,7 +2533,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """All-vs-all similarity in the applied metric, or None on error."""
         if not clustering_on():
             return None
-        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+        from dot_explorer import pairwise_similarity  # noqa: PLC0415
 
         metric = cluster_settings()['metric']
         if metric == 'ani':
@@ -2550,7 +2550,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """Asymmetric sourmash containment matrix, or None."""
         if not clustering_on():
             return None
-        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+        from dot_explorer import pairwise_similarity  # noqa: PLC0415
 
         try:
             return pairwise_similarity(sketches(), metric='containment')
@@ -2590,7 +2590,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         sim = sim_matrix()
         if sim is None:
             return None
-        from rusty_dot import Tree, linkage_from_similarity  # noqa: PLC0415
+        from dot_explorer import Tree, linkage_from_similarity  # noqa: PLC0415
 
         Z = linkage_from_similarity(sim)
         return Z, Tree.from_linkage(Z, sim.names)
@@ -2611,7 +2611,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """ANI matrix with confidence bounds, or None."""
         if not clustering_on():
             return None
-        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+        from dot_explorer import pairwise_similarity  # noqa: PLC0415
 
         with ui.Progress(min=0, max=1) as progress:
             progress.set(0, message='Computing ANI…')
@@ -2655,7 +2655,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """Cluster assignments for the applied mode, or None."""
         if not clustering_on():
             return None
-        from rusty_dot import assign_clusters, assign_clusters_dual  # noqa: PLC0415
+        from dot_explorer import assign_clusters, assign_clusters_dual  # noqa: PLC0415
 
         settings = cluster_settings()
         if settings['mode'] == 'identity_coverage':
@@ -2709,8 +2709,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     # --- end Trees & clustering ----------------------------------------------
 
     def make_figure(res, cfg: PlotConfig, lay, pair=None, output_path=None):
-        from rusty_dot import DotPlotter
-        from rusty_dot.paf_io import PafAlignment
+        from dot_explorer import DotPlotter
+        from dot_explorer.paf_io import PafAlignment
 
         kind, obj, _meta = res
         q_names = [pair[0]] if pair is not None else lay['query_names']
@@ -2842,13 +2842,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             text = f'$ {e["cmd"]}\n{e["stderr"] or "(no tool output)"}'
             if e.get('error'):
                 text += f'\nERROR: {e["error"]}'
-            blocks.append(ui.tags.pre(text, class_='rd-log'))
+            blocks.append(ui.tags.pre(text, class_='de-log'))
         return ui.accordion(
             ui.accordion_panel(
                 f'Aligner log ({len(entries)} run(s))', *blocks, value='log'
             ),
             open=False,
-            class_='rd-log-accordion',
+            class_='de-log-accordion',
         )
 
     @output(suspend_when_hidden=False)
@@ -2868,7 +2868,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             progress.set(2, message='Done')
         return ui.tags.iframe(
             srcdoc=html,
-            class_='rd-report-frame',
+            class_='de-report-frame',
             sandbox='allow-scripts',
             title='Interactive dotplot report',
         )
@@ -2897,7 +2897,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             if i:
                 parts.append(' · ')
             parts += [ui.tags.b(action), f' = {effect}']
-        return ui.div(*parts, class_='rd-nav-hint')
+        return ui.div(*parts, class_='de-nav-hint')
 
     @render.ui
     def plot_area():
@@ -2911,7 +2911,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             ui.tags.button(
                 ui.HTML(_FS_EXPAND_SVG),
                 ui.HTML(_FS_COLLAPSE_SVG),
-                class_='rd-fs-btn',
+                class_='de-fs-btn',
                 type='button',
                 title='Toggle fullscreen (Esc exits)',
                 aria_label='Toggle fullscreen plot',
@@ -2922,10 +2922,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 ui.input_action_button(
                     'back_overview',
                     'Back to overview',
-                    class_='btn-primary btn-sm rd-back-btn',
+                    class_='btn-primary btn-sm de-back-btn',
                 )
             )
-            toolbar.append(ui.span(f'{pair[0]} vs {pair[1]}', class_='rd-focus-label'))
+            toolbar.append(ui.span(f'{pair[0]} vs {pair[1]}', class_='de-focus-label'))
         if input.interactive():
             body = ui.output_ui('report_frame')
         else:
@@ -2939,7 +2939,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             # Clustering active: the overview gets its own tab strip with
             # the assignment table and similarity heatmap beside the plot.
             return ui.div(
-                ui.div(*toolbar, class_='rd-plot-toolbar'),
+                ui.div(*toolbar, class_='de-plot-toolbar'),
                 ui.navset_tab(
                     ui.nav_panel('Plot', body, hint),
                     ui.nav_panel(
@@ -2950,7 +2950,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                                 'Cluster table (CSV)',
                                 class_='btn-sm',
                             ),
-                            class_='rd-cluster-actions',
+                            class_='de-cluster-actions',
                         ),
                         ui.output_ui('cluster_table'),
                     ),
@@ -2967,7 +2967,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                                 },
                                 inline=True,
                             ),
-                            class_='rd-cluster-actions',
+                            class_='de-cluster-actions',
                         ),
                         ui.output_ui('matrix_table'),
                     ),
@@ -2975,7 +2975,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         'Heatmap',
                         ui.div(
                             ui.output_image('heatmap_plot', inline=True),
-                            class_='rd-heatmap-wrap',
+                            class_='de-heatmap-wrap',
                         ),
                         ui.div(
                             ui.tags.b('Navigate: '),
@@ -2989,23 +2989,23 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             ' = zoom to region · ',
                             ui.tags.b('double-click / Esc'),
                             ' = reset',
-                            class_='rd-nav-hint',
+                            class_='de-nav-hint',
                         ),
                     ),
                     id='overview_tabs',
                 ),
-                class_='rd-plot-area',
+                class_='de-plot-area',
             )
         if pair is None or not feature_rows():
             return ui.div(
-                ui.div(*toolbar, class_='rd-plot-toolbar'),
+                ui.div(*toolbar, class_='de-plot-toolbar'),
                 body,
                 hint,
-                class_='rd-plot-area',
+                class_='de-plot-area',
             )
         # Tabs only in the drill-down, so the overview path is untouched.
         return ui.div(
-            ui.div(*toolbar, class_='rd-plot-toolbar'),
+            ui.div(*toolbar, class_='de-plot-toolbar'),
             ui.navset_tab(
                 ui.nav_panel('Plot', body, hint),
                 ui.nav_panel(
@@ -3019,15 +3019,15 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         ),
                         ui.span(
                             'Show/hide and colour edits are held until you apply them.',
-                            class_='rd-ft-apply-note',
+                            class_='de-ft-apply-note',
                         ),
-                        class_='rd-ft-apply',
+                        class_='de-ft-apply',
                     ),
                     ui.output_ui('annotation_table'),
                 ),
                 id='drill_tabs',
             ),
-            class_='rd-plot-area',
+            class_='de-plot-area',
         )
 
     @reactive.calc
@@ -3201,37 +3201,37 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             + '</tr></thead>'
         )
         return ui.div(
-            ui.div('', class_='rd-ft-caption'),
+            ui.div('', class_='de-ft-caption'),
             ui.div(
                 ui.HTML(
-                    '<span class="rd-ft-filters">'
-                    '<select id="rd-ft-filter-col" '
+                    '<span class="de-ft-filters">'
+                    '<select id="de-ft-filter-col" '
                     'title="Column the filter applies to"></select>'
-                    '<input type="search" id="rd-ft-filter" '
+                    '<input type="search" id="de-ft-filter" '
                     'placeholder="Filter text…">'
-                    '<button type="button" id="rd-ft-filter-add">'
+                    '<button type="button" id="de-ft-filter-add">'
                     'Add filter</button>'
-                    '<button type="button" id="rd-ft-filter-apply">'
+                    '<button type="button" id="de-ft-filter-apply">'
                     'Apply filters</button>'
                     '</span>'
                     '<button type="button" data-bulk="show">Show all</button>'
                     '<button type="button" data-bulk="hide">Hide all</button>'
                     '<button type="button" data-bulk="reset">Reset colours</button>'
                 ),
-                class_='rd-ft-tools',
+                class_='de-ft-tools',
             ),
-            ui.div(ui.HTML(''), id='rd-ft-chips', class_='rd-ft-chips'),
+            ui.div(ui.HTML(''), id='de-ft-chips', class_='de-ft-chips'),
             ui.HTML(
-                f'<div class="rd-ft-scroll"><table id="rd-feature-table">'
+                f'<div class="de-ft-scroll"><table id="de-feature-table">'
                 f'{header}<tbody></tbody></table></div>'
             ),
             ui.div(
                 'Click a row to select it (⌘/Ctrl-click for several); '
                 'click a selected row again or press Esc to clear. '
                 'Selected features are banded on the Plot tab.',
-                class_='rd-ft-hint',
+                class_='de-ft-hint',
             ),
-            class_='rd-ft-panel',
+            class_='de-ft-panel',
         )
 
     @reactive.effect
@@ -3307,7 +3307,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         minus strand the alignment-oriented sequence begins at the genomic
         end, so the window is taken from there.
         """
-        from rusty_dot.alignment_view import revcomp
+        from dot_explorer.alignment_view import revcomp
 
         cap = 1_000
         n = end - start
@@ -3427,8 +3427,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     async def _on_match_select():
         """Serve the sequence preview for a clicked match.
 
-        The report posts 'rd-match-select'; the reply travels back through
-        bridge.js as an 'rd-seq-response' echoing row/col/layer/idx so the
+        The report posts 'de-match-select'; the reply travels back through
+        bridge.js as an 'de-seq-response' echoing row/col/layer/idx so the
         report can discard stale responses.  When the record has a CIGAR
         (minimap2 ``-c``) the reply is a gapped alignment view; otherwise
         the raw query and target slices are shown unaligned.  Only the
@@ -3436,7 +3436,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         copy (`_on_copy_request`), so click latency stays flat regardless
         of match size.
         """
-        from rusty_dot.alignment_view import aligned_text
+        from dot_explorer.alignment_view import aligned_text
 
         info = input.match_select()
         ctx = _match_context(info)
@@ -3484,7 +3484,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         requested.  The reply echoes the segment key plus ``side`` so the
         report caches it client-side (repeat copies are then instant).
         """
-        from rusty_dot.alignment_view import revcomp
+        from dot_explorer.alignment_view import revcomp
 
         info = input.copy_request()
         side = (info or {}).get('side')
@@ -3505,15 +3505,15 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     @render.ui
     def status():
         if boot_error():
-            return ui.div(boot_error(), class_='rd-status rd-status-error')
+            return ui.div(boot_error(), class_='de-status de-status-error')
         if not ready():
             msg = (
-                'Loading rusty-dot (first visit compiles the WASM runtime — '
+                'Loading dot-explorer (first visit compiles the WASM runtime — '
                 'this can take a few seconds)…'
                 if sys.platform == 'emscripten'
-                else 'Loading rusty-dot…'
+                else 'Loading dot-explorer…'
             )
-            return ui.div(msg, class_='rd-status')
+            return ui.div(msg, class_='de-status')
         if result() is None:
             if sys.platform == 'emscripten':
                 msg = (
@@ -3532,7 +3532,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     '(fetched from the biowasm CDN), so they need network '
                     'access and large inputs can still strain the tab.'
                 )
-            return ui.div(msg, class_='rd-status')
+            return ui.div(msg, class_='de-status')
         return None
 
     @output(suspend_when_hidden=False)
@@ -3609,20 +3609,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         if res is None:
             return ui.div(
                 ui.tags.button(
-                    'Plot (SVG)', class_='btn rd-dl-disabled', disabled=True
+                    'Plot (SVG)', class_='btn de-dl-disabled', disabled=True
                 ),
                 ui.tags.button(
-                    'Plot (PDF)', class_='btn rd-dl-disabled', disabled=True
+                    'Plot (PDF)', class_='btn de-dl-disabled', disabled=True
                 ),
                 ui.tags.button(
-                    'Alignment (PAF)', class_='btn rd-dl-disabled', disabled=True
+                    'Alignment (PAF)', class_='btn de-dl-disabled', disabled=True
                 ),
                 ui.tags.button(
                     'Reordered query (FASTA)',
-                    class_='btn rd-dl-disabled',
+                    class_='btn de-dl-disabled',
                     disabled=True,
                 ),
-                ui.div('Run a comparison first.', class_='rd-dl-note'),
+                ui.div('Run a comparison first.', class_='de-dl-note'),
             )
         parts = [
             ui.download_button('dl_svg', 'Plot (SVG)'),
@@ -3635,13 +3635,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             parts += [
                 ui.tags.button(
                     'Reordered query (FASTA)',
-                    class_='btn rd-dl-disabled',
+                    class_='btn de-dl-disabled',
                     disabled=True,
                 ),
                 ui.div(
                     'FASTA export needs sequences — upload the query '
                     'assembly in the sidebar.',
-                    class_='rd-dl-note',
+                    class_='de-dl-note',
                 ),
             ]
         if sim_matrix() is not None:
@@ -3711,7 +3711,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 ui.tags.td(f'{row["length"]:,}'),
                 ui.tags.td(str(row['members'])),
                 ui.tags.td('' if row['mean_sim'] is None else f'{row["mean_sim"]:.3f}'),
-                class_='rd-cluster-row',
+                class_='de-cluster-row',
                 data_cluster=row['cluster'],
             )
             for row in rows
@@ -3736,13 +3736,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             ui.tags.table(
                 ui.tags.thead(ui.tags.tr(*[ui.tags.th(h) for h in headers])),
                 ui.tags.tbody(*body),
-                class_='rd-cluster-table',
+                class_='de-cluster-table',
             ),
             ui.div(
                 f'{len(clusters.clusters)} cluster(s) at {mode}. '
                 'Click rows to highlight their clusters in the plot; '
                 'click again to clear.',
-                class_='rd-dl-note',
+                class_='de-dl-note',
             ),
         )
 
@@ -3750,7 +3750,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """Build the similarity heatmap from the applied settings."""
         sim = sim_matrix()
         req(sim)
-        from rusty_dot import plot_similarity_heatmap  # noqa: PLC0415
+        from dot_explorer import plot_similarity_heatmap  # noqa: PLC0415
 
         settings = cluster_settings() or {}
         clusters = cluster_result() if settings.get('borders_on', True) else None
@@ -3864,7 +3864,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return ui.div(
                 'No matrix for this view yet — alignment coverage needs a '
                 'completed run; containment needs clustering enabled.',
-                class_='rd-dl-note',
+                class_='de-dl-note',
             )
         settings = cluster_settings() or {}
         show_ci = matrix.metric == 'ani' and matrix.ci_low is not None
@@ -3924,14 +3924,14 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             for i in range(n)
         ]
         return ui.div(
-            ui.div(blurb + sketch_note + asym_note, class_='rd-matrix-blurb'),
+            ui.div(blurb + sketch_note + asym_note, class_='de-matrix-blurb'),
             ui.div(
                 ui.tags.table(
                     ui.tags.thead(header),
                     ui.tags.tbody(*body),
-                    class_='rd-cluster-table rd-matrix-table',
+                    class_='de-cluster-table de-matrix-table',
                 ),
-                class_='rd-matrix-scroll',
+                class_='de-matrix-scroll',
             ),
         )
 

@@ -1,6 +1,6 @@
 """Payload serialisation for the interactive HTML dotplot report.
 
-The :class:`~rusty_dot.dotplot.DotPlotter` grid renderer captures, for every
+The :class:`~dot_explorer.dotplot.DotPlotter` grid renderer captures, for every
 panel it draws, the exact segments handed to matplotlib (already filtered,
 mirrored and chained).  :func:`build_panel_payload` converts that raw capture
 into the compact JSON-ready dictionary embedded in the HTML report.
@@ -11,7 +11,7 @@ Payload contract (consumed by ``report.js``)
 
     {
       "panels": {
-        "rd-panel-<row>-<col>": {
+        "de-panel-<row>-<col>": {
           "query":  <display query name>,
           "target": <display target name>,
           "qlen":   <query length>,
@@ -27,7 +27,7 @@ Payload contract (consumed by ``report.js``)
       },
       "has_sequences": true|false,
       "tracks": {                      # optional, 1x1 track layouts only
-        "x": [{"gid": "rd-xtrack-<n>", "group": <int>, "type": ...,
+        "x": [{"gid": "de-xtrack-<n>", "group": <int>, "type": ...,
                "seqname": ..., "start": ..., "end": ..., "strand": ...,
                "id": ..., "parent": ..., "name": ..., "source": ...,
                "source_file": ..., "color": ...}, ...],
@@ -45,7 +45,7 @@ under a panel.
 The order of entries in each ``segments`` list matches the drawing order of
 the corresponding :class:`~matplotlib.collections.LineCollection`, which in
 turn matches the document order of the per-segment SVG elements inside the
-``<g id="rd-matches-<row>-<col>-<layer>">`` group.  That ordering is the
+``<g id="de-matches-<row>-<col>-<layer>">`` group.  That ordering is the
 contract that lets ``report.js`` map a clicked SVG element back to its
 coordinates.
 """
@@ -92,7 +92,7 @@ def _total_query_residues(panels: dict[str, dict[str, Any]]) -> int:
     ----------
     panels : dict
         Raw per-panel capture as produced by
-        :meth:`~rusty_dot.dotplot.DotPlotter.plot` (``segments`` lists whose
+        :meth:`~dot_explorer.dotplot.DotPlotter.plot` (``segments`` lists whose
         first two entries are the query start/end).
 
     Returns
@@ -116,7 +116,7 @@ def _panel_sequences(
     """Slice the query sequence for every segment of one panel.
 
     When the panel was rendered with a reverse-oriented query
-    (``reverse_query`` set by :meth:`~rusty_dot.dotplot.DotPlotter.plot`
+    (``reverse_query`` set by :meth:`~dot_explorer.dotplot.DotPlotter.plot`
     via *reverse_contigs*), the captured coordinates are mirrored
     (``q' = qlen - q``) relative to the stored forward-orientation sequence.
     The substring is then taken from the original (un-mirrored) region and
@@ -162,7 +162,7 @@ def build_panel_payload(
     """Build the JSON-ready payload embedded in the HTML report.
 
     Pure function: reads the raw capture assembled during
-    :meth:`~rusty_dot.dotplot.DotPlotter.plot` and returns a new dictionary;
+    :meth:`~dot_explorer.dotplot.DotPlotter.plot` and returns a new dictionary;
     the capture itself is not modified.
 
     Parameters
@@ -221,7 +221,7 @@ def build_panel_payload(
         }
         # Diagonal-panel GFF features: one dict per drawn patch, in draw
         # order — the report JS maps the SVG children of the panel's
-        # 'rd-annot-<r>-<c>' group back to these entries by index.
+        # 'de-annot-<r>-<c>' group back to these entries by index.
         if panel.get('annotations'):
             entry['annotations'] = [dict(a) for a in panel['annotations']]
         if embed:
@@ -267,7 +267,7 @@ def build_panel_payload(
 def _track_entry(axis: str, n: int, group: int, feat: Any) -> dict[str, Any]:
     """Describe one drawn side-track part for the report payload."""
     return {
-        'gid': f'rd-{axis}track-{n}',
+        'gid': f'de-{axis}track-{n}',
         # Set by the app's override pass (annotation_state) so its table
         # rows and these entries can name the same feature; standalone
         # renders have no uid and match on coordinates instead.

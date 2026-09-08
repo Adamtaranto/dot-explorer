@@ -1,4 +1,4 @@
-# rusty-dot browser app
+# dot-explorer browser app
 
 A fully client-side assembly-comparison app (Shiny for Python, deployed as a
 static Shinylive/Pyodide site). Uploads never leave the browser.
@@ -8,7 +8,7 @@ static Shinylive/Pyodide site). Uploads never leave the browser.
 - `app.py` — UI + server wiring (thin; logic lives in `core/`)
 - `core/` — pure-Python logic, unit-tested natively (`tests/test_app_*.py`)
 - `www/` — custom CSS/JS
-- `wheels/` — **not in git**; the rusty-dot wasm wheel is dropped here at
+- `wheels/` — **not in git**; the dot-explorer wasm wheel is dropped here at
   export time (CI artifact from the `wasm-build` job) and installed from the
   Pyodide virtual filesystem at app startup
 - `requirements.txt` — packages micropip-installs at startup (Pyodide builds)
@@ -16,13 +16,13 @@ static Shinylive/Pyodide site). Uploads never leave the browser.
 ## Run natively (development)
 
 The fastest edit/reload loop: Python runs on your machine against a natively
-built rusty-dot, so there is no wasm wheel and no export step. Use the
+built dot-explorer, so there is no wasm wheel and no export step. Use the
 native dev environment (`environment.yml`, see
 [docs/development.md](../docs/development.md)), not the wasm environment
 below.
 
 ```bash
-pip install ".[app]"         # shiny + pyfaidx; plus a native rusty-dot:
+pip install ".[app]"         # shiny + pyfaidx; plus a native dot-explorer:
 maturin develop --release    # from the repo root
 shiny run --launch-browser app/app.py
 ```
@@ -32,7 +32,7 @@ path-relative `core.*` imports that resolve when Shiny puts `app/` on
 `sys.path`.
 
 Everything works except the k-mer method's provenance: it uses your local
-rusty-dot instead of the wheel. `minimap2`/`nucmer` still run in the browser
+dot-explorer instead of the wheel. `minimap2`/`nucmer` still run in the browser
 via biowasm, so they behave identically — note this means the aligners need
 network access to the biowasm CDN even when the app itself runs locally.
 The k-mer upload-size gate is wasm-only; native runs are bounded by machine
@@ -53,7 +53,7 @@ is not exposed to other users on the network.
 
 ## Build the static Shinylive site
 
-The exported site runs entirely in the browser, so rusty-dot must be
+The exported site runs entirely in the browser, so dot-explorer must be
 cross-compiled to a Pyodide-compatible wasm wheel. Four things have to agree
 exactly, and all of them follow from the Pyodide release **shinylive bundles**
 — not from what is newest:
@@ -112,12 +112,12 @@ build cannot use. `emscripten` comes from conda-forge at exactly 3.1.58 — no
 
 ```bash
 conda env create -f environment-wasm.yml
-conda activate rustydot-wasm
+conda activate dot-explorer-wasm
 emcc --version   # must report 3.1.58
 ```
 
 Check nothing else shadows it: `which emcc` must point inside
-`rustydot-wasm`. Another activated env with its own emscripten is the most
+`dot-explorer-wasm`. Another activated env with its own emscripten is the most
 common cause of a wheel that builds but will not install.
 
 ### 2. Build the wasm wheel
@@ -185,7 +185,7 @@ platform tag rather than sort order for exactly this reason, but two wheels
 with the same tag and different versions is still ambiguous.
 
 The export bundles everything under `app/` — including the wheel in
-`app/wheels/` — into the static site; `ensure_rusty_dot()` in `app.py`
+`app/wheels/` — into the static site; `ensure_dot_explorer()` in `app.py`
 installs it from the Pyodide virtual filesystem at startup. The site must be
 served over http (the shinylive service worker does not run from `file://`).
 
@@ -214,7 +214,7 @@ start at step 3. The same wheel is built by `docs.yml` for the deployed site.
 | wheel tag is not `…emscripten_3_1_58_wasm32` | wrong `emcc` on PATH (check `emcc --version`, and that the conda env is activated) |
 | app hangs on the loading splash; micropip error in the console | wheel tag mismatch, or a stale wheel left in `app/wheels/` |
 | edits do not appear after re-export | stale service worker / browser cache (see above) |
-| `maturin` picks the wrong interpreter | an unrelated env is activated; `CONDA_PREFIX` should point at `rustydot-wasm` |
+| `maturin` picks the wrong interpreter | an unrelated env is activated; `CONDA_PREFIX` should point at `dot-explorer-wasm` |
 | `use of unstable library feature 'unsigned_is_multiple_of'` while compiling `bio` | toolchain older than rustc 1.87 |
 | `emcc: error: invalid export name: _ZN…` | Emscripten 4.x on PATH — that ABI needs Pyodide's patched emsdk and is not what this build targets |
 
@@ -239,7 +239,7 @@ start at step 3. The same wheel is built by `docs.yml` for the deployed site.
   and cluster hierarchically. Adds a cluster-assignment table (rows
   highlight their clusters in the plot), bold cluster outlines, a
   similarity-heatmap tab, and CSV downloads. sourmash + scipy install on
-  first use (micropip under Pyodide, `pip install "rusty-dot[cluster]"`
+  first use (micropip under Pyodide, `pip install "dot-explorer[cluster]"`
   natively); see `docs/clustering.md` for choosing a metric.
 - **GFF annotations**: upload GFF3 files (`.gff`/`.gff3`/`.gz`) for the
   query and/or target assembly. Detected feature types get per-type
@@ -253,7 +253,7 @@ start at step 3. The same wheel is built by `docs.yml` for the deployed site.
 
 | Method | Runs | Status |
 |---|---|---|
-| k-mer matching | rusty-dot wasm wheel (Pyodide) | ✅ |
+| k-mer matching | dot-explorer wasm wheel (Pyodide) | ✅ |
 | PAF import | pure Python | ✅ |
 | minimap2 / nucmer | biowasm (Aioli WebWorker; fetched from the biowasm CDN at runtime) | ✅ |
 | BLAST | — | not possible: no production WASM build of BLAST+ exists |

@@ -1,4 +1,4 @@
-"""Type stubs for the rusty_dot Rust extension module.
+"""Type stubs for the dot_explorer Rust extension module.
 
 All functions and classes in this module are implemented in Rust via PyO3.
 """

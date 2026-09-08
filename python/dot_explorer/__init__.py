@@ -1,4 +1,4 @@
-"""rusty-dot: fast dot plots of DNA via a canonical ntHash k-mer index.
+"""dot-explorer: fast dot plots of DNA via a canonical ntHash k-mer index.
 
 This package provides:
 - Rust-backed canonical-hash k-mer index for fast lookup (via PyO3 bindings)
@@ -11,14 +11,14 @@ Examples
 --------
 Basic usage:
 
->>> from rusty_dot import SequenceIndex
+>>> from dot_explorer import SequenceIndex
 >>> idx = SequenceIndex(k=10)
 >>> idx.add_sequence("seq1", "ACGTACGTACGT")
 >>> idx.add_sequence("seq2", "TACGTACGTACG")
 >>> matches = idx.compare_sequences_stranded("seq1", "seq2")
 """
 
-from rusty_dot._rusty_dot import (  # noqa: F401
+from dot_explorer._dot_explorer import (  # noqa: F401
     SequenceIndex,
     py_build_kmer_set,
     py_coords_to_paf,
@@ -29,17 +29,17 @@ from rusty_dot._rusty_dot import (  # noqa: F401
 )
 
 try:
-    from rusty_dot._rusty_dot import py_read_fasta  # noqa: F401
+    from dot_explorer._dot_explorer import py_read_fasta  # noqa: F401
 except ImportError:  # pragma: no cover - wasm-only branch
     # wasm32-unknown-emscripten wheels are built --no-default-features, which
     # excludes the needletail-backed FASTA reader (the `fasta` cargo feature).
     # Everything else works; in-browser callers parse FASTA in Python and use
     # add_sequence() instead.
     py_read_fasta = None  # type: ignore[assignment]
-from rusty_dot.annotation import GffAnnotation, GffFeature  # noqa: F401
-from rusty_dot.dotplot import DotPlotter  # noqa: F401
-from rusty_dot.heatmap import plot_similarity_heatmap  # noqa: F401
-from rusty_dot.paf_io import (  # noqa: F401
+from dot_explorer.annotation import GffAnnotation, GffFeature  # noqa: F401
+from dot_explorer.dotplot import DotPlotter  # noqa: F401
+from dot_explorer.heatmap import plot_similarity_heatmap  # noqa: F401
+from dot_explorer.paf_io import (  # noqa: F401
     CrossIndex,
     PafAlignment,
     PafRecord,
@@ -48,7 +48,7 @@ from rusty_dot.paf_io import (  # noqa: F401
     parse_paf_file,
     reverse_complement,
 )
-from rusty_dot.similarity import (  # noqa: F401
+from dot_explorer.similarity import (  # noqa: F401
     ClusterResult,
     SimilarityMatrix,
     SketchParams,
@@ -58,8 +58,8 @@ from rusty_dot.similarity import (  # noqa: F401
     linkage_from_similarity,
     pairwise_similarity,
 )
-from rusty_dot.style import NATURE_RC, nature_style, use_nature_style  # noqa: F401
-from rusty_dot.tree import Tree, TreeNode, draw_tree  # noqa: F401
+from dot_explorer.style import NATURE_RC, nature_style, use_nature_style  # noqa: F401
+from dot_explorer.tree import Tree, TreeNode, draw_tree  # noqa: F401
 
 __version__ = '0.1.0'
 __all__ = [

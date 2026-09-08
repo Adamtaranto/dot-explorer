@@ -2,7 +2,7 @@
 
 import pytest
 
-from rusty_dot._rusty_dot import py_build_kmer_set, py_find_kmer_coords
+from dot_explorer._dot_explorer import py_build_kmer_set, py_find_kmer_coords
 
 
 def test_build_kmer_set_basic():

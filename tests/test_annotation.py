@@ -6,14 +6,14 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.annotation import (
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer.annotation import (
     SUPPORTED_PALETTES,
     GffAnnotation,
     GffFeature,
     _parse_gff,
 )
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer.dotplot import DotPlotter
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -413,7 +413,7 @@ def test_plot_warns_when_annotation_contains_unknown_sequences(dotplot_index, ca
         [GffFeature('unknown_seq', '.', 'gene', 0, 100, None, '+', None, '')],
     )
     plotter = DotPlotter(dotplot_index)
-    with caplog.at_level(logging.WARNING, logger='rusty_dot.dotplot'):
+    with caplog.at_level(logging.WARNING, logger='dot_explorer.dotplot'):
         fig = plotter.plot(annotation=ann)
     plt.close(fig)
     assert any('unknown_seq' in msg for msg in caplog.messages)
@@ -505,7 +505,7 @@ def test_plot_single_annotation_warns_missing(dotplot_index, caplog, simple_gff)
         [GffFeature('missing_seq', '.', 'gene', 0, 100, None, '+', None, '')],
     )
     plotter = DotPlotter(dotplot_index)
-    with caplog.at_level(logging.WARNING, logger='rusty_dot.dotplot'):
+    with caplog.at_level(logging.WARNING, logger='dot_explorer.dotplot'):
         fig = plotter.plot_single('seq1', 'seq2', annotation=ann)
     plt.close(fig)
     assert any('missing_seq' in msg for msg in caplog.messages)

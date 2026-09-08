@@ -2,7 +2,7 @@
 
 mod common;
 
-use _rusty_dot::kmer_hash::KmerIndex;
+use _dot_explorer::kmer_hash::KmerIndex;
 use codspeed_criterion_compat::{
     black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
 };

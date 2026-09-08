@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from rusty_dot._rusty_dot import py_load_index, py_save_index
+from dot_explorer._dot_explorer import py_load_index, py_save_index
 
 
 def test_save_and_load_index(tmp_path):

@@ -7,7 +7,7 @@
 #![allow(clippy::useless_conversion)]
 
 #[cfg(feature = "fasta")]
-use crate::error::RustyDotError;
+use crate::error::DotExplorerError;
 #[cfg(feature = "fasta")]
 use needletail::{parse_fastx_file, parse_fastx_stdin};
 #[cfg(feature = "fasta")]
@@ -34,18 +34,18 @@ use std::path::Path;
 ///
 /// # Errors
 ///
-/// Returns a `RustyDotError` if the file cannot be opened, parsed, or
+/// Returns a `DotExplorerError` if the file cannot be opened, parsed, or
 /// contains duplicate sequence names.
 #[cfg(feature = "fasta")]
-pub fn read_fasta(path: &str) -> Result<Vec<(String, String)>, RustyDotError> {
+pub fn read_fasta(path: &str) -> Result<Vec<(String, String)>, DotExplorerError> {
     let mut seqs: Vec<(String, String)> = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    let mut reader =
-        parse_fastx_file(Path::new(path)).map_err(|e| RustyDotError::FastaParse(e.to_string()))?;
+    let mut reader = parse_fastx_file(Path::new(path))
+        .map_err(|e| DotExplorerError::FastaParse(e.to_string()))?;
 
     while let Some(record) = reader.next() {
-        let record = record.map_err(|e| RustyDotError::FastaParse(e.to_string()))?;
+        let record = record.map_err(|e| DotExplorerError::FastaParse(e.to_string()))?;
         let name = String::from_utf8_lossy(record.id())
             .split_whitespace()
             .next()
@@ -53,7 +53,7 @@ pub fn read_fasta(path: &str) -> Result<Vec<(String, String)>, RustyDotError> {
             .to_string();
         let seq = String::from_utf8_lossy(&record.seq()).to_uppercase();
         if !seen.insert(name.clone()) {
-            return Err(RustyDotError::FastaParse(format!(
+            return Err(DotExplorerError::FastaParse(format!(
                 "duplicate sequence name '{name}' in FASTA file '{path}'"
             )));
         }
@@ -71,15 +71,16 @@ pub fn read_fasta(path: &str) -> Result<Vec<(String, String)>, RustyDotError> {
 ///
 /// # Errors
 ///
-/// Returns a `RustyDotError` if stdin cannot be parsed.
+/// Returns a `DotExplorerError` if stdin cannot be parsed.
 #[cfg(feature = "fasta")]
-pub fn read_fasta_stdin() -> Result<HashMap<String, String>, RustyDotError> {
+pub fn read_fasta_stdin() -> Result<HashMap<String, String>, DotExplorerError> {
     let mut seqs: HashMap<String, String> = HashMap::new();
 
-    let mut reader = parse_fastx_stdin().map_err(|e| RustyDotError::FastaParse(e.to_string()))?;
+    let mut reader =
+        parse_fastx_stdin().map_err(|e| DotExplorerError::FastaParse(e.to_string()))?;
 
     while let Some(record) = reader.next() {
-        let record = record.map_err(|e| RustyDotError::FastaParse(e.to_string()))?;
+        let record = record.map_err(|e| DotExplorerError::FastaParse(e.to_string()))?;
         let name = String::from_utf8_lossy(record.id())
             .split_whitespace()
             .next()

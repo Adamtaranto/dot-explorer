@@ -13,13 +13,13 @@ from matplotlib.patches import FancyBboxPatch, Polygon
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot import DotPlotter, SequenceIndex
-from rusty_dot._annotation_draw import (
+from dot_explorer import DotPlotter, SequenceIndex
+from dot_explorer._annotation_draw import (
     annotation_legend_handles,
     assign_lanes,
     draw_track,
 )
-from rusty_dot.annotation import GffAnnotation, parse_attributes
+from dot_explorer.annotation import GffAnnotation, parse_attributes
 
 GFF = '\n'.join(
     [
@@ -329,10 +329,10 @@ def test_html_report_annotations_payload_and_click_wiring(tmp_path):
     html = out.read_text()
 
     m = re.search(
-        r'<script type="application/json" id="rd-data">(.*?)</script>', html, re.S
+        r'<script type="application/json" id="de-data">(.*?)</script>', html, re.S
     )
     payload = json.loads(m.group(1))
-    p00 = payload['panels']['rd-panel-0-0']
+    p00 = payload['panels']['de-panel-0-0']
     annots = p00['annotations']
     # One entry per c1 feature, in draw (file) order.
     assert [a['type'] for a in annots] == [
@@ -348,19 +348,19 @@ def test_html_report_annotations_payload_and_click_wiring(tmp_path):
     assert first['start'] == 50 and first['end'] == 600
 
     # The SVG group exists with exactly one child path per feature.
-    gidx = html.index('id="rd-annot-0-0"')
+    gidx = html.index('id="de-annot-0-0"')
     group = html[gidx : html.index('</g>', gidx)]
     assert group.count('<path') == len(annots)
     # Off-diagonal panels carry no annotations.
-    assert 'annotations' not in payload['panels']['rd-panel-0-1']
+    assert 'annotations' not in payload['panels']['de-panel-0-1']
     # Click wiring shipped with the report.
     assert 'showAnnotationDetail' in html
-    assert 'rd-annot-' in html
+    assert 'de-annot-' in html
 
 
 def test_diagonal_squares_on_cross_index_self_alignment():
     """Same contig under two group prefixes counts as a self panel."""
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     seq = 'ACGTTGCAAGGCCTTAGCTAGGATCCGATCGATTACGGCATGCATTGCACGTAGCTAGCATCG' * 10
     cross = CrossIndex(k=11)
@@ -433,7 +433,7 @@ def test_plot_single_tracks_labels_on_main_axes():
     ],
 )
 def test_mirror_half_open(start, end, seq_len, expected):
-    from rusty_dot._annotation_draw import _mirror
+    from dot_explorer._annotation_draw import _mirror
 
     assert _mirror(start, end, seq_len) == expected
     # Involution: mirroring twice restores the original interval.
@@ -479,7 +479,7 @@ def test_auto_reverse_mirrors_diagonal_squares():
     """auto_reverse (not explicit reverse_contigs) also mirrors squares."""
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     comp = str.maketrans('ACGT', 'TGCA')
     rng = random.Random(17)
@@ -518,10 +518,10 @@ def test_html_payload_keeps_genomic_coords_on_reversed_panel(tmp_path):
     )
     html = out.read_text()
     m = re.search(
-        r'<script type="application/json" id="rd-data">(.*?)</script>', html, re.S
+        r'<script type="application/json" id="de-data">(.*?)</script>', html, re.S
     )
     payload = json.loads(m.group(1))
-    (annot,) = payload['panels']['rd-panel-0-0']['annotations']
+    (annot,) = payload['panels']['de-panel-0-0']['annotations']
     # Original genomic locus and strand, even though the patch is mirrored.
     assert annot['start'] == 100 and annot['end'] == 300
     assert annot['strand'] == '+'
@@ -603,11 +603,11 @@ def test_draw_track_gid_prefix_tags_every_drawn_part():
         'c1',
         2000,
         orientation='x',
-        gid_prefix='rd-xtrack',
+        gid_prefix='de-xtrack',
         record_into=recorded,
     )
     gids = [p.get_gid() for p in ax.patches]
-    assert gids == [f'rd-xtrack-{i}' for i in range(len(ax.patches))]
+    assert gids == [f'de-xtrack-{i}' for i in range(len(ax.patches))]
     # One record per drawn patch, in draw order.
     assert [n for n, _g, _f in recorded] == list(range(len(ax.patches)))
     # The two CDS parts share an ID/Parent, so they share a group index.
@@ -643,7 +643,7 @@ def test_html_report_emits_track_gids_and_panel_background(tmp_path):
 
     payload = json.loads(
         re.search(
-            r'<script type="application/json" id="rd-data">(.*?)</script>',
+            r'<script type="application/json" id="de-data">(.*?)</script>',
             html,
             re.S,
         ).group(1)
@@ -653,12 +653,12 @@ def test_html_report_emits_track_gids_and_panel_background(tmp_path):
     for axis in ('x', 'y'):
         entries = payload['tracks'][axis]
         assert entries, f'no {axis}-track entries'
-        assert html.count(f'id="rd-{axis}track-') == len(entries)
+        assert html.count(f'id="de-{axis}track-') == len(entries)
         assert [e['gid'] for e in entries] == [
-            f'rd-{axis}track-{i}' for i in range(len(entries))
+            f'de-{axis}track-{i}' for i in range(len(entries))
         ]
     # The band overlay measures against this rect.
-    assert 'rd-plotbg-0-0' in html
+    assert 'de-plotbg-0-0' in html
     first = payload['tracks']['x'][0]
     assert {'gid', 'group', 'type', 'seqname', 'start', 'end', 'strand'} <= set(first)
 
@@ -670,7 +670,7 @@ def test_track_payload_absent_without_tracks(tmp_path):
     plt.close(pl.to_html(out, query_names=['c1'], target_names=['c2']))
     payload = json.loads(
         re.search(
-            r'<script type="application/json" id="rd-data">(.*?)</script>',
+            r'<script type="application/json" id="de-data">(.*?)</script>',
             out.read_text(),
             re.S,
         ).group(1)
@@ -679,11 +679,11 @@ def test_track_payload_absent_without_tracks(tmp_path):
 
 
 def test_panel_background_gid_does_not_collide_with_panel_prefix(tmp_path):
-    """Only real panels may carry an ``rd-panel-<r>-<c>`` id.
+    """Only real panels may carry an ``de-panel-<r>-<c>`` id.
 
     matplotlib nests every gid'd artist in its own ``<g>``, so the axes
     background lands inside the panel group.  When it was tagged
-    ``rd-panel-<r>-<c>-bg`` it matched every ``g[id^="rd-panel-"]``
+    ``de-panel-<r>-<c>-bg`` it matched every ``g[id^="de-panel-"]``
     selector: report.js counted it as a second panel (defeating the
     single-panel click-to-focus guard and dimming the panel a click was
     meant to select), and the app's double-click bridge resolved to it and
@@ -694,14 +694,14 @@ def test_panel_background_gid_does_not_collide_with_panel_prefix(tmp_path):
     plt.close(pl.to_html(out, query_names=['c1', 'c2'], target_names=['c1', 'c2']))
     html = out.read_text()
     # Scope to the SVG: report.js's own doc comments mention the literal
-    # id template 'rd-panel-<row>-<col>' and would otherwise match.
+    # id template 'de-panel-<row>-<col>' and would otherwise match.
     svg = html[html.index('<svg') : html.index('</svg>')]
 
-    exact = re.compile(r'rd-panel-\d+-\d+')
-    panelish = re.findall(r'id="(rd-panel-[^"]*)"', svg)
+    exact = re.compile(r'de-panel-\d+-\d+')
+    panelish = re.findall(r'id="(de-panel-[^"]*)"', svg)
     assert panelish, 'no panel ids emitted'
     stray = [gid for gid in panelish if not exact.fullmatch(gid)]
     assert not stray, f'ids sharing the panel prefix but not its shape: {stray}'
     assert len(panelish) == 4  # 2 x 2 grid, one id per panel
     # The background is still emitted, under its own prefix.
-    assert 'id="rd-plotbg-0-0"' in svg
+    assert 'id="de-plotbg-0-0"' in svg

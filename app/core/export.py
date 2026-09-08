@@ -25,7 +25,7 @@ def reordered_fasta_text(
     derived from alignments — which may not cover every contig — still
     exports the complete assembly).  Contigs named in *reverse* are written
     reverse-complemented with a ``reverse_complement`` note in the header,
-    matching :meth:`rusty_dot.paf_io.CrossIndex.write_fasta` output.
+    matching :meth:`dot_explorer.paf_io.CrossIndex.write_fasta` output.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def reordered_fasta_text(
     str
         The FASTA text.
     """
-    from rusty_dot.paf_io import reverse_complement  # noqa: PLC0415 - lazy
+    from dot_explorer.paf_io import reverse_complement  # noqa: PLC0415 - lazy
 
     seq_map = dict(records)
     names = [n for n in order if n in seq_map]

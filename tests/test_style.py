@@ -3,7 +3,7 @@
 import matplotlib
 import pytest
 
-from rusty_dot import (
+from dot_explorer import (
     NATURE_RC,
     DotPlotter,
     SequenceIndex,

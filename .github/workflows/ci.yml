@@ -91,7 +91,7 @@ jobs:
         # and friends importorskip them, so a failed install only skips).
         run: |
           pip install maturin pytest pytest-cov matplotlib numpy shiny pyfaidx sourmash scipy
-      - name: Build and install rusty-dot
+      - name: Build and install dot-explorer
         run: |
           maturin build --release
           pip install target/wheels/*.whl
@@ -133,7 +133,7 @@ jobs:
         # tests importorskip them if either install ever breaks.
         run: |
           pip install maturin pytest pytest-cov matplotlib numpy pyfaidx sourmash scipy
-      - name: Build and install rusty-dot
+      - name: Build and install dot-explorer
         # The wheel is tagged cp314-cp314t (python tag cp314, abi tag cp314t).
         run: |
           maturin build --release
@@ -143,7 +143,7 @@ jobs:
         # dropped, importing the module flips the GIL back on and the cp314t
         # wheel we publish is free-threaded in name only -- fail here instead.
         run: |
-          python -c "import sys, rusty_dot; assert not sys._is_gil_enabled(), 'GIL re-enabled on import'"
+          python -c "import sys, dot_explorer; assert not sys._is_gil_enabled(), 'GIL re-enabled on import'"
       - name: Run pytest
         run: pytest tests/ -v
 
@@ -254,7 +254,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install docs dependencies
-        # Builds the compiled extension too: mkdocstrings imports rusty_dot
+        # Builds the compiled extension too: mkdocstrings imports dot_explorer
         # to document it.
         run: pip install ".[docs]"
       - name: Render tutorial notebooks to Markdown

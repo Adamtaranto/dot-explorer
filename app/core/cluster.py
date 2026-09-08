@@ -1,7 +1,7 @@
 """Clustering support for the app: provider adapters and table rows.
 
 Pure helpers between the lazy :class:`core.seqs.SequenceProvider` world of
-the app and the :mod:`rusty_dot.similarity` API, kept import-light so the
+the app and the :mod:`dot_explorer.similarity` API, kept import-light so the
 module loads even when the optional `cluster` dependencies (sourmash,
 scipy) are absent.
 """
@@ -12,8 +12,8 @@ import importlib.util
 from typing import TYPE_CHECKING, Callable, Iterable, Mapping
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
-    from rusty_dot.paf_io import PafRecord
-    from rusty_dot.similarity import ClusterResult, SimilarityMatrix
+    from dot_explorer.paf_io import PafRecord
+    from dot_explorer.similarity import ClusterResult, SimilarityMatrix
 
     from .seqs import SequenceProvider
 
@@ -35,7 +35,7 @@ def cluster_deps_missing() -> list[str]:
 class ProviderIndex:
     """Adapt a :class:`~core.seqs.SequenceProvider` to the sketching API.
 
-    :func:`rusty_dot.similarity.compute_sketches` expects an index-like
+    :func:`dot_explorer.similarity.compute_sketches` expects an index-like
     object with ``sequence_names()`` and ``get_sequence(name)``; providers
     expose lazy slices instead. The adapter fetches each sequence as one
     string only while it is being sketched, so peak residency stays at a
@@ -209,7 +209,7 @@ def alignment_coverage_matrix(
     """
     import numpy as np
 
-    from rusty_dot.similarity import SimilarityMatrix
+    from dot_explorer.similarity import SimilarityMatrix
 
     norm = normalize or (lambda name: name)
     per_pair: dict[tuple[str, str], list[tuple[int, int]]] = {}

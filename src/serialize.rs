@@ -6,7 +6,7 @@
 // pyo3 pyfunction return types trigger a false-positive useless_conversion lint.
 #![allow(clippy::useless_conversion)]
 
-use crate::error::RustyDotError;
+use crate::error::DotExplorerError;
 use crate::kmer::{build_kmer_set, sequence_to_index_text, FmIdx};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -46,12 +46,13 @@ pub struct IndexCollection {
 ///
 /// # Errors
 ///
-/// Returns `RustyDotError::Serialization` if serialization fails.
-pub fn save_index(collection: &IndexCollection, path: &str) -> Result<(), RustyDotError> {
-    let file =
-        File::create(Path::new(path)).map_err(|e| RustyDotError::Serialization(e.to_string()))?;
+/// Returns `DotExplorerError::Serialization` if serialization fails.
+pub fn save_index(collection: &IndexCollection, path: &str) -> Result<(), DotExplorerError> {
+    let file = File::create(Path::new(path))
+        .map_err(|e| DotExplorerError::Serialization(e.to_string()))?;
     let writer = BufWriter::new(file);
-    postcard::to_io(collection, writer).map_err(|e| RustyDotError::Serialization(e.to_string()))?;
+    postcard::to_io(collection, writer)
+        .map_err(|e| DotExplorerError::Serialization(e.to_string()))?;
     Ok(())
 }
 
@@ -67,16 +68,16 @@ pub fn save_index(collection: &IndexCollection, path: &str) -> Result<(), RustyD
 ///
 /// # Errors
 ///
-/// Returns `RustyDotError::Serialization` if deserialization fails.
-pub fn load_index(path: &str) -> Result<IndexCollection, RustyDotError> {
+/// Returns `DotExplorerError::Serialization` if deserialization fails.
+pub fn load_index(path: &str) -> Result<IndexCollection, DotExplorerError> {
     let file =
-        File::open(Path::new(path)).map_err(|e| RustyDotError::Serialization(e.to_string()))?;
+        File::open(Path::new(path)).map_err(|e| DotExplorerError::Serialization(e.to_string()))?;
     let mut reader = BufReader::new(file);
     let mut bytes = Vec::new();
     reader
         .read_to_end(&mut bytes)
-        .map_err(|e| RustyDotError::Serialization(e.to_string()))?;
-    postcard::from_bytes(&bytes).map_err(|e| RustyDotError::Serialization(e.to_string()))
+        .map_err(|e| DotExplorerError::Serialization(e.to_string()))?;
+    postcard::from_bytes(&bytes).map_err(|e| DotExplorerError::Serialization(e.to_string()))
 }
 
 /// Rebuild an `FmIdx` from stored sequence bytes.
@@ -91,8 +92,8 @@ pub fn load_index(path: &str) -> Result<IndexCollection, RustyDotError> {
 ///
 /// # Errors
 ///
-/// Returns `RustyDotError` if index construction fails.
-pub fn rebuild_fm_from_bytes(seq_bytes: &[u8]) -> Result<FmIdx, RustyDotError> {
+/// Returns `DotExplorerError` if index construction fails.
+pub fn rebuild_fm_from_bytes(seq_bytes: &[u8]) -> Result<FmIdx, DotExplorerError> {
     let seq_str = String::from_utf8_lossy(seq_bytes);
     let text = sequence_to_index_text(&seq_str);
     FmIdx::new(text)

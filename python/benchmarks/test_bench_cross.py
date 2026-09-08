@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from _synth import multi_contig_group
 
-from rusty_dot.paf_io import CrossIndex
+from dot_explorer.paf_io import CrossIndex
 
 # Kept modest so CodSpeed's instruction-count simulation stays quick while still
 # exercising many-contig parallel builds and an N x N pairwise match grid.

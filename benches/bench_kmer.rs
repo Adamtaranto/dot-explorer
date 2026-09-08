@@ -5,8 +5,8 @@
 
 mod common;
 
-use _rusty_dot::kmer::{build_kmer_set, sequence_to_index_text, FmIdx};
-use _rusty_dot::kmer_hash::KmerIndex;
+use _dot_explorer::kmer::{build_kmer_set, sequence_to_index_text, FmIdx};
+use _dot_explorer::kmer_hash::KmerIndex;
 use codspeed_criterion_compat::{black_box, criterion_group, criterion_main, Criterion};
 use common::random_dna;
 

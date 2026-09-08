@@ -8,27 +8,27 @@ For most use cases, the [`SequenceIndex`](sequence_index.md) class is more conve
 
 ## FASTA I/O
 
-::: rusty_dot._rusty_dot.py_read_fasta
+::: dot_explorer._dot_explorer.py_read_fasta
 
 ## K-mer Operations
 
-::: rusty_dot._rusty_dot.py_build_kmer_set
+::: dot_explorer._dot_explorer.py_build_kmer_set
 
-::: rusty_dot._rusty_dot.py_find_kmer_coords
+::: dot_explorer._dot_explorer.py_find_kmer_coords
 
 ## Merging K-mer Runs
 
-rusty-dot provides four merge functions covering all k-mer alignment orientations.
+dot-explorer provides four merge functions covering all k-mer alignment orientations.
 `py_merge_runs` is the recommended entry-point for new code; the strand-specific
 functions are available for lower-level control.
 
 ### Unified entry-point
 
-::: rusty_dot._rusty_dot.py_merge_runs
+::: dot_explorer._dot_explorer.py_merge_runs
 
 ### Forward-strand merge
 
-::: rusty_dot._rusty_dot.py_merge_kmer_runs
+::: dot_explorer._dot_explorer.py_merge_kmer_runs
 
 ### Reverse-complement merges
 
@@ -41,16 +41,16 @@ Two complementary algorithms cover all reverse-complement alignment patterns:
 
 `py_merge_runs(strand="-")` calls both and deduplicates the results automatically.
 
-::: rusty_dot._rusty_dot.py_merge_rev_runs
+::: dot_explorer._dot_explorer.py_merge_rev_runs
 
-::: rusty_dot._rusty_dot.py_merge_rev_fwd_runs
+::: dot_explorer._dot_explorer.py_merge_rev_fwd_runs
 
 ## PAF Formatting
 
-::: rusty_dot._rusty_dot.py_coords_to_paf
+::: dot_explorer._dot_explorer.py_coords_to_paf
 
 ## Index Serialization
 
-::: rusty_dot._rusty_dot.py_save_index
+::: dot_explorer._dot_explorer.py_save_index
 
-::: rusty_dot._rusty_dot.py_load_index
+::: dot_explorer._dot_explorer.py_load_index

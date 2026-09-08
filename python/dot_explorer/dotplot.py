@@ -1,5 +1,5 @@
 """
-Dotplot visualization module for rusty-dot.
+Dotplot visualization module for dot-explorer.
 
 Provides the DotPlotter class for generating all-vs-all dotplots from
 DNA sequence comparison data.
@@ -23,15 +23,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 
-from rusty_dot._annotation_draw import annotation_legend_handles, draw_track
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.paf_io import CrossIndex, PafAlignment
+from dot_explorer._annotation_draw import annotation_legend_handles, draw_track
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer.paf_io import CrossIndex, PafAlignment
 
 if TYPE_CHECKING:
-    from rusty_dot.annotation import GffAnnotation, GffFeature
-    from rusty_dot.paf_io import CrossIndex
-    from rusty_dot.similarity import ClusterResult
-    from rusty_dot.tree import Tree
+    from dot_explorer.annotation import GffAnnotation, GffFeature
+    from dot_explorer.paf_io import CrossIndex
+    from dot_explorer.similarity import ClusterResult
+    from dot_explorer.tree import Tree
 
 _log = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ _ROW_LABEL_MIN_SIZE_PT = 5.0
 # neighbour is still readable; '...' is not.
 _ROW_LABEL_MIN_CHARS = 6
 
-# Feature highlight bands.  Matches the interactive report's .rd-band rule
+# Feature highlight bands.  Matches the interactive report's .de-band rule
 # so a saved figure looks like the screen it came from, and sits below the
 # diagonal squares (0.5) and the match collections.
 _HIGHLIGHT_ALPHA = 0.22
@@ -254,17 +254,17 @@ def _chain_blocks(
 class DotPlotter:
     """Generate all-vs-all dotplots for sets of DNA sequences.
 
-    Accepts a :class:`~rusty_dot.SequenceIndex` (single sequence collection),
-    a :class:`~rusty_dot.paf_io.CrossIndex` (multi-group collection), or a
-    :class:`~rusty_dot.paf_io.PafAlignment` loaded from an external aligner
+    Accepts a :class:`~dot_explorer.SequenceIndex` (single sequence collection),
+    a :class:`~dot_explorer.paf_io.CrossIndex` (multi-group collection), or a
+    :class:`~dot_explorer.paf_io.PafAlignment` loaded from an external aligner
     such as minimap2.
 
     When a ``PafAlignment`` is passed as *index*, sequence lengths are read
     from the PAF records and alignments are rendered directly — no k-mer index
     is required::
 
-        from rusty_dot.paf_io import PafAlignment
-        from rusty_dot.dotplot import DotPlotter
+        from dot_explorer.paf_io import PafAlignment
+        from dot_explorer.dotplot import DotPlotter
 
         aln = PafAlignment.from_file("alignments.paf")
         q_order, t_order = aln.reorder_contigs()
@@ -293,10 +293,10 @@ class DotPlotter:
         )
 
     To colour alignments by sequence identity, supply a
-    :class:`~rusty_dot.paf_io.PafAlignment` and set
+    :class:`~dot_explorer.paf_io.PafAlignment` and set
     ``color_by_identity=True``::
 
-        from rusty_dot.paf_io import PafAlignment
+        from dot_explorer.paf_io import PafAlignment
         aln = PafAlignment.from_file("alignments.paf")
         plotter = DotPlotter(aln)
         fig = plotter.plot(color_by_identity=True, identity_palette="viridis")
@@ -306,7 +306,7 @@ class DotPlotter:
     ----------
     index : SequenceIndex, CrossIndex, or PafAlignment
         A populated index or alignment collection.  When a
-        :class:`~rusty_dot.paf_io.PafAlignment` is supplied, it is used both
+        :class:`~dot_explorer.paf_io.PafAlignment` is supplied, it is used both
         to resolve sequence lengths and as the source of alignment segments.
     paf_alignment : PafAlignment, optional
         Pre-loaded PAF alignments used as the data source when
@@ -317,8 +317,8 @@ class DotPlotter:
 
     Examples
     --------
-    >>> from rusty_dot import SequenceIndex
-    >>> from rusty_dot.dotplot import DotPlotter
+    >>> from dot_explorer import SequenceIndex
+    >>> from dot_explorer.dotplot import DotPlotter
     >>> idx = SequenceIndex(k=10)
     >>> idx.add_sequence("seq1", "ACGTACGTACGT" * 10)
     >>> idx.add_sequence("seq2", "TACGTACGTACG" * 10)
@@ -338,7 +338,7 @@ class DotPlotter:
         ----------
         index : SequenceIndex, CrossIndex, or PafAlignment
             A populated index or alignment collection.  When a
-            :class:`~rusty_dot.paf_io.PafAlignment` is supplied, it is used
+            :class:`~dot_explorer.paf_io.PafAlignment` is supplied, it is used
             both to resolve sequence lengths and as the source of alignment
             segments.
         paf_alignment : PafAlignment, optional
@@ -361,7 +361,7 @@ class DotPlotter:
         self._html_capture: Optional[dict] = None
 
     def _index_is_paf(self) -> bool:
-        """Return ``True`` when *index* is a :class:`~rusty_dot.paf_io.PafAlignment`.
+        """Return ``True`` when *index* is a :class:`~dot_explorer.paf_io.PafAlignment`.
 
         Helper used by :meth:`_plot_panel` to decide whether to draw from PAF
         records or from the k-mer engine.
@@ -369,8 +369,8 @@ class DotPlotter:
         return isinstance(self.index, PafAlignment)
 
     def _index_is_cross(self) -> bool:
-        """Return ``True`` when *index* is a :class:`~rusty_dot.paf_io.CrossIndex`."""
-        from rusty_dot.paf_io import CrossIndex
+        """Return ``True`` when *index* is a :class:`~dot_explorer.paf_io.CrossIndex`."""
+        from dot_explorer.paf_io import CrossIndex
 
         return isinstance(self.index, CrossIndex)
 
@@ -442,14 +442,14 @@ class DotPlotter:
         """Resolve sequence name lists and an optional cached PAF alignment.
 
         When *query_group* / *target_group* are provided and *index* is a
-        :class:`~rusty_dot.paf_io.CrossIndex`:
+        :class:`~dot_explorer.paf_io.CrossIndex`:
 
         * Query and target name lists are populated from the group's internal
           (``'group:name'``) identifiers, overriding any explicitly provided
           *query_names* / *target_names*.
         * If the group pair has pre-computed matches (via
-          :meth:`~rusty_dot.paf_io.CrossIndex.compute_matches`), a
-          :class:`~rusty_dot.paf_io.PafAlignment` is built from those records
+          :meth:`~dot_explorer.paf_io.CrossIndex.compute_matches`), a
+          :class:`~dot_explorer.paf_io.PafAlignment` is built from those records
           and returned so that :meth:`_plot_panel` can use them directly.
 
         Parameters
@@ -505,11 +505,11 @@ class DotPlotter:
         """Apply a plot-time contig-ordering strategy before name resolution.
 
         Reuses the existing reorder machinery on the underlying index:
-        :meth:`~rusty_dot.paf_io.CrossIndex.reorder_by_length` /
-        :meth:`~rusty_dot.paf_io.CrossIndex.reorder_for_colinearity` for a
-        ``CrossIndex``, :meth:`~rusty_dot.paf_io.PafAlignment.reorder_contigs`
+        :meth:`~dot_explorer.paf_io.CrossIndex.reorder_by_length` /
+        :meth:`~dot_explorer.paf_io.CrossIndex.reorder_for_colinearity` for a
+        ``CrossIndex``, :meth:`~dot_explorer.paf_io.PafAlignment.reorder_contigs`
         for a ``PafAlignment``, and
-        :meth:`~rusty_dot.SequenceIndex.optimal_contig_order` for a bare
+        :meth:`~dot_explorer.SequenceIndex.optimal_contig_order` for a bare
         ``SequenceIndex``.  Explicitly supplied *query_names* /
         *target_names* take precedence: an axis whose name list was given by
         the caller is returned unchanged.
@@ -685,12 +685,12 @@ class DotPlotter:
         (columns). If only one set is provided, or neither, all pairwise
         combinations within the available sequences are plotted.
 
-        When *index* is a :class:`~rusty_dot.paf_io.CrossIndex`, use
+        When *index* is a :class:`~dot_explorer.paf_io.CrossIndex`, use
         *query_group* and *target_group* to specify which groups supply the
         query and target sequences.  The corresponding internal
         (``'group:name'``) identifiers are looked up automatically and used
         for sequence-length queries and k-mer comparisons.  If
-        :meth:`~rusty_dot.paf_io.CrossIndex.compute_matches` has already been
+        :meth:`~dot_explorer.paf_io.CrossIndex.compute_matches` has already been
         called for that pair, the pre-computed merged alignments are used for
         rendering rather than recomputing on the fly.
 
@@ -758,7 +758,7 @@ class DotPlotter:
         color_by_identity : bool, optional
             When ``True``, alignments are coloured by sequence identity using
             the *identity_palette* colormap.  Requires a
-            :class:`~rusty_dot.paf_io.PafAlignment` to be supplied as
+            :class:`~dot_explorer.paf_io.PafAlignment` to be supplied as
             ``paf_alignment`` to :meth:`__init__`; if no PAF alignment is
             available a warning is logged and the default strand colours are
             used instead.  Default is ``False``.
@@ -820,22 +820,22 @@ class DotPlotter:
             Un-prefixed query (row) contig names to render reverse-complemented
             so reverse-oriented contigs read along the main diagonal.  When
             ``None`` (default) the set is pulled automatically from the index:
-            :meth:`~rusty_dot.paf_io.CrossIndex.reversed_contigs` for the
+            :meth:`~dot_explorer.paf_io.CrossIndex.reversed_contigs` for the
             *query_group* of a ``CrossIndex``, or
-            :attr:`~rusty_dot.paf_io.PafAlignment.reversed_contigs` for a
+            :attr:`~dot_explorer.paf_io.PafAlignment.reversed_contigs` for a
             ``PafAlignment`` (both populated by a prior ``reorder`` call).  Pass
             an explicit set (including ``set()`` to disable) to override.
         contig_order : str or None, optional
             Contig ordering applied before plotting.  ``'length'`` sorts
             contigs by descending sequence length
-            (:meth:`~rusty_dot.paf_io.CrossIndex.reorder_by_length` for a
+            (:meth:`~dot_explorer.paf_io.CrossIndex.reorder_by_length` for a
             ``CrossIndex``, otherwise a plain length sort of the resolved name
             lists).  ``'colinearity'`` applies the d-genies gravity ordering
-            (:meth:`~rusty_dot.paf_io.CrossIndex.reorder_for_colinearity`,
+            (:meth:`~dot_explorer.paf_io.CrossIndex.reorder_for_colinearity`,
             computing matches first if needed;
-            :meth:`~rusty_dot.paf_io.PafAlignment.reorder_contigs` for a
+            :meth:`~dot_explorer.paf_io.PafAlignment.reorder_contigs` for a
             ``PafAlignment``;
-            :meth:`~rusty_dot.SequenceIndex.optimal_contig_order` for a bare
+            :meth:`~dot_explorer.SequenceIndex.optimal_contig_order` for a bare
             ``SequenceIndex``).  Explicit *query_names* / *target_names*
             arguments take precedence: an axis whose names were supplied by
             the caller keeps the caller's order.  ``'colinearity'`` computes
@@ -846,8 +846,8 @@ class DotPlotter:
         auto_reverse : bool, optional
             When ``True``, reverse-oriented query contigs detected by the
             *contig_order* reorder (via
-            :meth:`~rusty_dot.paf_io.CrossIndex.reversed_contigs` or
-            :attr:`~rusty_dot.paf_io.PafAlignment.reversed_contigs`) are fed
+            :meth:`~dot_explorer.paf_io.CrossIndex.reversed_contigs` or
+            :attr:`~dot_explorer.paf_io.PafAlignment.reversed_contigs`) are fed
             into the *reverse_contigs* rendering path so they read along the
             main diagonal.  An explicit *reverse_contigs* argument wins when
             both are given.  Only ``contig_order='colinearity'`` yields
@@ -871,8 +871,8 @@ class DotPlotter:
             Default is ``False`` — coordinates only, keeping reports small
             even with many alignments.
         tree : Tree, optional
-            A :class:`rusty_dot.Tree` (user newick or
-            :meth:`~rusty_dot.Tree.from_linkage`) drawn left of the rows.
+            A :class:`dot_explorer.Tree` (user newick or
+            :meth:`~dot_explorer.Tree.from_linkage`) drawn left of the rows.
             The row order is fixed to the tree's leaf order (and the
             column order too when the plot is a self-comparison), so
             *contig_order* and *auto_reverse* cannot be combined with a
@@ -892,8 +892,8 @@ class DotPlotter:
             Show a branch-length scale bar under the tree.  Default is
             ``True``.
         cluster_borders : ClusterResult, optional
-            Cluster assignments (:func:`rusty_dot.assign_clusters` or
-            :func:`rusty_dot.assign_clusters_dual`); each cluster's block
+            Cluster assignments (:func:`dot_explorer.assign_clusters` or
+            :func:`dot_explorer.assign_clusters_dual`); each cluster's block
             of panels gets a bold border.  Only meaningful for
             self-comparisons, where rows and columns share an order; a
             cluster that is not contiguous in the display order is
@@ -1207,7 +1207,7 @@ class DotPlotter:
                 if annotation is not None and is_self_panel:
                     reverse = self._strip_group_prefix(q_name) in reverse_set
                     annot_gid = (
-                        f'rd-annot-{row_idx}-{col_idx}'
+                        f'de-annot-{row_idx}-{col_idx}'
                         if self._html_capture is not None
                         else None
                     )
@@ -1216,7 +1216,7 @@ class DotPlotter:
                     )
                     if self._html_capture is not None and drawn:
                         panel = self._html_capture['panels'][
-                            f'rd-panel-{row_idx}-{col_idx}'
+                            f'de-panel-{row_idx}-{col_idx}'
                         ]
                         # One entry per patch, in draw order — the report JS
                         # maps SVG children back by index.
@@ -1261,7 +1261,7 @@ class DotPlotter:
                     self.index.get_sequence_length(q_name),
                     orientation='y',
                     reverse=self._strip_group_prefix(q_name) in reverse_set,
-                    gid_prefix='rd-ytrack' if capturing else None,
+                    gid_prefix='de-ytrack' if capturing else None,
                     record_into=track_records['y'] if capturing else None,
                 )
                 drew_track_features = drew_track_features or lanes > 0
@@ -1276,7 +1276,7 @@ class DotPlotter:
                     self.index.get_sequence_length(t_name),
                     orientation='x',
                     reverse=False,  # the target (x) axis always runs forward
-                    gid_prefix='rd-xtrack' if capturing else None,
+                    gid_prefix='de-xtrack' if capturing else None,
                     record_into=track_records['x'] if capturing else None,
                 )
                 drew_track_features = drew_track_features or lanes > 0
@@ -1613,7 +1613,7 @@ class DotPlotter:
         scalebar : bool
             Draw the branch-length scale bar.
         """
-        from rusty_dot.tree import draw_tree
+        from dot_explorer.tree import draw_tree
 
         # Map the gutter's data space onto figure fractions so panel
         # centres can be used as leaf positions directly.
@@ -1666,7 +1666,7 @@ class DotPlotter:
         lw : float
             Border line width.
         """
-        from rusty_dot.heatmap import _contiguous_runs
+        from dot_explorer.heatmap import _contiguous_runs
 
         q_display = [self._strip_group_prefix(n) for n in query_names]
         t_display = [self._strip_group_prefix(n) for n in target_names]
@@ -1706,7 +1706,7 @@ class DotPlotter:
                     zorder=20,
                     clip_on=False,
                 )
-                rect.set_gid(f'rd-cluster-border-{cluster_name}')
+                rect.set_gid(f'de-cluster-border-{cluster_name}')
                 fig.add_artist(rect)
             capture[cluster_name] = {
                 'rows': [list(run) for run in runs],
@@ -1848,7 +1848,7 @@ class DotPlotter:
             The axes to draw on.
         query_name : str
             Name of the query sequence (y-axis).  For a
-            :class:`~rusty_dot.paf_io.CrossIndex` this is the internal
+            :class:`~dot_explorer.paf_io.CrossIndex` this is the internal
             (``'group:name'``) identifier; the group prefix is stripped for
             axis labels and PAF record lookup.
         target_name : str
@@ -1883,7 +1883,7 @@ class DotPlotter:
             Pre-computed PAF alignments to use for this panel.  When
             provided, this takes precedence over ``self.paf_alignment`` for
             record lookup.  Typically supplied from pre-computed
-            :class:`~rusty_dot.paf_io.CrossIndex` records.
+            :class:`~dot_explorer.paf_io.CrossIndex` records.
             Default is ``None``.
         chain_gap : int, optional
             When greater than ``0``, co-linear match blocks on the same diagonal
@@ -1921,17 +1921,17 @@ class DotPlotter:
         if capture is not None:
             row, col = divmod(capture['counter'], capture['ncols'])
             capture['counter'] += 1
-            gid = f'rd-panel-{row}-{col}'
+            gid = f'de-panel-{row}-{col}'
             ax.set_gid(gid)
             # The report measures band overlays against this rect, so it
             # needs no bp->pixel arithmetic of its own.
             #
-            # The prefix MUST differ from 'rd-panel-': matplotlib wraps every
+            # The prefix MUST differ from 'de-panel-': matplotlib wraps every
             # gid'd artist in its own <g>, so the background lands *inside*
             # the panel group.  Sharing the prefix made it match every
-            # `g[id^="rd-panel-"]` selector in report.js and the app's
+            # `g[id^="de-panel-"]` selector in report.js and the app's
             # double-click bridge, which broke panel dimming and drill-down.
-            ax.patch.set_gid(f'rd-plotbg-{row}-{col}')
+            ax.patch.set_gid(f'de-plotbg-{row}-{col}')
             capture['current'] = gid
             capture['panels'][gid] = {
                 'query': display_q,
@@ -2112,8 +2112,8 @@ class DotPlotter:
         gid_base = ''
         if capture is not None and capture.get('current'):
             panel = capture['panels'][capture['current']]
-            # 'rd-panel-<r>-<c>' -> 'rd-matches-<r>-<c>'
-            gid_base = 'rd-matches-' + capture['current'][len('rd-panel-') :]
+            # 'de-panel-<r>-<c>' -> 'de-matches-<r>-<c>'
+            gid_base = 'de-matches-' + capture['current'][len('de-panel-') :]
             panel['segments']['fwd'] = fwd.astype(np.int64).tolist()
             panel['segments']['rev'] = rev.astype(np.int64).tolist()
             # Interactive reports need one SVG element per segment; a
@@ -2208,7 +2208,7 @@ class DotPlotter:
         gid_base = ''
         if capture is not None and capture.get('current'):
             panel = capture['panels'][capture['current']]
-            gid_base = 'rd-matches-' + capture['current'][len('rd-panel-') :]
+            gid_base = 'de-matches-' + capture['current'][len('de-panel-') :]
             # Force vector output for HTML: rasterising would collapse the
             # layer to one <image> and break per-segment click mapping.
             rasterized = False
@@ -2440,7 +2440,7 @@ class DotPlotter:
         below the x-axis (target sequence features) and to the left of the
         y-axis (query sequence features).
 
-        When *index* is a :class:`~rusty_dot.paf_io.CrossIndex`, supply
+        When *index* is a :class:`~dot_explorer.paf_io.CrossIndex`, supply
         *query_group* and *target_group* to have the sequence names resolved
         to internal (``'group:name'``) identifiers automatically, and to
         render from pre-computed records when available.
@@ -2492,7 +2492,7 @@ class DotPlotter:
         color_by_identity : bool, optional
             When ``True``, alignments are coloured by sequence identity using
             the *identity_palette* colormap.  Requires a
-            :class:`~rusty_dot.paf_io.PafAlignment` to be supplied as
+            :class:`~dot_explorer.paf_io.PafAlignment` to be supplied as
             ``paf_alignment`` to :meth:`__init__`; if no PAF alignment is
             available a warning is logged and the default strand colours are
             used instead.  Default is ``False``.
@@ -2816,7 +2816,7 @@ class DotPlotter:
                     )
                 # Local import keeps matplotlib-only workflows free of any
                 # HTML machinery import cost.
-                from rusty_dot._html import build_panel_payload, render_html_report
+                from dot_explorer._html import build_panel_payload, render_html_report
 
                 # SequenceIndex and CrossIndex expose get_sequence();
                 # PafAlignment does not, so its reports omit sequences.
@@ -2832,7 +2832,7 @@ class DotPlotter:
                     fig,
                     payload,
                     Path(output_path),
-                    title=title if title is not None else 'rusty-dot report',
+                    title=title if title is not None else 'dot-explorer report',
                 )
             finally:
                 # Always drop the capture so state never leaks between plots.

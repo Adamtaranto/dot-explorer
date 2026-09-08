@@ -1,10 +1,10 @@
-//! Error types for rusty-dot.
+//! Error types for dot-explorer.
 
 use thiserror::Error;
 
-/// Errors that can occur in rusty-dot operations.
+/// Errors that can occur in dot-explorer operations.
 #[derive(Debug, Error)]
-pub enum RustyDotError {
+pub enum DotExplorerError {
     /// IO error during file reading/writing.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
@@ -30,8 +30,8 @@ pub enum RustyDotError {
     InvalidKmerLength(usize),
 }
 
-impl From<RustyDotError> for pyo3::PyErr {
-    fn from(e: RustyDotError) -> Self {
+impl From<DotExplorerError> for pyo3::PyErr {
+    fn from(e: DotExplorerError) -> Self {
         pyo3::exceptions::PyValueError::new_err(e.to_string())
     }
 }

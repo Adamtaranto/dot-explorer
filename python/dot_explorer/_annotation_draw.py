@@ -1,7 +1,7 @@
 """Shared drawing helpers for GFF annotation tracks.
 
-Used by :meth:`rusty_dot.dotplot.DotPlotter.plot` (focused single-pair
-views) and :meth:`~rusty_dot.dotplot.DotPlotter.plot_single` to render
+Used by :meth:`dot_explorer.dotplot.DotPlotter.plot` (focused single-pair
+views) and :meth:`~dot_explorer.dotplot.DotPlotter.plot_single` to render
 side annotation tracks: lane-packed feature shapes beside the dotplot
 axes, with genome-browser conventions —
 

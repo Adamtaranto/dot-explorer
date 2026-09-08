@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterable, Mapping
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
-    from rusty_dot.paf_io import PafRecord
+    from dot_explorer.paf_io import PafRecord
 
 
 def panel_pair(
@@ -29,7 +29,7 @@ def panel_pair(
 
     Panels are laid out row-major: row *i* is ``query_names[i]`` and column
     *j* is ``target_names[j]`` — the same order the name lists were passed
-    to the plot call, and the same ``rd-panel-<row>-<col>`` ids used in the
+    to the plot call, and the same ``de-panel-<row>-<col>`` ids used in the
     HTML report.
 
     Parameters
@@ -80,7 +80,7 @@ def resolve_orders(
         ``'colinearity'`` (d-genies gravity ordering of both axes) or
         ``'colinearity_ref'`` (target axis kept fixed, query contigs
         gravity-ordered against it).
-    records : iterable of rusty_dot.paf_io.PafRecord
+    records : iterable of dot_explorer.paf_io.PafRecord
         Alignment records used for the gravity ordering (ignored for
         ``'input'`` / ``'length'``).
     query_names : list[str]
@@ -124,7 +124,7 @@ def resolve_orders(
 
         return sorted(query_names, key=by_len), sorted(target_names, key=by_len), set()
     if mode in ('colinearity', 'colinearity_ref'):
-        from rusty_dot.paf_io import compute_gravity_contigs  # noqa: PLC0415
+        from dot_explorer.paf_io import compute_gravity_contigs  # noqa: PLC0415
 
         q_order, t_order, reversed_q = compute_gravity_contigs(
             records,

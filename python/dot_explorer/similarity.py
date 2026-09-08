@@ -4,7 +4,7 @@ Builds FracMinHash sketches of indexed sequences and compares them with
 sourmash's Jaccard, angular (abundance-weighted cosine), containment, and
 ANI estimators; hierarchical clustering and cluster assignment sit on top
 via scipy. Both dependencies are optional — install with
-``pip install 'rusty-dot[cluster]'``.
+``pip install 'dot-explorer[cluster]'``.
 
 The code restricts itself to sourmash APIs available in 4.8.11, the
 version Pyodide bundles for the browser app; native installs may run any
@@ -43,7 +43,7 @@ def _require_sourmash() -> Any:
     except ImportError as exc:  # pragma: no cover - depends on environment
         raise ImportError(
             'sourmash is required for sequence similarity sketching; '
-            "install it with: pip install 'rusty-dot[cluster]'"
+            "install it with: pip install 'dot-explorer[cluster]'"
         ) from exc
     return sourmash
 
@@ -55,7 +55,7 @@ def _require_scipy_hierarchy() -> Any:
     except ImportError as exc:  # pragma: no cover - depends on environment
         raise ImportError(
             'scipy is required for hierarchical clustering; '
-            "install it with: pip install 'rusty-dot[cluster]'"
+            "install it with: pip install 'dot-explorer[cluster]'"
         ) from exc
     return hierarchy
 

@@ -13,8 +13,8 @@ matplotlib.use('Agg')
 
 from _synth import homologous_pair
 
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer.dotplot import DotPlotter
 
 _K = 15
 _LEN = 4000

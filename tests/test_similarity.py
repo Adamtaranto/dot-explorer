@@ -1,4 +1,4 @@
-"""Tests for rusty_dot.similarity (sourmash sketching + clustering).
+"""Tests for dot_explorer.similarity (sourmash sketching + clustering).
 
 Skipped wholesale when the `cluster` extra (sourmash/scipy) is absent.
 """
@@ -10,7 +10,7 @@ import pytest
 
 pytest.importorskip('sourmash')
 
-from rusty_dot import (
+from dot_explorer import (
     ClusterResult,
     SequenceIndex,
     SimilarityMatrix,

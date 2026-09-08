@@ -6,8 +6,8 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer.dotplot import DotPlotter
 
 
 def _panel_segments(ax):
@@ -396,7 +396,7 @@ def test_plot_single_no_output_path_creates_no_file(
 
 def _make_paf_alignment(query_name='seq1', target_name='seq2'):
     """Build a small PafAlignment with varying identity records."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     records = [
         PafRecord(
@@ -484,7 +484,7 @@ def test_plot_color_by_identity_uses_de_tag(dotplot_index):
 
     import matplotlib
 
-    from rusty_dot.paf_io import PafAlignment
+    from dot_explorer.paf_io import PafAlignment
 
     matplotlib.use('Agg')
 
@@ -543,7 +543,7 @@ def test_plot_color_by_identity_warns_without_paf(dotplot_index, caplog):
     matplotlib.use('Agg')
 
     plotter = DotPlotter(dotplot_index)
-    with caplog.at_level(logging.WARNING, logger='rusty_dot.dotplot'):
+    with caplog.at_level(logging.WARNING, logger='dot_explorer.dotplot'):
         fig, ax = plt.subplots()
         plotter._plot_panel(ax, 'seq1', 'seq2', color_by_identity=True)
         plt.close(fig)
@@ -643,7 +643,7 @@ def test_plot_color_by_identity_grid(dotplot_index, tmp_path):
     matplotlib.use('Agg')
 
     paf_records = []
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     for q in ['seq1', 'seq2']:
         for t in ['seq1', 'seq2']:
@@ -683,7 +683,7 @@ def test_plot_color_by_identity_min_length_filters(dotplot_index):
 
     matplotlib.use('Agg')
 
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     records = [
         PafRecord(
@@ -741,7 +741,7 @@ def test_plot_color_by_identity_min_length_filters(dotplot_index):
 
 def _make_paf_alignment_index():
     """Build a PafAlignment suitable for use as a DotPlotter index."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     return PafAlignment(
         [
@@ -920,7 +920,7 @@ def _make_cross_index():
 
     matplotlib.use('Agg')
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     cross = CrossIndex(k=4)
     cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='group_a')
@@ -964,7 +964,7 @@ def test_dotplotter_cross_index_uses_precomputed_records():
 
     matplotlib.use('Agg')
 
-    from rusty_dot.paf_io import CrossIndex, PafAlignment
+    from dot_explorer.paf_io import CrossIndex, PafAlignment
 
     cross = CrossIndex(k=4)
     cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -990,7 +990,7 @@ def test_dotplotter_cross_index_label_strips_prefix():
 
     matplotlib.use('Agg')
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     cross = CrossIndex(k=4)
     cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='grp_a')
@@ -1027,7 +1027,7 @@ def test_dotplotter_cross_index_plot_single_with_groups(tmp_path):
 
     matplotlib.use('Agg')
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     cross = CrossIndex(k=4)
     cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='grp_a')
@@ -1077,7 +1077,7 @@ def test_dotplotter_resolve_group_names_raises_for_non_cross():
 
 def test_resolve_rasterized_explicit_bool():
     """Explicit True/False are returned verbatim regardless of count."""
-    from rusty_dot.dotplot import _resolve_rasterized
+    from dot_explorer.dotplot import _resolve_rasterized
 
     assert _resolve_rasterized(1_000_000, True, 50) is True
     assert _resolve_rasterized(1_000_000, False, 50) is False
@@ -1085,7 +1085,7 @@ def test_resolve_rasterized_explicit_bool():
 
 def test_resolve_rasterized_auto_threshold():
     """'auto' rasterizes only above the threshold."""
-    from rusty_dot.dotplot import _resolve_rasterized
+    from dot_explorer.dotplot import _resolve_rasterized
 
     assert _resolve_rasterized(10, 'auto', 50) is False
     assert _resolve_rasterized(51, 'auto', 50) is True
@@ -1094,7 +1094,7 @@ def test_resolve_rasterized_auto_threshold():
 
 def test_resolve_rasterized_invalid_string():
     """An unknown string raises ValueError."""
-    from rusty_dot.dotplot import _resolve_rasterized
+    from dot_explorer.dotplot import _resolve_rasterized
 
     with pytest.raises(ValueError, match='auto'):
         _resolve_rasterized(1, 'sometimes', 50)
@@ -1105,7 +1105,7 @@ def test_resolve_rasterized_invalid_string():
 
 def test_chain_blocks_gap_zero_is_noop():
     """chain_gap=0 returns the blocks unchanged."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (100, 110, 100, 110, '+')]
     assert _chain_blocks(blocks, 0) == blocks
@@ -1113,7 +1113,7 @@ def test_chain_blocks_gap_zero_is_noop():
 
 def test_chain_blocks_merges_same_diagonal_within_gap():
     """Collinear forward blocks within the gap merge into one."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (12, 20, 12, 20, '+')]  # diagonal 0, gap 2
     chained = _chain_blocks(blocks, 5)
@@ -1122,7 +1122,7 @@ def test_chain_blocks_merges_same_diagonal_within_gap():
 
 def test_chain_blocks_keeps_blocks_beyond_gap_separate():
     """Collinear blocks farther apart than the gap stay separate."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (12, 20, 12, 20, '+')]  # gap 2
     chained = _chain_blocks(blocks, 1)  # gap tolerance 1 < 2
@@ -1131,7 +1131,7 @@ def test_chain_blocks_keeps_blocks_beyond_gap_separate():
 
 def test_chain_blocks_different_diagonals_stay_separate():
     """Blocks on different diagonals are never chained."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (0, 10, 50, 60, '+')]  # diagonals 0 and 50
     chained = _chain_blocks(blocks, 1000)
@@ -1140,7 +1140,7 @@ def test_chain_blocks_different_diagonals_stay_separate():
 
 def test_chain_blocks_merges_overlapping():
     """Overlapping collinear blocks merge into their union."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (5, 15, 5, 15, '+')]
     chained = _chain_blocks(blocks, 1)
@@ -1149,7 +1149,7 @@ def test_chain_blocks_merges_overlapping():
 
 def test_chain_blocks_reverse_strand_antidiagonal():
     """Reverse-complement blocks on the same anti-diagonal chain correctly."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     # Anti-diagonal invariant q_start + t_end == 100 for both.
     blocks = [(0, 10, 90, 100, '-'), (12, 20, 78, 88, '-')]  # gap 2
@@ -1159,7 +1159,7 @@ def test_chain_blocks_reverse_strand_antidiagonal():
 
 def test_chain_blocks_does_not_merge_across_strands():
     """A '+' and a '-' block are never chained together."""
-    from rusty_dot.dotplot import _chain_blocks
+    from dot_explorer.dotplot import _chain_blocks
 
     blocks = [(0, 10, 0, 10, '+'), (12, 20, 12, 20, '-')]
     chained = _chain_blocks(blocks, 1000)
@@ -1279,7 +1279,7 @@ def test_plot_panel_chain_gap_reduces_segments():
 
 def _forward_paf_alignment():
     """A PafAlignment with a single forward match: query 0-50 → target 0-50."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     rec = PafRecord.from_line('q\t100\t0\t50\t+\tt\t100\t0\t50\t48\t50\t255')
     return PafAlignment.from_records([rec])
@@ -1325,7 +1325,7 @@ def test_reverse_contigs_empty_leaves_unchanged():
 
 def test_reverse_contigs_auto_from_pafalignment():
     """When reverse_contigs is None the set is pulled from the PafAlignment."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     recs = [
         PafRecord.from_line('qr\t300\t0\t150\t-\tref\t1000\t850\t1000\t140\t150\t255'),
@@ -1452,7 +1452,7 @@ def _shuffled_cross_index():
     """
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     rng = random.Random(42)
     blocks = [_random_seq(rng, 60) for _ in range(3)]
@@ -1592,7 +1592,7 @@ def test_contig_order_auto_reverse_mirrors_reversed_contig():
     """auto_reverse=True mirrors a reverse-oriented contig like reverse_contigs."""
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     rng = random.Random(99)
     chrom = _random_seq(rng, 120)
@@ -1625,7 +1625,7 @@ def test_contig_order_auto_reverse_explicit_reverse_contigs_wins():
     """An explicit reverse_contigs argument overrides auto_reverse."""
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     rng = random.Random(99)
     chrom = _random_seq(rng, 120)
@@ -1665,7 +1665,7 @@ def test_plot_from_computed_cache_renders_reverse_segments():
     """
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     rng = random.Random(21)
     chrom = ''.join(rng.choice('ACGT') for _ in range(200))
@@ -1691,7 +1691,7 @@ def test_identity_colorbar_appends_key_axes():
     """identity_colorbar=True adds one colorbar axes; off by default."""
     import matplotlib.pyplot as plt
 
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     records = [
         PafRecord('q1', 4000, 0, 3000, '+', 't1', 5000, 0, 3000, 2400, 3000, 255),
@@ -1726,7 +1726,7 @@ def test_identity_colorbar_appends_key_axes():
     ],
 )
 def test_bp_unit_thresholds(span, divisor, unit):
-    from rusty_dot.dotplot import _bp_unit
+    from dot_explorer.dotplot import _bp_unit
 
     assert _bp_unit(span) == (divisor, unit)
 
@@ -1748,7 +1748,7 @@ def test_focused_pair_axis_labels_and_units(dotplot_index):
 
 def test_focused_pair_ticks_scaled_to_unit():
     """Mbp-scale focused plots show scaled tick values, not raw bp."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     rec = PafRecord(
         'q1',
@@ -1787,7 +1787,7 @@ def test_grid_keeps_rotated_titles(dotplot_index):
 
 def test_grid_shared_units_and_angled_x_ticks():
     """Grids share one bp unit across contigs and angle the x tick labels."""
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     records = [
         PafRecord(
@@ -1828,7 +1828,7 @@ def test_grid_shared_units_and_angled_x_ticks():
 
 
 def _extreme_pair_plotter():
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     rec = PafRecord(
         'tiny_query_contig',
@@ -1939,7 +1939,7 @@ def test_focused_thin_axis_single_end_tick():
 def _grid_plotter(lengths, prefix='query_contig_with_a_long_name_'):
     import random
 
-    from rusty_dot import SequenceIndex
+    from dot_explorer import SequenceIndex
 
     rng = random.Random(7)
     idx = SequenceIndex(k=11)
@@ -2019,7 +2019,7 @@ def test_row_label_is_never_elided_into_uselessness():
     truncating to a bare ellipsis loses the only thing the label is for.
     Overhanging into a neighbour is the lesser evil.
     """
-    from rusty_dot.dotplot import _ROW_LABEL_MIN_CHARS
+    from dot_explorer.dotplot import _ROW_LABEL_MIN_CHARS
 
     pl, names = _grid_plotter([5_000_000, 114_000], prefix='CP00024')
     fig = pl.plot(query_names=names, target_names=['target_contig'])
@@ -2043,7 +2043,7 @@ def test_row_label_is_never_elided_into_uselessness():
 def _band_plotter():
     import random
 
-    from rusty_dot import SequenceIndex
+    from dot_explorer import SequenceIndex
 
     rng = random.Random(5)
     seq = ''.join(rng.choice('ACGT') for _ in range(4000))
@@ -2156,7 +2156,7 @@ class TestPlotWithTree:
 
     @pytest.fixture
     def tree3(self):
-        from rusty_dot import Tree
+        from dot_explorer import Tree
 
         return Tree.from_newick('((seq3:0.2,seq1:0.1):0.1,seq2:0.3);')
 
@@ -2167,7 +2167,7 @@ class TestPlotWithTree:
             # ncols panels per row + 1 tree gutter axis.
             assert len(fig.axes) == 3 * 3 + 1
             gids = {a.get_gid() for ax in fig.axes for a in ax.get_children()}
-            assert 'rd-tree' in gids
+            assert 'de-tree' in gids
             # Row labels are suppressed (names live on the tree tips).
             assert all(not ax.get_ylabel() for ax in fig.axes)
         finally:
@@ -2179,7 +2179,7 @@ class TestPlotWithTree:
         fig = plotter.plot(tree=tree3, output_path=str(out), scale_sequences=True)
         plt.close(fig)
         svg = out.read_text()
-        assert 'rd-tree' in svg
+        assert 'de-tree' in svg
         # Column titles follow the tree's leaf order for self-comparisons.
         assert svg.index('seq3') < svg.index('seq1') < svg.index('seq2')
 
@@ -2194,7 +2194,7 @@ class TestPlotWithTree:
             plotter.plot(tree=tree3, auto_reverse=True)
 
     def test_tree_label_mismatch_raises(self, dotplot_index):
-        from rusty_dot import Tree
+        from dot_explorer import Tree
 
         bad = Tree.from_newick('((seq1,seq2),nope);')
         plotter = DotPlotter(dotplot_index)
@@ -2211,19 +2211,19 @@ class TestPlotWithTree:
         plotter = DotPlotter(dotplot_index)
         fig = plotter.plot(tree=tree3, tree_cutoff=0.15, output_path=str(out))
         plt.close(fig)
-        assert 'rd-tree-cutoff' in out.read_text()
+        assert 'de-tree-cutoff' in out.read_text()
 
 
 class TestClusterBorders:
     def _clusters(self, mapping):
-        from rusty_dot import ClusterResult
+        from dot_explorer import ClusterResult
 
         return ClusterResult(
             assignments=mapping, cutoff=0.5, mode='similarity', metric='jaccard'
         )
 
     def test_borders_in_svg(self, dotplot_index, tmp_path):
-        from rusty_dot import Tree
+        from dot_explorer import Tree
 
         tree = Tree.from_newick('((seq1:0.1,seq2:0.1):0.2,seq3:0.3);')
         clusters = self._clusters(
@@ -2234,13 +2234,13 @@ class TestClusterBorders:
         fig = plotter.plot(tree=tree, cluster_borders=clusters, output_path=str(out))
         plt.close(fig)
         svg = out.read_text()
-        assert 'rd-cluster-border-cluster_1' in svg
-        assert 'rd-cluster-border-cluster_2' in svg
+        assert 'de-cluster-border-cluster_1' in svg
+        assert 'de-cluster-border-cluster_2' in svg
 
     def test_borders_skipped_for_non_self(self, dotplot_index, caplog):
         clusters = self._clusters({'seq1': 'c1', 'seq2': 'c1'})
         plotter = DotPlotter(dotplot_index)
-        with caplog.at_level('WARNING', logger='rusty_dot.dotplot'):
+        with caplog.at_level('WARNING', logger='dot_explorer.dotplot'):
             fig = plotter.plot(
                 query_names=['seq1', 'seq2'],
                 target_names=['seq2', 'seq3'],
@@ -2261,4 +2261,4 @@ class TestClusterBorders:
             output_path=str(out),
         )
         plt.close(fig)
-        assert 'rd-cluster-border-c1' in out.read_text()
+        assert 'de-cluster-border-c1' in out.read_text()

@@ -1,4 +1,4 @@
-"""Tests for rusty_dot.heatmap (similarity heatmap rendering)."""
+"""Tests for dot_explorer.heatmap (similarity heatmap rendering)."""
 
 import io
 
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from rusty_dot import (
+from dot_explorer import (
     ClusterResult,
     SimilarityMatrix,
     Tree,
@@ -80,8 +80,8 @@ class TestHeatmap:
             # Tree + colorbar are inset (child) axes of the heatmap box.
             assert len(fig.axes[0].child_axes) == 2
             svg = _svg_of(fig)
-            assert 'rd-heatmap' in svg
-            assert 'rd-tree' in svg
+            assert 'de-heatmap' in svg
+            assert 'de-tree' in svg
         finally:
             plt.close(fig)
 
@@ -89,9 +89,9 @@ class TestHeatmap:
         fig = plot_similarity_heatmap(sim, tree=tree, clusters=clusters, cutoff=0.5)
         try:
             svg = _svg_of(fig)
-            assert 'rd-hm-cluster-cluster_1' in svg
-            assert 'rd-hm-cluster-cluster_2' in svg
-            assert 'rd-tree-cutoff' in svg
+            assert 'de-hm-cluster-cluster_1' in svg
+            assert 'de-hm-cluster-cluster_2' in svg
+            assert 'de-tree-cutoff' in svg
         finally:
             plt.close(fig)
 
@@ -102,12 +102,12 @@ class TestHeatmap:
             mode='similarity',
             metric='jaccard',
         )
-        with caplog.at_level('WARNING', logger='rusty_dot.heatmap'):
+        with caplog.at_level('WARNING', logger='dot_explorer.heatmap'):
             fig = plot_similarity_heatmap(sim, clusters=scattered)
         try:
             assert 'not contiguous' in caplog.text
             svg = _svg_of(fig)
-            assert svg.count('rd-hm-cluster-c1') == 2
+            assert svg.count('de-hm-cluster-c1') == 2
         finally:
             plt.close(fig)
 
@@ -124,7 +124,7 @@ class TestHeatmap:
         fig = plot_similarity_heatmap(sim, annotate=True, output_path=str(out))
         try:
             assert out.exists()
-            assert 'rd-heatmap-scale' in out.read_text()
+            assert 'de-heatmap-scale' in out.read_text()
         finally:
             plt.close(fig)
 

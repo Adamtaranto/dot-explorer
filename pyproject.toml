@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "rusty-dot"
+name = "dot-explorer"
 version = "0.2.0"
 description = "Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index"
 readme = "README.md"
@@ -39,7 +39,7 @@ dev = [
     "ruff",
 ]
 
-# Local Shiny front end: `pip install "rusty-dot[app]"` (or `.[app]` from a
+# Local Shiny front end: `pip install "dot-explorer[app]"` (or `.[app]` from a
 # checkout), then `shiny run --launch-browser app/app.py` from the repo root.
 app = [
     "shiny",
@@ -63,23 +63,23 @@ docs = [
 ]
 
 [project.urls]
-documentation = "https://adamtaranto.github.io/rusty-dot/"
-homepage = "https://github.com/adamtaranto/rusty-dot"
-repository = "https://github.com/adamtaranto/rusty-dot"
+documentation = "https://adamtaranto.github.io/dot-explorer/"
+homepage = "https://github.com/adamtaranto/dot-explorer"
+repository = "https://github.com/adamtaranto/dot-explorer"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-source = "python"
-module-name = "rusty_dot._rusty_dot"
+module-name = "dot_explorer._dot_explorer"
 # Bundle the HTML report assets (template/CSS/JS) into wheels and sdists.
-include = [{ path = "python/rusty_dot/_html/**/*", format = ["sdist", "wheel"] }]
+include = [{ path = "python/dot_explorer/_html/**/*", format = ["sdist", "wheel"] }]
 
 [tool.pytest.ini_options]
-addopts = "-v --cov=rusty_dot --cov-branch --cov-report=xml --cov-report=term"
+addopts = "-v --cov=dot_explorer --cov-branch --cov-report=xml --cov-report=term"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 markers = [
-    "private_data: benchmarks against private local assemblies (opt-in via RUSTY_DOT_PRIVATE_DATA=1; data never committed)",
+    "private_data: benchmarks against private local assemblies (opt-in via DOT_EXPLORER_PRIVATE_DATA=1; data never committed)",
 ]
 
 [tool.ruff]
@@ -123,13 +123,13 @@ quote-style = "single"
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
-known-first-party = ["rusty_dot"]
+known-first-party = ["dot_explorer"]
 known-third-party = ["matplotlib", "numpy"]
 
 [tool.isort]
 profile = "black"
 known_third_party = ["matplotlib", "numpy"]
-known_first_party = ["rusty_dot"]
+known_first_party = ["dot_explorer"]
 default_section = "THIRDPARTY"
 force_sort_within_sections = true
 

@@ -1,4 +1,4 @@
-//! rusty-dot: Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index
+//! dot-explorer: Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index
 //!
 //! This library provides:
 //! - FASTA/gzipped FASTA parsing via needletail
@@ -23,7 +23,7 @@ pub mod strand;
 
 use index::SequenceIndex;
 
-/// Python module for rusty-dot.
+/// Python module for dot-explorer.
 ///
 /// Exposes all public functions and the SequenceIndex class to Python.
 ///
@@ -48,7 +48,7 @@ use index::SequenceIndex;
 /// around.  Anything added here that does hold cross-call state must be made
 /// thread-safe, or this attribute set back to `true`.
 #[pymodule(gil_used = false)]
-fn _rusty_dot(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _dot_explorer(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SequenceIndex>()?;
     #[cfg(feature = "fasta")]
     m.add_function(wrap_pyfunction!(fasta::py_read_fasta, m)?)?;

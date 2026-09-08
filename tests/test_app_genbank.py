@@ -143,7 +143,7 @@ def test_record_without_origin_rejected():
 
 
 def _annotation(parsed):
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
     return GffAnnotation.from_text(parsed.gff_text)
 
@@ -247,7 +247,7 @@ def test_seqnames_match_the_fasta_record_names(parsed):
 
 def test_genbank_input_plots_like_a_fasta_upload(parsed):
     """The exact call path the app uses: GenBank -> index + annotation."""
-    from rusty_dot import DotPlotter, SequenceIndex
+    from dot_explorer import DotPlotter, SequenceIndex
 
     idx = SequenceIndex(k=11)
     for name, seq in parsed.fasta.records:

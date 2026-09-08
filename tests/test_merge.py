@@ -1,6 +1,6 @@
 """Tests for k-mer run merging."""
 
-from rusty_dot._rusty_dot import (
+from dot_explorer._dot_explorer import (
     py_merge_kmer_runs,
     py_merge_rev_fwd_runs,
     py_merge_rev_runs,

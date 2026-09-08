@@ -1,13 +1,13 @@
 # Similarity & Clustering
 
-rusty-dot can compare every sequence in a set against every other with
+dot-explorer can compare every sequence in a set against every other with
 [sourmash](https://sourmash.readthedocs.io) FracMinHash sketches, cluster
 them hierarchically, draw the resulting tree beside the dot-plot matrix or
 a similarity heatmap, and assign contigs to clusters at a cutoff you
 choose. Install the optional dependencies with:
 
 ```bash
-pip install "rusty-dot[cluster]"    # sourmash + scipy
+pip install "dot-explorer[cluster]"    # sourmash + scipy
 ```
 
 This page explains how to choose between the similarity metrics and
@@ -56,7 +56,7 @@ Guidance:
   arrays, transposon load).
 - **ANI** approximates percent identity, the quantity most people mean
   by "80% identical". It is derived from containment under a Poisson
-  model, and rusty-dot always reports the 95% confidence interval
+  model, and dot-explorer always reports the 95% confidence interval
   alongside — **use a lower `scaled` to tighten it**. Pairs that share
   no hashes get ANI 0 (the estimator is undefined there).
 - **Containment** is the k-mer analogue of *percentage coverage*: how

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from rusty_dot._rusty_dot import SequenceIndex
+from dot_explorer._dot_explorer import SequenceIndex
 
 
 @pytest.fixture

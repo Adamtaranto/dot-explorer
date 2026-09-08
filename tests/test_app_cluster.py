@@ -17,7 +17,7 @@ from core.cluster import (  # noqa: E402
 from core.fasta import parse_fasta_bytes  # noqa: E402
 from core.seqs import InMemoryProvider  # noqa: E402
 
-from rusty_dot import ClusterResult, SimilarityMatrix  # noqa: E402
+from dot_explorer import ClusterResult, SimilarityMatrix  # noqa: E402
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ class TestProviderIndex:
 
     def test_sketching_through_adapter(self, provider):
         pytest.importorskip('sourmash')
-        from rusty_dot import SketchParams, compute_sketches
+        from dot_explorer import SketchParams, compute_sketches
 
         sketches = compute_sketches(
             ProviderIndex(provider),
@@ -126,7 +126,7 @@ class TestMergeIntervals:
 
 class TestAlignmentCoverageMatrix:
     def _record(self, q, qs, qe, t, ts, te):
-        from rusty_dot import PafRecord
+        from dot_explorer import PafRecord
 
         return PafRecord(
             query_name=q,

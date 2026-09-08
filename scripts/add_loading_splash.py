@@ -20,11 +20,11 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-MARKER = '<!-- rd-loading-splash -->'
+MARKER = '<!-- de-loading-splash -->'
 
 SPLASH = f"""{MARKER}
 <style>
-  #rd-splash {{
+  #de-splash {{
     position: fixed; inset: 0; z-index: 9999;
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 1rem;
@@ -33,38 +33,38 @@ SPLASH = f"""{MARKER}
       Helvetica, Arial, sans-serif;
     transition: opacity 0.4s ease;
   }}
-  #rd-splash.rd-hide {{ opacity: 0; pointer-events: none; }}
-  #rd-splash h1 {{
+  #de-splash.de-hide {{ opacity: 0; pointer-events: none; }}
+  #de-splash h1 {{
     font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;
   }}
-  #rd-splash h1 .rd-dot {{ color: #14847e; }}
-  #rd-splash .rd-tag {{
+  #de-splash h1 .de-dot {{ color: #14847e; }}
+  #de-splash .de-tag {{
     font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.14em;
     color: #48627f; margin-top: -0.6rem;
   }}
-  #rd-splash .rd-sub {{ font-size: 0.95rem; color: #48627f; }}
-  #rd-splash .rd-spinner {{
+  #de-splash .de-sub {{ font-size: 0.95rem; color: #48627f; }}
+  #de-splash .de-spinner {{
     width: 42px; height: 42px; border-radius: 50%;
     border: 4px solid rgba(20, 132, 126, 0.18); border-top-color: #14847e;
-    animation: rd-spin 0.9s linear infinite;
+    animation: de-spin 0.9s linear infinite;
   }}
-  @keyframes rd-spin {{ to {{ transform: rotate(360deg); }} }}
+  @keyframes de-spin {{ to {{ transform: rotate(360deg); }} }}
   @media (prefers-color-scheme: dark) {{
-    #rd-splash {{ background: #14181d; color: #cfe1f5; }}
-    #rd-splash h1 .rd-dot {{ color: #2fb7b0; }}
-    #rd-splash .rd-tag {{ color: #8fa8c4; }}
-    #rd-splash .rd-sub {{ color: #8fa8c4; }}
-    #rd-splash .rd-spinner {{
+    #de-splash {{ background: #14181d; color: #cfe1f5; }}
+    #de-splash h1 .de-dot {{ color: #2fb7b0; }}
+    #de-splash .de-tag {{ color: #8fa8c4; }}
+    #de-splash .de-sub {{ color: #8fa8c4; }}
+    #de-splash .de-spinner {{
       border-color: rgba(47, 183, 176, 0.22); border-top-color: #2fb7b0;
     }}
   }}
 </style>
-<div id="rd-splash">
-  <div class="rd-spinner"></div>
-  <h1>rusty<span class="rd-dot">&middot;dot</span></h1>
-  <div class="rd-tag">live assembly comparison</div>
-  <div class="rd-sub" id="rd-splash-msg">Starting&hellip;</div>
-  <div class="rd-sub" style="font-size: 0.8rem">
+<div id="de-splash">
+  <div class="de-spinner"></div>
+  <h1>dot<span class="de-dot">&middot;explorer</span></h1>
+  <div class="de-tag">live assembly comparison</div>
+  <div class="de-sub" id="de-splash-msg">Starting&hellip;</div>
+  <div class="de-sub" style="font-size: 0.8rem">
     Everything runs in your browser &mdash; your files never leave your machine.
   </div>
 </div>
@@ -74,12 +74,12 @@ SPLASH = f"""{MARKER}
     var msgs = [
       [0, 'Downloading the Python runtime (\\u224826 MB on first visit, cached afterwards)\\u2026'],
       [8, 'Starting Python in your browser\\u2026'],
-      [16, 'Installing rusty-dot and matplotlib\\u2026'],
+      [16, 'Installing dot-explorer and matplotlib\\u2026'],
       [30, 'Almost there \\u2014 first visits take the longest\\u2026'],
       [60, 'Still working. Slow connection? The runtime is \\u224826 MB\\u2026'],
     ];
     var start = Date.now();
-    var msgEl = document.getElementById('rd-splash-msg');
+    var msgEl = document.getElementById('de-splash-msg');
     var timer = setInterval(function () {{
       var t = (Date.now() - start) / 1000;
       for (var i = msgs.length - 1; i >= 0; i--) {{
@@ -103,8 +103,8 @@ SPLASH = f"""{MARKER}
       if (appReady() || Date.now() - start > 300000) {{
         clearInterval(poll);
         clearInterval(timer);
-        var el = document.getElementById('rd-splash');
-        el.classList.add('rd-hide');
+        var el = document.getElementById('de-splash');
+        el.classList.add('de-hide');
         setTimeout(function () {{ el.remove(); }}, 500);
       }}
     }}, 400);
@@ -138,7 +138,7 @@ def patch(index_html: Path) -> bool:
         return False
     if '</body>' not in text or 'shinylive' not in text:
         raise ValueError(f'{index_html} does not look like a shinylive export')
-    text = text.replace('<title>Shiny App</title>', '<title>rusty-dot</title>')
+    text = text.replace('<title>Shiny App</title>', '<title>dot-explorer</title>')
     index_html.write_text(text.replace('</body>', SPLASH + '</body>'))
     return True
 

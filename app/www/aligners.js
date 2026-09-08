@@ -1,4 +1,4 @@
-// biowasm aligner bridge for the rusty-dot browser app.
+// biowasm aligner bridge for the dot-explorer browser app.
 //
 // Message protocol (Shiny custom messages from Python):
 //   'rd_mount_fasta'  {dataset_id, text}
@@ -212,7 +212,7 @@
         }
         // eslint-disable-next-line no-console
         console.warn(
-          'rusty-dot: could not reach the ' +
+          'dot-explorer: could not reach the ' +
             tool +
             ' worker to terminate it; its result will be ignored but the ' +
             'computation may continue until it finishes or times out.'

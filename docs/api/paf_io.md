@@ -6,16 +6,16 @@ alignment records.
 
 ## PafAlignment — Alignment record collection
 
-`PafAlignment` wraps a list of [`PafRecord`](#rusty_dot.paf_io.PafRecord)
+`PafAlignment` wraps a list of [`PafRecord`](#dot_explorer.paf_io.PafRecord)
 objects and provides filtering, contig reordering, and sequence-length lookup
 utilities.  It can be passed directly to
-[`DotPlotter`](dotplot.md#rusty_dot.dotplot.DotPlotter) — no
-[`SequenceIndex`](sequence_index.md#rusty_dot._rusty_dot.SequenceIndex) is
+[`DotPlotter`](dotplot.md#dot_explorer.dotplot.DotPlotter) — no
+[`SequenceIndex`](sequence_index.md#dot_explorer._dot_explorer.SequenceIndex) is
 required:
 
 ```python
-from rusty_dot.paf_io import PafAlignment
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer.paf_io import PafAlignment
+from dot_explorer.dotplot import DotPlotter
 
 aln = PafAlignment.from_file("alignments.paf")
 q_order, t_order = aln.reorder_contigs()
@@ -29,16 +29,16 @@ plotter.plot(
 )
 ```
 
-::: rusty_dot.paf_io.PafRecord
+::: dot_explorer.paf_io.PafRecord
 
-::: rusty_dot.paf_io.PafAlignment
+::: dot_explorer.paf_io.PafAlignment
 
 ## Functions
 
-::: rusty_dot.paf_io.parse_paf_file
+::: dot_explorer.paf_io.parse_paf_file
 
-::: rusty_dot.paf_io.compute_gravity_contigs
+::: dot_explorer.paf_io.compute_gravity_contigs
 
-::: rusty_dot.paf_io.compute_reversed_contigs
+::: dot_explorer.paf_io.compute_reversed_contigs
 
-::: rusty_dot.paf_io.reverse_complement
+::: dot_explorer.paf_io.reverse_complement

@@ -75,7 +75,7 @@ class PlotConfig:
         -------
         dict[str, Any]
             Keyword arguments accepted by
-            :meth:`rusty_dot.dotplot.DotPlotter.plot`.
+            :meth:`dot_explorer.dotplot.DotPlotter.plot`.
         """
         order = (
             self.contig_order

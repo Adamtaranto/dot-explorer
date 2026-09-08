@@ -1,16 +1,16 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-# rusty-dot
+# dot-explorer
 
 Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer
 index. Written in Rust with PyO3 python bindings.
 
 ## Browser app
 
-[![Web App](https://img.shields.io/badge/Web%20App-live-teal)](https://adamtaranto.github.io/rusty-dot/app/)
+[![Web App](https://img.shields.io/badge/Web%20App-live-teal)](https://adamtaranto.github.io/dot-explorer/app/)
 
-Try rusty-dot without installing anything:
-**[Launch Rusty-Dot Live](https://adamtaranto.github.io/rusty-dot/app/)**.
+Try dot-explorer without installing anything:
+**[Launch Dot-Explorer Live](https://adamtaranto.github.io/dot-explorer/app/)**.
 
 The app runs entirely in your browser (WebAssembly + Pyodide) — uploaded
 assemblies never leave your machine. Align with the k-mer engine, minimap2,
@@ -20,12 +20,12 @@ plots, PAF alignments, and a reordered/reoriented query FASTA.
 In-browser computation is memory limited (the wasm heap caps at ~4 GB, so
 the k-mer method is gated above ~80 Mb of combined input); larger genomes
 should use minimap2 instead of k-mer based plotting. Alternatively, run the
-same app locally with no size limits (`pip install "rusty-dot[app]"`, then
+same app locally with no size limits (`pip install "dot-explorer[app]"`, then
 `shiny run --launch-browser app/app.py` from a checkout), or generate plots
 using the Python API locally or on Google Colab.
 
-See [docs/webapp.md](https://adamtaranto.github.io/rusty-dot/webapp/) for capabilities, limits, and the local/HPC run guide, and
-[Python library tutorials](https://adamtaranto.github.io/rusty-dot/tutorials/quickstart/) to run analysis locally.
+See [docs/webapp.md](https://adamtaranto.github.io/dot-explorer/webapp/) for capabilities, limits, and the local/HPC run guide, and
+[Python library tutorials](https://adamtaranto.github.io/dot-explorer/tutorials/quickstart/) to run analysis locally.
 
 ## Installation
 
@@ -36,7 +36,7 @@ Requirements:
 
 ```bash
 # Clone this project repo
-git clone https://github.com/Adamtaranto/rusty-dot.git && cd rusty-dot
+git clone https://github.com/Adamtaranto/dot-explorer.git && cd dot-explorer
 
 # Install maturin build tool
 pip install maturin
@@ -60,8 +60,8 @@ If a FASTA file contains duplicate sequence names, `load_fasta` raises a
 `ValueError` before adding any sequences.
 
 ```python
-from rusty_dot import SequenceIndex
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer import SequenceIndex
+from dot_explorer.dotplot import DotPlotter
 
 # Build an index from a multi-sequence FASTA file
 # Each sequence in the file gets its own independent k-mer index entry
@@ -104,8 +104,8 @@ Compare sequences from two separate FASTA files (e.g. two genome assemblies) and
 plot an all-vs-all grid with subpanels scaled by relative sequence length.
 
 ```python
-from rusty_dot.dotplot import DotPlotter
-from rusty_dot.paf_io import CrossIndex, PafAlignment, PafRecord
+from dot_explorer.dotplot import DotPlotter
+from dot_explorer.paf_io import CrossIndex, PafAlignment, PafRecord
 
 # --- Build a cross-index for two assemblies ---
 cross = CrossIndex(k=15)
@@ -194,8 +194,8 @@ qualitative palette (override per type), and a colour legend is added
 automatically.
 
 ```python
-from rusty_dot import DotPlotter, SequenceIndex
-from rusty_dot.annotation import GffAnnotation
+from dot_explorer import DotPlotter, SequenceIndex
+from dot_explorer.annotation import GffAnnotation
 
 # From a file (gzip detected automatically), text, or raw bytes.
 ann = GffAnnotation.from_file("features.gff3.gz")
@@ -235,7 +235,7 @@ when alignments have been merged from k-mer runs (which can be longer than the
 k-mer size) or when working with a pre-computed PAF file.
 
 ```python
-from rusty_dot.paf_io import PafAlignment
+from dot_explorer.paf_io import PafAlignment
 
 aln = PafAlignment.from_file("alignments.paf")
 
@@ -323,7 +323,7 @@ hits detected via `compare_sequences_stranded`, with a batched
 
 ## Performance
 
-rusty-dot is built for large sequences and many-contig genomes:
+dot-explorer is built for large sequences and many-contig genomes:
 
 - **Always build with `--release`.** Debug builds are dramatically slower; the
   release profile additionally enables link-time optimisation.

@@ -1,4 +1,4 @@
-name: rustydot
+name: dot-explorer
 channels:
   - conda-forge
   - bioconda
@@ -6,7 +6,7 @@ dependencies:
   - minimap2
   - pip
   - python 3.14
-  - python-freethreading
+  #- python-freethreading # Use only for dot-explorer library. Not compatible with Shiny.
   - pip:
       - maturin
       - matplotlib

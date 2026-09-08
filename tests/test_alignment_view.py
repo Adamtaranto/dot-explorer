@@ -2,8 +2,8 @@
 
 import pytest
 
-from rusty_dot.alignment_view import aligned_text, clip_sequence, revcomp
-from rusty_dot.paf_io import PafRecord
+from dot_explorer.alignment_view import aligned_text, clip_sequence, revcomp
+from dot_explorer.paf_io import PafRecord
 
 
 class TestHelpers:

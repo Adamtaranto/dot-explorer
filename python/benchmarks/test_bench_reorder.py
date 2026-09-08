@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from _synth import multi_contig_group, revcomp
 
-from rusty_dot.paf_io import CrossIndex, PafRecord, compute_gravity_contigs
+from dot_explorer.paf_io import CrossIndex, PafRecord, compute_gravity_contigs
 
 # Modest sizes so CodSpeed's instruction-count simulation stays quick while
 # still exercising a multi-contig, multi-target layout with inversions.

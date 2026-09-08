@@ -37,6 +37,23 @@ and this project adheres to
   - Docs: a "Similarity & Clustering" metric-selection guide, a
     "Clustering & Trees" tutorial notebook, and API reference pages.
 
+### Added — app
+
+- Trees & clustering (self-alignment mode): upload a newick / IQ-TREE
+  `.treefile` to fix the contig order and draw the tree left of the matrix
+  (tip/sequence-name mismatches error with both directions listed), or
+  compute a hierarchical clustering tree from sourmash similarity
+  (Jaccard / angular / ANI; user-set k, scaled, abundance) — the tree
+  overrides the contig-order and auto-flip options while active. Cluster
+  assignment by similarity cutoff (with an optional dashed cutoff line
+  through the dendrogram) or combined ANI + containment thresholds with a
+  reciprocal-coverage toggle; a Clusters tab whose rows highlight their
+  cluster blocks in the plot (non-members dim); bold cluster outlines; a
+  similarity Heatmap tab with a selectable palette; and CSV downloads of
+  the matrix and assignments. sourmash + scipy stay out of the first-load
+  bundle — under Pyodide they micropip-install (~25 MB, one-time) when
+  clustering is first enabled; natively install `rusty-dot[cluster]`.
+
 - `SequenceIndex.approx_bytes()` (and `CrossIndex.approx_bytes()`): exact
   per-component heap accounting for the k-mer index (sequence bytes, CSR
   tables, pair cache), plus `scripts/mem_profile_index.py` to measure peak

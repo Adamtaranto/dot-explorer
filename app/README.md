@@ -233,6 +233,14 @@ start at step 3. The same wheel is built by `docs.yml` for the deployed site.
   them never re-renders the plot. Contig orders are cached per ordering
   mode, so re-selecting "maximise colinearity" after trying another mode is
   instant.
+- **Trees & clustering** (self-alignments): upload a newick / IQ-TREE
+  `.treefile` to fix the contig order and draw the tree beside the matrix,
+  or tick "Compute clustering tree" to sketch every contig with sourmash
+  and cluster hierarchically. Adds a cluster-assignment table (rows
+  highlight their clusters in the plot), bold cluster outlines, a
+  similarity-heatmap tab, and CSV downloads. sourmash + scipy install on
+  first use (micropip under Pyodide, `pip install "rusty-dot[cluster]"`
+  natively); see `docs/clustering.md` for choosing a metric.
 - **GFF annotations**: upload GFF3 files (`.gff`/`.gff3`/`.gz`) for the
   query and/or target assembly. Detected feature types get per-type
   visibility toggles and colour pickers; features shade self-vs-self

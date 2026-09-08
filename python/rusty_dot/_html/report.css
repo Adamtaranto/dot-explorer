@@ -240,3 +240,12 @@ body.rd-fs #rd-figure svg {
   width: 100%;
   height: calc(100vh - 1rem);
 }
+
+/* Cluster borders emphasised while their cluster is selected in the
+   embedding app's cluster table ('rd-highlight-clusters' messages).
+   Targets the child path: matplotlib writes the stroke as an inline
+   style there, which only an !important rule can override. */
+.rd-cluster-active path {
+  stroke: #d97706 !important;
+  stroke-width: 4 !important;
+}

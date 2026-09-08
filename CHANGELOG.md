@@ -10,6 +10,33 @@ and this project adheres to
 
 ### Added — library
 
+- Similarity, clustering and trees (new optional `cluster` extra —
+  `pip install "rusty-dot[cluster]"` for sourmash + scipy):
+  - `rusty_dot.tree`: dependency-free newick / IQ-TREE `.treefile` parser
+    (`Tree.from_newick`/`Tree.read`, quoted labels, support values,
+    comments), `Tree.from_linkage` for scipy linkage matrices, bidirectional
+    tip-vs-sequence-name validation, and `draw_tree` (rectangular
+    dendrogram with cutoff line and scale bar).
+  - `rusty_dot.similarity`: sourmash FracMinHash sketching
+    (`compute_sketches`, `SketchParams` — k=21, scaled=1000, abundance on
+    by default) and all-vs-all `pairwise_similarity` with `jaccard`,
+    abundance-weighted `angular`, `ani` (with 95% confidence bounds),
+    asymmetric `containment` and `max`/`avg_containment` metrics;
+    `linkage_from_similarity`, similarity-cutoff `assign_clusters`, and
+    dual identity+coverage `assign_clusters_dual` (reciprocal or one-way
+    coverage); `SimilarityMatrix.to_csv` / `ClusterResult.to_csv` exports.
+  - `plot_similarity_heatmap`: pairwise similarity heatmap with the tree on
+    the y-axis, cluster block outlines, selectable colormap and a colour
+    scale bar.
+  - `DotPlotter.plot` gained `tree=` (dendrogram drawn left of the matrix,
+    contig order fixed to the tree's leaf order, names moved onto the tree
+    tips; incompatible with `contig_order`/`auto_reverse`), `tree_cutoff=`,
+    `tree_scalebar=`, and `cluster_borders=` (bold outline around each
+    cluster's block of panels); the HTML report payload carries the cluster
+    blocks under a `clusters` key.
+  - Docs: a "Similarity & Clustering" metric-selection guide, a
+    "Clustering & Trees" tutorial notebook, and API reference pages.
+
 - `SequenceIndex.approx_bytes()` (and `CrossIndex.approx_bytes()`): exact
   per-component heap accounting for the k-mer index (sequence bytes, CSR
   tables, pair cache), plus `scripts/mem_profile_index.py` to measure peak

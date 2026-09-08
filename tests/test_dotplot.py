@@ -2144,3 +2144,121 @@ def test_highlight_regions_survive_malformed_entries():
     )
     assert _spans(fig.axes[0]) == [('x', 10, 20)]
     plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Trees on the matrix axes + cluster borders
+# ---------------------------------------------------------------------------
+
+
+class TestPlotWithTree:
+    """DotPlotter.plot(tree=...) fixes row order and draws a dendrogram."""
+
+    @pytest.fixture
+    def tree3(self):
+        from rusty_dot import Tree
+
+        return Tree.from_newick('((seq3:0.2,seq1:0.1):0.1,seq2:0.3);')
+
+    def test_tree_reorders_rows_and_draws_gutter(self, dotplot_index, tree3):
+        plotter = DotPlotter(dotplot_index)
+        fig = plotter.plot(tree=tree3, scale_sequences=False)
+        try:
+            # ncols panels per row + 1 tree gutter axis.
+            assert len(fig.axes) == 3 * 3 + 1
+            gids = {a.get_gid() for ax in fig.axes for a in ax.get_children()}
+            assert 'rd-tree' in gids
+            # Row labels are suppressed (names live on the tree tips).
+            assert all(not ax.get_ylabel() for ax in fig.axes)
+        finally:
+            plt.close(fig)
+
+    def test_tree_orders_svg_row_titles(self, dotplot_index, tree3, tmp_path):
+        out = tmp_path / 'tree.svg'
+        plotter = DotPlotter(dotplot_index)
+        fig = plotter.plot(tree=tree3, output_path=str(out), scale_sequences=True)
+        plt.close(fig)
+        svg = out.read_text()
+        assert 'rd-tree' in svg
+        # Column titles follow the tree's leaf order for self-comparisons.
+        assert svg.index('seq3') < svg.index('seq1') < svg.index('seq2')
+
+    def test_tree_with_contig_order_raises(self, dotplot_index, tree3):
+        plotter = DotPlotter(dotplot_index)
+        with pytest.raises(ValueError, match='contig_order'):
+            plotter.plot(tree=tree3, contig_order='length')
+
+    def test_tree_with_auto_reverse_raises(self, dotplot_index, tree3):
+        plotter = DotPlotter(dotplot_index)
+        with pytest.raises(ValueError, match='auto_reverse'):
+            plotter.plot(tree=tree3, auto_reverse=True)
+
+    def test_tree_label_mismatch_raises(self, dotplot_index):
+        from rusty_dot import Tree
+
+        bad = Tree.from_newick('((seq1,seq2),nope);')
+        plotter = DotPlotter(dotplot_index)
+        with pytest.raises(ValueError, match='do not match'):
+            plotter.plot(tree=bad)
+
+    def test_tree_single_pair_raises(self, dotplot_index, tree3):
+        plotter = DotPlotter(dotplot_index)
+        with pytest.raises(ValueError, match='at least 2'):
+            plotter.plot(tree=tree3, query_names=['seq1'], target_names=['seq2'])
+
+    def test_cutoff_line_drawn(self, dotplot_index, tree3, tmp_path):
+        out = tmp_path / 'cut.svg'
+        plotter = DotPlotter(dotplot_index)
+        fig = plotter.plot(tree=tree3, tree_cutoff=0.15, output_path=str(out))
+        plt.close(fig)
+        assert 'rd-tree-cutoff' in out.read_text()
+
+
+class TestClusterBorders:
+    def _clusters(self, mapping):
+        from rusty_dot import ClusterResult
+
+        return ClusterResult(
+            assignments=mapping, cutoff=0.5, mode='similarity', metric='jaccard'
+        )
+
+    def test_borders_in_svg(self, dotplot_index, tmp_path):
+        from rusty_dot import Tree
+
+        tree = Tree.from_newick('((seq1:0.1,seq2:0.1):0.2,seq3:0.3);')
+        clusters = self._clusters(
+            {'seq1': 'cluster_1', 'seq2': 'cluster_1', 'seq3': 'cluster_2'}
+        )
+        out = tmp_path / 'borders.svg'
+        plotter = DotPlotter(dotplot_index)
+        fig = plotter.plot(tree=tree, cluster_borders=clusters, output_path=str(out))
+        plt.close(fig)
+        svg = out.read_text()
+        assert 'rd-cluster-border-cluster_1' in svg
+        assert 'rd-cluster-border-cluster_2' in svg
+
+    def test_borders_skipped_for_non_self(self, dotplot_index, caplog):
+        clusters = self._clusters({'seq1': 'c1', 'seq2': 'c1'})
+        plotter = DotPlotter(dotplot_index)
+        with caplog.at_level('WARNING', logger='rusty_dot.dotplot'):
+            fig = plotter.plot(
+                query_names=['seq1', 'seq2'],
+                target_names=['seq2', 'seq3'],
+                cluster_borders=clusters,
+            )
+        plt.close(fig)
+        assert 'self-comparison' in caplog.text
+
+    def test_borders_without_tree(self, dotplot_index, tmp_path):
+        # Borders work on any self-comparison grid, tree or not.
+        clusters = self._clusters({'seq1': 'c1', 'seq2': 'c1', 'seq3': 'c2'})
+        out = tmp_path / 'notree.svg'
+        plotter = DotPlotter(dotplot_index)
+        fig = plotter.plot(
+            query_names=['seq1', 'seq2', 'seq3'],
+            target_names=['seq1', 'seq2', 'seq3'],
+            cluster_borders=clusters,
+            output_path=str(out),
+        )
+        plt.close(fig)
+        assert 'rd-cluster-border-c1' in out.read_text()

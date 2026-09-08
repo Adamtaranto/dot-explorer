@@ -51,7 +51,7 @@ def plot_similarity_heatmap(
     order : sequence of str, optional
         Explicit row/column order; mutually exclusive with *tree*.
     clusters : ClusterResult, optional
-        Draw a bold outline around each cluster's block of cells. A
+        Draw a dashed outline around each cluster's block of cells. A
         cluster whose members are not contiguous in the display order is
         outlined per contiguous run (with a log warning).
     cluster_border_color : str
@@ -276,6 +276,9 @@ def _outline_clusters(
                 fill=False,
                 edgecolor=color,
                 linewidth=lw,
+                # Dashed: reads as an annotation rather than a data cell
+                # boundary, whatever the colormap underneath.
+                linestyle=(0, (4, 2)),
                 zorder=5,
             )
             rect.set_gid(f'rd-hm-cluster-{cluster_name}')

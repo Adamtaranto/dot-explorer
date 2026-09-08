@@ -64,7 +64,11 @@ and this project adheres to
   instead of sourmash containment.
 - Heatmap figure polish: square cells, sequence names placed between the
   tree and the heatmap (long-name safe, no tree-tip overlap), cluster
-  outlines now white and heavier. Dot-plot tree gutter widened (floored
+  outlines now white, dashed and heavier; the Heatmap tab gained the same
+  navigation controls as the main plot (scroll to pan, Shift+scroll
+  sideways, Cmd/Ctrl+scroll to zoom, drag to zoom to a region,
+  double-click or Esc to reset). The Apply-changes button moved to the
+  bottom of the Trees & clustering section. Dot-plot tree gutter widened (floored
   at 18% of the grid width) and the figure-level 'Position' label moved
   clear of the dendrogram.
 

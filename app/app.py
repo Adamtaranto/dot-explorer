@@ -739,18 +739,6 @@ app_ui = ui.page_sidebar(
             ),
             ui.panel_conditional(
                 'input.cluster_enabled',
-                ui.div(
-                    ui.input_action_button(
-                        'apply_cluster',
-                        'Apply changes',
-                        class_='btn-primary btn-sm',
-                    ),
-                    ui.span(
-                        'Setting edits are held until you apply them.',
-                        class_='rd-ft-apply-note',
-                    ),
-                    class_='rd-ft-apply',
-                ),
                 ui.input_select(
                     'cluster_metric',
                     _lbl(
@@ -933,6 +921,18 @@ app_ui = ui.page_sidebar(
                     ),
                     False,
                 ),
+                ui.div(
+                    ui.input_action_button(
+                        'apply_cluster',
+                        'Apply changes',
+                        class_='btn-primary btn-sm',
+                    ),
+                    ui.span(
+                        'Setting edits are held until you apply them.',
+                        class_='rd-ft-apply-note',
+                    ),
+                    class_='rd-ft-apply',
+                ),
             ),
         ),
         ui.hr(),
@@ -1007,6 +1007,8 @@ app_ui = ui.page_sidebar(
         ui.include_js(APP_DIR / 'www' / 'feature-table.js', method='inline'),
         # Row-click selection on the cluster-assignment table.
         ui.include_js(APP_DIR / 'www' / 'cluster-table.js', method='inline'),
+        # Pan/zoom controls on the heatmap image.
+        ui.include_js(APP_DIR / 'www' / 'heatmap-zoom.js', method='inline'),
         # Hold the sidebar's scroll position across dynamic-UI re-renders.
         ui.include_js(APP_DIR / 'www' / 'sidebar-scroll.js', method='inline'),
         # Mirror ui.Progress messages into the header's task-status slot
@@ -2979,6 +2981,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         ui.div(
                             ui.output_image('heatmap_plot', inline=True),
                             class_='rd-heatmap-wrap',
+                        ),
+                        ui.div(
+                            ui.tags.b('Navigate: '),
+                            ui.tags.b('scroll'),
+                            ' = pan up/down · ',
+                            ui.tags.b('Shift+scroll'),
+                            ' = pan left/right · ',
+                            ui.tags.b('Cmd/Ctrl+scroll'),
+                            ' = zoom · ',
+                            ui.tags.b('drag'),
+                            ' = zoom to region · ',
+                            ui.tags.b('double-click / Esc'),
+                            ' = reset',
+                            class_='rd-nav-hint',
                         ),
                         ui.div(
                             ui.download_button(

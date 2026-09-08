@@ -893,3 +893,18 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
   max-width: 100%;
   height: auto;
 }
+
+/* Pan/zoom on the heatmap image (www/heatmap-zoom.js). */
+.rd-heatmap-wrap {
+  position: relative;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.rd-hm-selbox {
+  position: absolute;
+  border: 1px dashed var(--bs-primary, #2a7d6f);
+  background: color-mix(in srgb, var(--bs-primary, #2a7d6f) 12%, transparent);
+  pointer-events: none;
+  z-index: 5;
+}

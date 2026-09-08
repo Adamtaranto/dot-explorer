@@ -133,11 +133,14 @@ jobs:
         # tests importorskip them if either install ever breaks.
         run: |
           pip install maturin pytest pytest-cov matplotlib numpy pyfaidx sourmash scipy
+      - name: Clean wheels directory
+        run: rm -rf target/wheels/
       - name: Build and install dot-explorer
         # The wheel is tagged cp314-cp314t (python tag cp314, abi tag cp314t).
         run: |
           maturin build --release
           pip install target/wheels/*cp314t*.whl
+          - name: Build and install dot-explorer
       - name: Assert the extension does not re-enable the GIL
         # src/lib.rs declares #[pymodule(gil_used = false)].  If that is ever
         # dropped, importing the module flips the GIL back on and the cp314t

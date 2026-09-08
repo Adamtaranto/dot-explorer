@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dot-explorer"
-version = "0.2.0"
+version = "0.1.0"
 description = "Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index"
 readme = "README.md"
 license = { file = "LICENSE" }

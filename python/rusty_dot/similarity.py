@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
@@ -22,6 +23,8 @@ import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
     from sourmash import MinHash
+
+_log = logging.getLogger(__name__)
 
 _METRICS = (
     'jaccard',
@@ -277,6 +280,7 @@ def pairwise_similarity(
     else:
         flat = {name: mh.flatten() for name, mh in sketches.items()}
 
+    size_inaccurate = 0
     for i in range(n):
         for j in range(i + 1, n):
             a, b = flat[names[i]], flat[names[j]]
@@ -294,12 +298,33 @@ def pairwise_similarity(
                 sim = a.avg_containment(b, downsample=True)
             else:  # ani
                 est = a.max_containment_ani(b, estimate_ci=True)
-                sim = est.ani if est.ani is not None else 0.0
+                sim = est.ani
+                if sim is None:
+                    # sourmash nulls the estimate when the sketches keep
+                    # too few hashes to trust its size assumptions
+                    # (size_is_inaccurate); the underlying distance is
+                    # still computed — surface it, and count the pair so
+                    # the caller can be told to lower `scaled`.
+                    dist = getattr(est, 'dist', None)
+                    sim = max(0.0, 1.0 - dist) if dist is not None else 0.0
+                    if getattr(est, 'size_is_inaccurate', False):
+                        size_inaccurate += 1
                 low = est.ani_low if est.ani_low is not None else sim
                 high = est.ani_high if est.ani_high is not None else sim
                 ci_low[i, j] = ci_low[j, i] = low
                 ci_high[i, j] = ci_high[j, i] = high
             values[i, j] = values[j, i] = sim
+
+    if size_inaccurate:
+        _log.warning(
+            'ANI: %d of %d pairs had size-inaccurate estimates (sketches '
+            'keep too few hashes at scaled=%d) — point estimates fall back '
+            'to the raw distance and confidence intervals are unavailable; '
+            'lower SketchParams.scaled for reliable ANI.',
+            size_inaccurate,
+            n * (n - 1) // 2,
+            next(iter(sketches.values())).scaled,
+        )
 
     params = _sketch_params_of(next(iter(sketches.values())))
     return SimilarityMatrix(

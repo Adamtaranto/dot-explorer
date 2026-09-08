@@ -9,3 +9,8 @@ numpy
 # Pure-Python; indexes uploaded FASTA on the (RAM-backed) Pyodide FS so
 # sequences are fetched per-window instead of held as decoded strings.
 pyfaidx
+# sourmash and scipy (the clustering features) are deliberately NOT listed:
+# everything here downloads before the app starts, and together they add
+# ~25 MB.  ensure_cluster_deps() in app.py micropip-installs them from the
+# Pyodide channel the first time the user enables clustering — the same
+# fetch-on-use pattern as the biowasm aligner binaries.

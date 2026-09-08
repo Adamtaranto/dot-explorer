@@ -163,3 +163,25 @@ class TestDrawTree:
                 )
         finally:
             plt.close(fig)
+
+
+class TestBranchLengthFidelity:
+    def test_segment_extents_proportional_to_branch_lengths(self):
+        """User treefiles with branch lengths keep their relative depths."""
+        from matplotlib.collections import LineCollection
+
+        # A at depth 0.1, B at 0.3; the (A,B) clade node at depth... root
+        # children: clade (length 0.05) and C (0.4).
+        tree = Tree.from_newick('((A:0.05,B:0.25)90:0.05,C:0.4);')
+        fig, ax = plt.subplots()
+        try:
+            ax.set_ylim(0, 3)
+            draw_tree(ax, tree, {'A': 2.5, 'B': 1.5, 'C': 0.5}, scalebar=False)
+            lines = next(a for a in ax.collections if isinstance(a, LineCollection))
+            xs = {x for seg in lines.get_segments() for x, _y in seg}
+            # Cumulative depths that must appear as segment endpoints:
+            # root 0, clade node 0.05, A tip 0.10, B tip 0.30, C tip 0.40.
+            for depth in (0.0, 0.05, 0.10, 0.30, 0.40):
+                assert any(abs(x - depth) < 1e-9 for x in xs), depth
+        finally:
+            plt.close(fig)

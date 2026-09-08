@@ -49,6 +49,13 @@ from core.annotation_state import (
     type_slug_map,
 )
 from core.cache import QUERY_GROUP, TARGET_GROUP, SessionCache
+from core.cluster import (
+    ProviderIndex,
+    alignment_coverage_matrix,
+    cluster_deps_missing,
+    cluster_table_rows,
+    tree_layout_order,
+)
 from core.export import reordered_fasta_text
 from core.fasta import content_digest
 from core.genbank import parse_genbank_bytes
@@ -700,6 +707,235 @@ app_ui = ui.page_sidebar(
             step=0.1,
         ),
         ui.hr(),
+        # --- Trees & clustering ----------------------------------------------
+        # Self-alignment only: one tree can only order one shared axis, so a
+        # cross-assembly comparison (different row and column sets) has no
+        # coherent tree order.  The whole section is hidden otherwise; the
+        # inputs stay bound (panel_conditional toggles CSS display only).
+        ui.panel_conditional(
+            "input.input_mode !== 'paf' && input.self_align",
+            ui.h5('Trees & clustering'),
+            ui.input_file(
+                'tree_file',
+                _lbl(
+                    'Tree (newick / IQ-TREE .treefile)',
+                    'Order the contigs by this tree and draw it beside the '
+                    'plot. Tip labels must match the sequence names exactly; '
+                    'while a tree is active it overrides the contig-order '
+                    'and auto-flip options.',
+                ),
+                accept=['.nwk', '.newick', '.treefile', '.txt'],
+            ),
+            ui.input_checkbox(
+                'cluster_enabled',
+                _lbl(
+                    'Compute clustering tree',
+                    'Sketch every contig with sourmash, compare all pairs, '
+                    'and build a hierarchical clustering tree that orders '
+                    'the plot (an uploaded tree takes precedence). Adds '
+                    'cluster assignment, a heatmap tab, and CSV exports.',
+                ),
+                False,
+            ),
+            ui.panel_conditional(
+                'input.cluster_enabled',
+                ui.input_select(
+                    'cluster_metric',
+                    _lbl(
+                        'Similarity metric',
+                        'Jaccard: fraction of shared k-mers. Angular: '
+                        'k-mer sharing weighted by copy number (needs '
+                        'abundance). ANI: estimated nucleotide identity. '
+                        'See the Similarity & Clustering docs page for '
+                        'guidance.',
+                    ),
+                    choices={
+                        'jaccard': 'Jaccard similarity',
+                        'angular': 'Angular similarity (abundance)',
+                        'ani': 'ANI approximation',
+                    },
+                ),
+                ui.input_numeric(
+                    'sketch_k',
+                    _lbl(
+                        'Sketch k-mer size',
+                        'K-mer length for the sourmash sketches. 21 (the '
+                        'sourmash DNA default) suits most genomes; 31 for '
+                        'strain-level comparisons.',
+                    ),
+                    21,
+                    min=4,
+                    max=51,
+                    step=1,
+                ),
+                ui.input_numeric(
+                    'sketch_scaled',
+                    _lbl(
+                        'Sketch scaled factor',
+                        'Keep roughly one hash per this many bp. Lower '
+                        'values keep more hashes — better ANI estimates '
+                        '(tighter confidence intervals) and short-sequence '
+                        'resolution, at higher memory cost. Aim for at '
+                        'least a few hundred hashes per contig.',
+                    ),
+                    1000,
+                    min=1,
+                    step=100,
+                ),
+                ui.input_checkbox(
+                    'sketch_abund',
+                    _lbl(
+                        'Track k-mer abundance (-p abund)',
+                        'Record how often each kept k-mer occurs. Required '
+                        'by the angular metric; ignored by the others.',
+                    ),
+                    True,
+                ),
+                ui.input_radio_buttons(
+                    'cluster_mode',
+                    _lbl(
+                        'Cluster assignment',
+                        'Similarity cutoff: cut the clustering tree at one '
+                        'similarity threshold. Identity + coverage: link '
+                        'contigs passing BOTH an ANI threshold and a '
+                        'containment (coverage) threshold, then take '
+                        'connected components.',
+                    ),
+                    choices={
+                        'similarity': 'Similarity cutoff',
+                        'identity_coverage': 'Identity + coverage thresholds',
+                    },
+                ),
+                ui.panel_conditional(
+                    "input.cluster_mode === 'similarity'",
+                    ui.input_slider(
+                        'cluster_cutoff',
+                        _lbl(
+                            'Similarity cutoff',
+                            'Contigs whose clustered similarity is at least '
+                            'this value share a cluster.',
+                        ),
+                        min=0.0,
+                        max=1.0,
+                        value=0.8,
+                        step=0.01,
+                    ),
+                    ui.input_checkbox(
+                        'cluster_cutoff_line',
+                        _lbl(
+                            'Show cutoff line on tree',
+                            'Draw the cutoff as a dashed line through the '
+                            'dendrogram, at 1 − cutoff from the tips.',
+                        ),
+                        True,
+                    ),
+                ),
+                ui.panel_conditional(
+                    "input.cluster_mode === 'identity_coverage'",
+                    ui.input_select(
+                        'coverage_source',
+                        _lbl(
+                            'Coverage source',
+                            'Containment: fraction of shared sourmash '
+                            'k-mers (collapses when relatives differ by '
+                            'scattered SNPs — at 98% identity only ~65% '
+                            'of 21-mers survive). Alignment: fraction of '
+                            'the contig covered by this run’s alignment '
+                            'blocks (minimap2/nucmer/k-mer/PAF) — robust '
+                            'to SNPs.',
+                        ),
+                        choices={
+                            'containment': 'sourmash containment',
+                            'alignment': 'Alignment block coverage',
+                        },
+                    ),
+                    ui.input_slider(
+                        'identity_cutoff',
+                        _lbl(
+                            'Min identity (ANI)',
+                            'Estimated average nucleotide identity both '
+                            'contigs must share. Lower the sketch scaled '
+                            'factor for tighter ANI confidence intervals.',
+                        ),
+                        min=0.0,
+                        max=1.0,
+                        value=0.8,
+                        step=0.01,
+                    ),
+                    ui.input_slider(
+                        'coverage_cutoff',
+                        _lbl(
+                            'Min coverage (containment)',
+                            'Fraction of a contig’s k-mers found in the '
+                            'other. Note: SNPs depress exact-k-mer '
+                            'containment steeply (≈ coverage × ANI^k) — '
+                            'see the docs before relying on high values.',
+                        ),
+                        min=0.0,
+                        max=1.0,
+                        value=0.8,
+                        step=0.01,
+                    ),
+                    ui.input_checkbox(
+                        'cov_reciprocal',
+                        _lbl(
+                            'Reciprocal coverage',
+                            'Require the coverage threshold in both '
+                            'directions — a short fragment nested in a '
+                            'longer contig then stays out of its cluster.',
+                        ),
+                        True,
+                    ),
+                ),
+                ui.input_checkbox(
+                    'cluster_borders_on',
+                    _lbl(
+                        'Outline clusters in the plot',
+                        'Draw a bold border around each cluster’s block of '
+                        'sub-plots (and cells in the heatmap).',
+                    ),
+                    True,
+                ),
+                ui.input_select(
+                    'heatmap_cmap',
+                    _lbl(
+                        'Heatmap palette',
+                        'Colour map for the similarity heatmap tab.',
+                    ),
+                    choices=[
+                        'viridis',
+                        'magma',
+                        'plasma',
+                        'cividis',
+                        'coolwarm',
+                        'YlGnBu',
+                    ],
+                ),
+                ui.input_checkbox(
+                    'heatmap_values',
+                    _lbl(
+                        'Show values in heatmap cells',
+                        'Write each pairwise score inside its heatmap '
+                        'cell (with the 95% CI for ANI). Readable for '
+                        'small numbers of contigs only.',
+                    ),
+                    False,
+                ),
+                ui.div(
+                    ui.input_action_button(
+                        'apply_cluster',
+                        'Apply changes',
+                        class_='btn-primary btn-sm',
+                    ),
+                    ui.span(
+                        'Setting edits are held until you apply them.',
+                        class_='rd-ft-apply-note',
+                    ),
+                    class_='rd-ft-apply',
+                ),
+            ),
+        ),
+        ui.hr(),
         # --- GFF annotations -------------------------------------------------
         ui.h5('Annotations (GFF3)'),
         # Same query-then-target order as the assembly uploads above.
@@ -769,6 +1005,10 @@ app_ui = ui.page_sidebar(
         # Delegated events for the drill-down Annotations table (one
         # listener instead of ~1200 Shiny-bound inputs).
         ui.include_js(APP_DIR / 'www' / 'feature-table.js', method='inline'),
+        # Row-click selection on the cluster-assignment table.
+        ui.include_js(APP_DIR / 'www' / 'cluster-table.js', method='inline'),
+        # Pan/zoom controls on the heatmap image.
+        ui.include_js(APP_DIR / 'www' / 'heatmap-zoom.js', method='inline'),
         # Hold the sidebar's scroll position across dynamic-UI re-renders.
         ui.include_js(APP_DIR / 'www' / 'sidebar-scroll.js', method='inline'),
         # Mirror ui.Progress messages into the header's task-status slot
@@ -873,9 +1113,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     _KMER_HARD_LIMIT = 80 * 1024 * 1024
     _KMER_WARN_LIMIT = 40 * 1024 * 1024
 
-    def _check_kmer_memory(
-        query: SequenceProvider, target: SequenceProvider
-    ) -> None:
+    def _check_kmer_memory(query: SequenceProvider, target: SequenceProvider) -> None:
         if sys.platform != 'emscripten':
             return  # native runs are bounded by system RAM, not the wasm heap
         total = query.total_length + (0 if target is query else target.total_length)
@@ -2039,6 +2277,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             logger.info('contig-order cache hit for mode %r', contig_order)
         q_order, t_order, reversed_q, q_drop, t_drop = cached
         reverse = reversed_q if auto_reverse else set()
+        # An active tree overrides every ordering mode (and orientation
+        # flipping — the tree's leaf order is authoritative).  Applied on
+        # top of the memoised base order so switching the tree on and off
+        # never invalidates the gravity-sort cache.
+        tree = active_tree()
+        if tree is not None:
+            ordered = tree_layout_order(tree.leaf_names(), list(q_order))
+            if ordered is not None:
+                q_order = ordered
+                if set(t_order) == set(q_order):
+                    t_order = list(ordered)
+                reverse = set()
         # Return copies so downstream mutation cannot poison the memo.
         return {
             'query_names': list(q_order),
@@ -2050,6 +2300,413 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             'excluded_query': list(q_drop),
             'excluded_target': list(t_drop),
         }
+
+    # --- Trees & clustering --------------------------------------------------
+    # Whether the optional deps (sourmash + scipy) are importable.  Native
+    # runs know at startup; under Pyodide the first 'compute clustering'
+    # tick downloads them from the Pyodide channel via micropip.
+    cluster_deps_ready = reactive.value(not cluster_deps_missing())
+
+    @reactive.calc
+    def self_mode() -> bool:
+        """Self-alignment input mode (one assembly on both axes)."""
+        return input.input_mode() != 'paf' and bool(input.self_align())
+
+    @reactive.calc
+    def query_provider():
+        """Return the result's query sequences, when lazily accessible."""
+        res = result()
+        if res is None:
+            return None
+        prov = res[2].get('query')
+        return prov if isinstance(prov, SequenceProvider) else None
+
+    @reactive.calc
+    def clustering_possible() -> bool:
+        """Self-comparison with at least 2 contigs and sequences on hand."""
+        if not self_mode():
+            return False
+        prov = query_provider()
+        return prov is not None and len(prov.names) >= 2
+
+    @reactive.calc
+    def parsed_tree():
+        """Parse the uploaded tree (None when absent; errors notify)."""
+        files = input.tree_file()
+        if not files:
+            return None
+        from rusty_dot import Tree  # noqa: PLC0415 - after ensure_rusty_dot
+
+        try:
+            return Tree.read(files[0]['datapath'])
+        except (ValueError, OSError) as exc:
+            ui.notification_show(
+                f'Could not parse the tree file: {exc}', type='error', duration=12
+            )
+            return None
+
+    @reactive.calc
+    def user_tree():
+        """Return the uploaded tree, validated against the query contigs."""
+        tree = parsed_tree()
+        if tree is None or not clustering_possible():
+            return None
+        prov = query_provider()
+        try:
+            tree.validate_labels(list(prov.names))
+        except ValueError as exc:
+            ui.notification_show(str(exc), type='error', duration=15)
+            return None
+        return tree
+
+    async def _install_wasm_cluster_packages() -> None:
+        """Fetch sourmash + scipy (and their deps) from the Pyodide CDN.
+
+        The shinylive export bundles only the Pyodide packages the app
+        needs at startup, so the local distribution has no sourmash/scipy
+        wheels and a plain ``micropip.install`` 404s against it.  The
+        bundled lockfile still describes every package in the release, so
+        resolve the dependency closure there and fetch each missing file
+        from the versioned CDN mirror of the same Pyodide release.
+        """
+        from pyodide.ffi import to_js  # noqa: PLC0415
+        import pyodide_js  # noqa: PLC0415 - pyodide-only module
+
+        # The live lockfile object loadPackage resolves from.  Pointing
+        # each missing entry's file_name at the CDN (absolute URLs are
+        # used verbatim) reroutes the fetch without touching bundled
+        # packages — loadPackage-by-URL cannot do that: it accepts *.whl
+        # URLs only, and scipy's openblas dependency ships as a .zip.
+        lock = pyodide_js._api.lockfile_packages.as_object_map()
+        loaded = set(pyodide_js.loadedPackages.as_object_map().keys())
+        cdn = f'https://cdn.jsdelivr.net/pyodide/v{pyodide_js.version}/full/'
+        names: list[str] = []
+        seen: set[str] = set()
+
+        def visit(name: str) -> None:
+            if name in seen:
+                return
+            seen.add(name)
+            info = lock.get(name)
+            if info is None:
+                return
+            for dep in info.depends:
+                visit(str(dep))
+            if name not in loaded:
+                names.append(name)
+
+        visit('sourmash')
+        visit('scipy')
+        for name in names:
+            info = lock[name]
+            file_name = str(info.file_name)
+            if not file_name.startswith(('http://', 'https://')):
+                info.file_name = cdn + file_name
+        if names:
+            await pyodide_js.loadPackage(to_js(names))
+
+    async def ensure_cluster_deps() -> bool:
+        """Make sourmash + scipy importable, installing them under Pyodide.
+
+        Deliberately NOT in app/requirements.txt: that file installs before
+        the app starts, so listing them would put the ~25 MB download in
+        every visitor's first load.  Instead they fetch on first use, like
+        the biowasm aligner binaries.
+        """
+        if not cluster_deps_missing():
+            cluster_deps_ready.set(True)
+            return True
+        if sys.platform == 'emscripten':
+            with ui.Progress(min=0, max=1) as progress:
+                progress.set(
+                    0,
+                    message='Downloading clustering packages '
+                    '(sourmash + scipy, ~25 MB, one-time)…',
+                )
+                try:
+                    await _install_wasm_cluster_packages()
+                except Exception:  # noqa: BLE001 - fall back to micropip
+                    logger.exception(
+                        'CDN package load failed; falling back to micropip'
+                    )
+                    import micropip  # noqa: PLC0415 - pyodide-only module
+
+                    await micropip.install(['sourmash', 'scipy'])
+                importlib.invalidate_caches()
+                progress.set(1, message='Clustering packages installed')
+            if cluster_deps_missing():
+                ui.notification_show(
+                    'Could not download the clustering packages — check the '
+                    'network connection and try again.',
+                    type='error',
+                    duration=12,
+                )
+                return False
+            cluster_deps_ready.set(True)
+            return True
+        ui.notification_show(
+            'Clustering needs sourmash and scipy — install them with: '
+            'pip install "rusty-dot[cluster]"',
+            type='error',
+            duration=12,
+        )
+        return False
+
+    @reactive.effect
+    @reactive.event(input.cluster_enabled)
+    async def _install_cluster_deps():
+        if input.cluster_enabled():
+            if await ensure_cluster_deps() and cluster_settings() is None:
+                # Seed the applied settings so first activation works
+                # without an extra Apply click; later edits wait for it.
+                cluster_settings.set(_snapshot_cluster_inputs())
+
+    def _snapshot_cluster_inputs() -> dict:
+        """Read every Trees & clustering input into a plain settings dict."""
+        return {
+            'metric': input.cluster_metric() or 'jaccard',
+            'ksize': max(4, int(input.sketch_k() or 21)),
+            'scaled': max(1, int(input.sketch_scaled() or 1000)),
+            'abund': bool(input.sketch_abund()),
+            'mode': input.cluster_mode() or 'similarity',
+            'cutoff': float(input.cluster_cutoff()),
+            'cutoff_line': bool(input.cluster_cutoff_line()),
+            'identity_cutoff': float(input.identity_cutoff()),
+            'coverage_cutoff': float(input.coverage_cutoff()),
+            'reciprocal': bool(input.cov_reciprocal()),
+            'coverage_source': input.coverage_source() or 'containment',
+            'borders_on': bool(input.cluster_borders_on()),
+            'cmap': input.heatmap_cmap() or 'viridis',
+            'cell_values': bool(input.heatmap_values()),
+        }
+
+    # Applied Trees & clustering settings.  Sidebar edits do nothing until
+    # the Apply button snapshots them here (same held-until-applied flow as
+    # the annotations table), so slider drags never trigger a re-sketch or
+    # figure redraw.  None until clustering is first enabled.
+    cluster_settings = reactive.value(None)
+
+    @reactive.effect
+    @reactive.event(input.apply_cluster)
+    def _apply_cluster_settings():
+        snap = _snapshot_cluster_inputs()
+        if snap != cluster_settings():
+            cluster_settings.set(snap)
+
+    @reactive.calc
+    def clustering_on() -> bool:
+        """Whether the sourmash-based clustering pipeline should run."""
+        return (
+            clustering_possible()
+            and bool(input.cluster_enabled())
+            and cluster_deps_ready()
+            and cluster_settings() is not None
+        )
+
+    @reactive.calc
+    def sketch_params():
+        from rusty_dot import SketchParams  # noqa: PLC0415
+
+        settings = cluster_settings() or {}
+        return SketchParams(
+            ksize=settings.get('ksize', 21),
+            scaled=settings.get('scaled', 1000),
+            track_abundance=settings.get('abund', True),
+        )
+
+    @reactive.calc
+    def sketches():
+        """One sourmash sketch per query contig (cached until k/scaled change)."""
+        req(clustering_on())
+        prov = query_provider()
+        req(prov)
+        from rusty_dot import compute_sketches  # noqa: PLC0415
+
+        with ui.Progress(min=0, max=1) as progress:
+            progress.set(0, message='Sketching contigs (sourmash)…')
+            sk = compute_sketches(ProviderIndex(prov), params=sketch_params())
+            progress.set(1, message='Sketches ready')
+        return sk
+
+    @reactive.calc
+    def sim_matrix():
+        """All-vs-all similarity in the applied metric, or None on error."""
+        if not clustering_on():
+            return None
+        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+
+        metric = cluster_settings()['metric']
+        if metric == 'ani':
+            return ani_matrix()  # shared with dual mode; carries the CIs
+        try:
+            return pairwise_similarity(sketches(), metric=metric)
+        except ValueError as exc:
+            # e.g. angular metric on abundance-free sketches.
+            ui.notification_show(str(exc), type='error', duration=10)
+            return None
+
+    @reactive.calc
+    def containment_matrix():
+        """Asymmetric sourmash containment matrix, or None."""
+        if not clustering_on():
+            return None
+        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+
+        try:
+            return pairwise_similarity(sketches(), metric='containment')
+        except ValueError as exc:
+            ui.notification_show(str(exc), type='error', duration=10)
+            return None
+
+    def _display_name(name: str) -> str:
+        """Strip a CrossIndex ``group:`` prefix from an internal name."""
+        if name.startswith(('query:', 'target:')):
+            return name.split(':', 1)[1]
+        return name
+
+    @reactive.calc
+    def alignment_coverage():
+        """Asymmetric coverage from the current result's alignment records."""
+        res = result()
+        prov = query_provider()
+        if res is None or prov is None:
+            return None
+        kind, obj, _meta = res
+        records = (
+            obj.get_records_for_pair(QUERY_GROUP, TARGET_GROUP)
+            if kind == 'kmer'
+            else obj.records
+        )
+        return alignment_coverage_matrix(
+            records,
+            list(prov.names),
+            dict(prov.lengths()),
+            normalize=_display_name,
+        )
+
+    @reactive.calc
+    def linkage_and_tree():
+        """(scipy linkage, Tree) for the computed similarity, or None."""
+        sim = sim_matrix()
+        if sim is None:
+            return None
+        from rusty_dot import Tree, linkage_from_similarity  # noqa: PLC0415
+
+        Z = linkage_from_similarity(sim)
+        return Z, Tree.from_linkage(Z, sim.names)
+
+    @reactive.calc
+    def active_tree():
+        """Return the tree ordering the plot (user upload wins)."""
+        tree = user_tree()
+        if tree is not None:
+            return tree
+        if not clustering_on():
+            return None
+        lt = linkage_and_tree()
+        return None if lt is None else lt[1]
+
+    @reactive.calc
+    def ani_matrix():
+        """ANI matrix with confidence bounds, or None."""
+        if not clustering_on():
+            return None
+        from rusty_dot import pairwise_similarity  # noqa: PLC0415
+
+        with ui.Progress(min=0, max=1) as progress:
+            progress.set(0, message='Computing ANI…')
+            ani = pairwise_similarity(sketches(), metric='ani')
+            progress.set(1, message='Done')
+        if ani.ci_low is not None and bool(numpy.all(ani.ci_low == ani.values)):
+            # Every pair fell back to the raw distance (sketches keep too
+            # few hashes for sourmash to trust its ANI model).
+            ui.notification_show(
+                'ANI confidence intervals unavailable: the sketches keep '
+                'too few hashes at scaled='
+                f'{cluster_settings()["scaled"]} for these sequence '
+                'lengths — lower the sketch scaled factor.',
+                type='warning',
+                duration=12,
+            )
+        return ani
+
+    @reactive.calc
+    def dual_matrices():
+        """(ANI, coverage) matrices for identity+coverage clustering.
+
+        Coverage comes from the applied source: sourmash containment, or
+        the current alignment's block coverage (SNP-robust).
+        """
+        if not clustering_on():
+            return None
+        ani = ani_matrix()
+        if ani is None:
+            return None
+        if cluster_settings()['coverage_source'] == 'alignment':
+            cov = alignment_coverage()
+        else:
+            cov = containment_matrix()
+        if cov is None:
+            return None
+        return ani, cov
+
+    @reactive.calc
+    def cluster_result():
+        """Cluster assignments for the applied mode, or None."""
+        if not clustering_on():
+            return None
+        from rusty_dot import assign_clusters, assign_clusters_dual  # noqa: PLC0415
+
+        settings = cluster_settings()
+        if settings['mode'] == 'identity_coverage':
+            matrices = dual_matrices()
+            if matrices is None:
+                return None
+            ani, cov = matrices
+            return assign_clusters_dual(
+                ani,
+                cov,
+                identity_cutoff=settings['identity_cutoff'],
+                coverage_cutoff=settings['coverage_cutoff'],
+                reciprocal=settings['reciprocal'],
+            )
+        sim = sim_matrix()
+        lt = linkage_and_tree()
+        if sim is None or lt is None:
+            return None
+        return assign_clusters(sim, settings['cutoff'], linkage=lt[0])
+
+    @reactive.calc
+    def tree_cutoff_distance():
+        """Distance-from-tips for the dendrogram cutoff line, or None."""
+        if not clustering_on() or user_tree() is not None:
+            # User trees have arbitrary branch-length units.
+            return None
+        settings = cluster_settings()
+        if settings['mode'] == 'similarity' and settings['cutoff_line']:
+            return 1.0 - settings['cutoff']
+        return None
+
+    @reactive.effect
+    @reactive.event(input.cluster_select)
+    async def _on_cluster_select():
+        """Forward the cluster-table row selection to the report iframe."""
+        sel = input.cluster_select() or {}
+        names = sel.get('clusters') if isinstance(sel, dict) else None
+        # Shiny deserialises JS arrays as tuples; JSON needs a list back.
+        names = list(names) if isinstance(names, (list, tuple)) else []
+        await session.send_custom_message(
+            'rd_highlight_clusters',
+            {'clusters': [str(n) for n in names]},
+        )
+
+    @reactive.effect
+    async def _clear_cluster_selection_on_change():
+        """Reset any highlight when the assignments themselves change."""
+        cluster_result()
+        await session.send_custom_message('rd_highlight_clusters', {'clusters': []})
+
+    # --- end Trees & clustering ----------------------------------------------
 
     def make_figure(res, cfg: PlotConfig, lay, pair=None, output_path=None):
         from rusty_dot import DotPlotter
@@ -2070,6 +2727,25 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         kwargs['reverse_contigs'] = set(lay['reverse'])
         if pair is not None and cfg.title is None:
             kwargs['title'] = f'{pair[0]} vs {pair[1]}'
+        if pair is None:
+            # Tree gutter + cluster borders on the overview grid only (the
+            # focused single-pair view has no rows to order).  The tree is
+            # attached only when its tips exactly cover the plotted rows —
+            # a min-contig-length filter can hide tips, in which case the
+            # leaf *order* still applies (see layout()) but the dendrogram
+            # itself would be wrong to draw.
+            tree = active_tree()
+            if (
+                tree is not None
+                and len(q_names) >= 2
+                and set(tree.leaf_names()) == set(q_names)
+            ):
+                kwargs['tree'] = tree
+                kwargs['tree_cutoff'] = tree_cutoff_distance()
+            clusters = cluster_result()
+            settings = cluster_settings() or {}
+            if clusters is not None and settings.get('borders_on', True):
+                kwargs['cluster_borders'] = clusters
         # GFF annotations: diagonal shading on self panels plus side tracks
         # in the focused (1x1) drill-down view.  Reading annotations() here
         # keeps every figure consumer reactive to toggle/colour changes
@@ -2259,6 +2935,67 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             if input.interactive()
             else None
         )
+        if pair is None and cluster_result() is not None:
+            # Clustering active: the overview gets its own tab strip with
+            # the assignment table and similarity heatmap beside the plot.
+            return ui.div(
+                ui.div(*toolbar, class_='rd-plot-toolbar'),
+                ui.navset_tab(
+                    ui.nav_panel('Plot', body, hint),
+                    ui.nav_panel(
+                        'Clusters',
+                        ui.div(
+                            ui.download_button(
+                                'dl_clusters_csv',
+                                'Cluster table (CSV)',
+                                class_='btn-sm',
+                            ),
+                            class_='rd-cluster-actions',
+                        ),
+                        ui.output_ui('cluster_table'),
+                    ),
+                    ui.nav_panel(
+                        'Matrix',
+                        ui.div(
+                            ui.input_radio_buttons(
+                                'matrix_view',
+                                None,
+                                choices={
+                                    'similarity': 'Similarity (applied metric)',
+                                    'containment': 'Containment (sourmash)',
+                                    'coverage': 'Coverage (alignment)',
+                                },
+                                inline=True,
+                            ),
+                            class_='rd-cluster-actions',
+                        ),
+                        ui.output_ui('matrix_table'),
+                    ),
+                    ui.nav_panel(
+                        'Heatmap',
+                        ui.div(
+                            ui.output_image('heatmap_plot', inline=True),
+                            class_='rd-heatmap-wrap',
+                        ),
+                        ui.div(
+                            ui.tags.b('Navigate: '),
+                            ui.tags.b('scroll'),
+                            ' = pan up/down · ',
+                            ui.tags.b('Shift+scroll'),
+                            ' = pan left/right · ',
+                            ui.tags.b('Cmd/Ctrl+scroll'),
+                            ' = zoom · ',
+                            ui.tags.b('drag'),
+                            ' = zoom to region · ',
+                            ui.tags.b('double-click / Esc'),
+                            ' = reset',
+                            class_='rd-nav-hint',
+                        ),
+                    ),
+                    id='overview_tabs',
+                ),
+                class_='rd-plot-area',
+            )
         if pair is None or not feature_rows():
             return ui.div(
                 ui.div(*toolbar, class_='rd-plot-toolbar'),
@@ -2907,6 +3644,14 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     class_='rd-dl-note',
                 ),
             ]
+        if sim_matrix() is not None:
+            # Clustering outputs: the matrix CSV exports whichever view the
+            # Matrix tab currently shows (similarity/containment/coverage).
+            parts += [
+                ui.download_button('dl_heatmap_svg', 'Heatmap (SVG)'),
+                ui.download_button('dl_heatmap_png', 'Heatmap (PNG)'),
+                ui.download_button('dl_matrix_csv', 'Pairwise matrix (CSV)'),
+            ]
         return ui.div(*parts)
 
     @render.plot
@@ -2950,6 +3695,268 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             yield '\n'.join(lines) + '\n'
         else:
             yield paf_text_from_alignment(obj)
+
+    @render.ui
+    def cluster_table():
+        clusters = cluster_result()
+        if clusters is None:
+            return None
+        prov = query_provider()
+        lengths = dict(prov.lengths()) if prov is not None else {}
+        rows = cluster_table_rows(clusters, lengths, sim=sim_matrix())
+        body = [
+            ui.tags.tr(
+                ui.tags.td(row['cluster']),
+                ui.tags.td(row['contig']),
+                ui.tags.td(f'{row["length"]:,}'),
+                ui.tags.td(str(row['members'])),
+                ui.tags.td('' if row['mean_sim'] is None else f'{row["mean_sim"]:.3f}'),
+                class_='rd-cluster-row',
+                data_cluster=row['cluster'],
+            )
+            for row in rows
+        ]
+        headers = ('Cluster', 'Contig', 'Length (bp)', 'Members', 'Mean similarity')
+        settings = cluster_settings() or {}
+        cov_label = (
+            'alignment coverage'
+            if settings.get('coverage_source') == 'alignment'
+            else 'containment'
+        )
+        mode = (
+            f'similarity ≥ {settings.get("cutoff", 0.8):.2f}'
+            if clusters.mode == 'similarity'
+            else (
+                f'ANI ≥ {settings.get("identity_cutoff", 0.8):.2f} and '
+                f'{cov_label} ≥ {settings.get("coverage_cutoff", 0.8):.2f}'
+                + (' (reciprocal)' if clusters.reciprocal else '')
+            )
+        )
+        return ui.div(
+            ui.tags.table(
+                ui.tags.thead(ui.tags.tr(*[ui.tags.th(h) for h in headers])),
+                ui.tags.tbody(*body),
+                class_='rd-cluster-table',
+            ),
+            ui.div(
+                f'{len(clusters.clusters)} cluster(s) at {mode}. '
+                'Click rows to highlight their clusters in the plot; '
+                'click again to clear.',
+                class_='rd-dl-note',
+            ),
+        )
+
+    def _heatmap_figure():
+        """Build the similarity heatmap from the applied settings."""
+        sim = sim_matrix()
+        req(sim)
+        from rusty_dot import plot_similarity_heatmap  # noqa: PLC0415
+
+        settings = cluster_settings() or {}
+        clusters = cluster_result() if settings.get('borders_on', True) else None
+        return plot_similarity_heatmap(
+            sim,
+            tree=active_tree(),
+            clusters=clusters,
+            cutoff=tree_cutoff_distance(),
+            cmap=settings.get('cmap', 'viridis'),
+            annotate=settings.get('cell_values', False),
+        )
+
+    @render.image(delete_file=True)
+    def heatmap_plot():
+        # Rendered as an image at the figure's own geometry: render.plot
+        # would stretch the figure to the container, crushing the name
+        # gutter and the square cells the layout reserves.
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+
+        fig = _heatmap_figure()
+        width_in = fig.get_size_inches()[0]
+        handle = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+        fig.savefig(handle.name, dpi=192)
+        plt.close(fig)
+        return {
+            'src': handle.name,
+            'width': f'{int(width_in * 96)}px',
+            'alt': 'Pairwise similarity heatmap',
+        }
+
+    def _heatmap_bytes(fmt: str) -> bytes:
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+
+        fig = _heatmap_figure()
+        buf = io.BytesIO()
+        fig.savefig(buf, format=fmt, bbox_inches='tight', dpi=200)
+        plt.close(fig)
+        return buf.getvalue()
+
+    @render.download_button(filename='similarity_heatmap.svg')
+    def dl_heatmap_svg():
+        yield _heatmap_bytes('svg')
+
+    @render.download_button(filename='similarity_heatmap.png')
+    def dl_heatmap_png():
+        yield _heatmap_bytes('png')
+
+    @render.download_button(filename='cluster_assignments.csv')
+    def dl_clusters_csv():
+        clusters = cluster_result()
+        req(clusters)
+        import csv  # noqa: PLC0415
+
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['contig', 'cluster'])
+        for contig, name in clusters.assignments.items():
+            writer.writerow([contig, name])
+        yield buf.getvalue()
+
+    @reactive.calc
+    def displayed_matrix():
+        """Return the matrix the Matrix tab currently shows, or None.
+
+        The view radio is tab-local display state (not staged behind
+        Apply): switching views only reads cached calcs.
+        """
+        view = input.matrix_view() if 'matrix_view' in input else 'similarity'
+        if view == 'containment':
+            return containment_matrix()
+        if view == 'coverage':
+            return alignment_coverage()
+        return sim_matrix()
+
+    _MATRIX_BLURBS = {
+        'jaccard': (
+            'Jaccard similarity: the fraction of distinct k-mers the two '
+            'contigs share (intersection over union of their sketches). '
+            'Symmetric; 1 = identical k-mer content.'
+        ),
+        'angular': (
+            'Angular similarity: cosine-style similarity of the two '
+            'sketches weighted by k-mer abundance, so repeat copy-number '
+            'differences lower the score. Symmetric.'
+        ),
+        'ani': (
+            'ANI: average nucleotide identity estimated from max '
+            'containment under a Poisson mutation model. Cells show the '
+            'point estimate with its 95% confidence interval; lower the '
+            'sketch scaled factor to tighten the intervals. Pairs sharing '
+            'no hashes show 0.'
+        ),
+        'containment': (
+            'sourmash containment: the fraction of the ROW contig’s '
+            'k-mers found in the COLUMN contig. Asymmetric — a fragment '
+            'is fully contained in its parent, not vice versa — and '
+            'depressed by SNPs (≈ coverage × ANI^k).'
+        ),
+        'aln_coverage': (
+            'Alignment block coverage: the fraction of the ROW contig '
+            'covered by the union of its alignment blocks against the '
+            'COLUMN contig, from this run’s aligner '
+            '(minimap2/nucmer/k-mer/PAF). Asymmetric; robust to SNPs.'
+        ),
+    }
+
+    @render.ui
+    def matrix_table():
+        matrix = displayed_matrix()
+        if matrix is None:
+            return ui.div(
+                'No matrix for this view yet — alignment coverage needs a '
+                'completed run; containment needs clustering enabled.',
+                class_='rd-dl-note',
+            )
+        settings = cluster_settings() or {}
+        show_ci = matrix.metric == 'ani' and matrix.ci_low is not None
+        blurb = _MATRIX_BLURBS.get(matrix.metric, matrix.metric)
+        sketch_note = ''
+        if matrix.metric != 'aln_coverage':
+            sketch_note = (
+                f' Sketches: k={settings.get("ksize", 21)}, '
+                f'scaled={settings.get("scaled", 1000)}, abundance '
+                f'{"on" if settings.get("abund", True) else "off"}.'
+            )
+        asym_note = ''
+        if matrix.metric in ('containment', 'aln_coverage'):
+            asym_note = (
+                ' Read row-wise: each value is the fraction of the row '
+                'contig accounted for by the column contig, so the matrix '
+                'is not symmetric.'
+            )
+
+        def cell(i: int, j: int) -> str:
+            value = matrix.values[i, j]
+            low, high = None, None
+            if show_ci and i != j:
+                low, high = matrix.ci_low[i, j], matrix.ci_high[i, j]
+            # Collapsed bounds mean no CI was available for the pair
+            # (size-inaccurate sketch): show just the point estimate.
+            if low is not None and not (low == value == high):
+                return f'{value:.4f} ({low:.4f}–{high:.4f})'
+            return f'{value:.4f}'
+
+        # Cells carry the heatmap palette, so the table and Heatmap tab
+        # read the same way; text flips light/dark on cell luminance.
+
+        colormap = matplotlib.colormaps[settings.get('cmap', 'viridis')]
+
+        def cell_style(value: float) -> str:
+            r, g, b, _a = colormap(min(1.0, max(0.0, float(value))))
+            luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            fg = '#000000' if luminance > 0.5 else '#ffffff'
+            return (
+                f'background-color: rgb({int(r * 255)}, {int(g * 255)}, '
+                f'{int(b * 255)}); color: {fg};'
+            )
+
+        n = len(matrix.names)
+        header = ui.tags.tr(
+            ui.tags.th(''), *[ui.tags.th(name) for name in matrix.names]
+        )
+        body = [
+            ui.tags.tr(
+                ui.tags.th(matrix.names[i]),
+                *[
+                    ui.tags.td(cell(i, j), style=cell_style(matrix.values[i, j]))
+                    for j in range(n)
+                ],
+            )
+            for i in range(n)
+        ]
+        return ui.div(
+            ui.div(blurb + sketch_note + asym_note, class_='rd-matrix-blurb'),
+            ui.div(
+                ui.tags.table(
+                    ui.tags.thead(header),
+                    ui.tags.tbody(*body),
+                    class_='rd-cluster-table rd-matrix-table',
+                ),
+                class_='rd-matrix-scroll',
+            ),
+        )
+
+    @render.download_button(filename='pairwise_matrix.csv')
+    def dl_matrix_csv():
+        matrix = displayed_matrix()
+        req(matrix)
+        import csv  # noqa: PLC0415
+
+        buf = io.StringIO()
+        buf.write(f'# metric: {matrix.metric}\n')
+        writer = csv.writer(buf)
+        writer.writerow([''] + matrix.names)
+        for name, row in zip(matrix.names, matrix.values):
+            writer.writerow([name] + [f'{value:.6g}' for value in row])
+        if matrix.metric == 'ani' and matrix.ci_low is not None:
+            for label, bounds in (
+                ('ani_ci_low', matrix.ci_low),
+                ('ani_ci_high', matrix.ci_high),
+            ):
+                buf.write(f'# {label}\n')
+                writer.writerow([''] + matrix.names)
+                for name, row in zip(matrix.names, bounds):
+                    writer.writerow([name] + [f'{value:.6g}' for value in row])
+        yield buf.getvalue()
 
     @render.download_button(filename='query_reordered.fasta')
     def dl_fasta():

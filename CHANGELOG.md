@@ -37,6 +37,44 @@ and this project adheres to
   - Docs: a "Similarity & Clustering" metric-selection guide, a
     "Clustering & Trees" tutorial notebook, and API reference pages.
 
+### Added — app
+
+- Trees & clustering (self-alignment mode): upload a newick / IQ-TREE
+  `.treefile` to fix the contig order and draw the tree left of the matrix
+  (tip/sequence-name mismatches error with both directions listed), or
+  compute a hierarchical clustering tree from sourmash similarity
+  (Jaccard / angular / ANI; user-set k, scaled, abundance) — the tree
+  overrides the contig-order and auto-flip options while active. Cluster
+  assignment by similarity cutoff (with an optional dashed cutoff line
+  through the dendrogram) or combined ANI + containment thresholds with a
+  reciprocal-coverage toggle; a Clusters tab whose rows highlight their
+  cluster blocks in the plot (non-members dim); bold cluster outlines; a
+  similarity Heatmap tab with a selectable palette; and CSV downloads of
+  the matrix and assignments. sourmash + scipy stay out of the first-load
+  bundle — under Pyodide they micropip-install (~25 MB, one-time) when
+  clustering is first enabled; natively install `rusty-dot[cluster]`.
+- Clustering refinements: an **Apply changes** button gates every Trees &
+  clustering setting (nothing recomputes or redraws until clicked); a
+  **Matrix** tab shows the pairwise matrix with row/column names, a
+  metric explanation, ANI 95% CIs per cell, asymmetric containment and
+  alignment-coverage views, and the matrix CSV download (moved from the
+  Clusters tab); the Heatmap tab gained in-cell values and SVG/PNG
+  downloads; a **coverage source** option lets the identity+coverage
+  mode use alignment block coverage from the current run (SNP-robust)
+  instead of sourmash containment.
+- Heatmap figure polish: square cells, sequence names placed between the
+  tree and the heatmap (long-name safe, no tree-tip overlap), cluster
+  outlines now white, dashed and heavier; the Heatmap tab gained the same
+  navigation controls as the main plot (scroll to pan, Shift+scroll
+  sideways, Cmd/Ctrl+scroll to zoom, drag to zoom to a region,
+  double-click or Esc to reset; the figure opens fitted to the pane).
+  The Apply-changes button moved to the bottom of the Trees & clustering
+  section; the heatmap and pairwise-matrix downloads live in the sidebar
+  Downloads section; the Matrix tab's cells are coloured with the
+  selected heatmap palette. Dot-plot tree gutter widened (floored
+  at 18% of the grid width) and the figure-level 'Position' label moved
+  clear of the dendrogram.
+
 - `SequenceIndex.approx_bytes()` (and `CrossIndex.approx_bytes()`): exact
   per-component heap accounting for the k-mer index (sequence bytes, CSR
   tables, pair cache), plus `scripts/mem_profile_index.py` to measure peak

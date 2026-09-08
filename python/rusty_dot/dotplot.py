@@ -671,7 +671,7 @@ class DotPlotter:
         highlight_regions: Optional[list[dict]] = None,
         embed_sequences: bool = False,
         tree: Optional['Tree'] = None,
-        tree_width: float = 1.2,
+        tree_width: float = 1.6,
         tree_cutoff: Optional[float] = None,
         tree_scalebar: bool = True,
         cluster_borders: Optional['ClusterResult'] = None,
@@ -880,8 +880,10 @@ class DotPlotter:
             name labels move onto the tree tips so they never obscure it.
             Requires at least 2 rows (grid layouts only).
         tree_width : float, optional
-            Width of the tree gutter in inches.  Increase it when long
-            sequence names crowd the dendrogram.  Default is ``1.2``.
+            Width of the tree gutter in inches (floored at 18% of the
+            panel-grid width so wide grids do not squash the dendrogram).
+            Increase it when long sequence names crowd the tree.
+            Default is ``1.6``.
         tree_cutoff : float, optional
             Draw a dashed clustering-cutoff line through the tree at this
             distance from the tips (for linkage trees, ``1 - similarity
@@ -1543,7 +1545,8 @@ class DotPlotter:
         flush_kw : dict
             ``wspace``/``hspace`` overrides (from *hide_internal_axes*).
         tree_width : float
-            Tree gutter width in inches.
+            Tree gutter width in inches; floored at 18% of the panel-grid
+            width so wide grids do not squash the dendrogram.
 
         Returns
         -------
@@ -1553,15 +1556,20 @@ class DotPlotter:
         """
         nrows = len(row_heights)
         ncols = len(col_widths)
-        fig = plt.figure(figsize=(fig_w + tree_width, fig_h))
+        tree_width = max(tree_width, 0.18 * fig_w)
+        # A slim leading margin column keeps the figure-level y label
+        # ('Position (unit)', drawn by fig.supylabel at x~0.02) off the
+        # dendrogram; nothing is drawn in it.
+        margin = 0.35
+        fig = plt.figure(figsize=(fig_w + tree_width + margin, fig_h))
         gs = fig.add_gridspec(
             nrows,
-            ncols + 1,
-            width_ratios=[tree_width, *col_widths],
+            ncols + 2,
+            width_ratios=[margin, tree_width, *col_widths],
             height_ratios=row_heights,
             **flush_kw,
         )
-        tree_ax = fig.add_subplot(gs[:, 0])
+        tree_ax = fig.add_subplot(gs[:, 1])
         # Keep the empty gutter invisible to layout passes (tight_layout
         # runs before the tree is drawn into it).
         tree_ax.set_xticks([])
@@ -1569,7 +1577,7 @@ class DotPlotter:
         for spine in tree_ax.spines.values():
             spine.set_visible(False)
         axes = [
-            [fig.add_subplot(gs[row, col + 1]) for col in range(ncols)]
+            [fig.add_subplot(gs[row, col + 2]) for col in range(ncols)]
             for row in range(nrows)
         ]
         return fig, axes, tree_ax

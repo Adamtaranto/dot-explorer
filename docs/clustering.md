@@ -111,9 +111,18 @@ containment is roughly `coverage × ANI^k`. The 80/80 rule with sketch
 containment therefore groups sequences that share long (near-)exact
 stretches — structural variants, redundant haplotigs, nested elements.
 For SNP-diverged families either lower the coverage cutoff toward
-`0.8 × ANI^k`, or cluster on a plain similarity cutoff instead; for a
-strict alignment-based 80/80 (CheckV-style ANI + aligned fraction),
-compute ANI outside rusty-dot from real alignments.
+`0.8 × ANI^k`, cluster on a plain similarity cutoff instead, or — in
+the web app — switch the **coverage source** to *alignment block
+coverage*: the fraction of each contig covered by the union of its
+alignment blocks from the current run (minimap2, nucmer, the k-mer
+engine, or an imported PAF). Block coverage tolerates SNPs, so
+`ANI ≥ 0.8 AND alignment coverage ≥ 0.8` behaves like the CheckV-style
+ANI + aligned-fraction rule.
+
+The app's **Matrix** tab shows any of these matrices with row/column
+names (ANI cells include their 95% CIs) and exports them as CSV; the
+containment and alignment-coverage views are asymmetric — each value is
+the fraction of the *row* contig accounted for by the *column* contig.
 
 Note that connected components chain: A links B, B links C ⇒ {A, B, C}
 share a cluster even if A and C do not pass the thresholds directly.

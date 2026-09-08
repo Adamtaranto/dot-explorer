@@ -1335,6 +1335,49 @@
     publishBands();
   }
 
+  /* Cluster highlighting driven by the embedding app's cluster table
+   * ('rd-highlight-clusters' messages).  payload.clusters records each
+   * cluster's contiguous row/col index runs at plot time; panels outside
+   * every selected cluster's blocks are dimmed and the matching
+   * 'rd-cluster-border-<name>' outlines get the active style. */
+  function applyClusterHighlights(names) {
+    var clusters = payload.clusters || {};
+    var selected = (Array.isArray(names) ? names : []).filter(function (n) {
+      return Object.prototype.hasOwnProperty.call(clusters, n);
+    });
+
+    function inRuns(runs, i) {
+      return (
+        Array.isArray(runs) &&
+        runs.some(function (r) {
+          return Array.isArray(r) && i >= r[0] && i <= r[1];
+        })
+      );
+    }
+
+    svg.querySelectorAll('g[id^="rd-panel-"]').forEach(function (el) {
+      var m = el.id.match(/^rd-panel-(\d+)-(\d+)$/);
+      if (!m) return;
+      var row = Number(m[1]);
+      var col = Number(m[2]);
+      var keep =
+        !selected.length ||
+        selected.some(function (n) {
+          var block = clusters[n];
+          return block && inRuns(block.rows, row) && inRuns(block.cols, col);
+        });
+      el.style.opacity = keep ? '' : '0.25';
+    });
+    Object.keys(clusters).forEach(function (n) {
+      var active = selected.indexOf(n) !== -1;
+      svg
+        .querySelectorAll('[id="rd-cluster-border-' + n + '"]')
+        .forEach(function (el) {
+          el.classList.toggle('rd-cluster-active', active);
+        });
+    });
+  }
+
   // A selection arriving while the report's tab pane is hidden cannot be
   // drawn (see panelVisible); redraw it when the pane is shown again.
   // IntersectionObserver is the one signal that reliably reports the
@@ -1504,6 +1547,10 @@
     }
     if (msg.type === 'rd-highlight-features') {
       applySelectionHighlights(msg.features);
+      return;
+    }
+    if (msg.type === 'rd-highlight-clusters') {
+      applyClusterHighlights(msg.clusters);
       return;
     }
     if (msg.type === 'rd-fullscreen') {

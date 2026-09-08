@@ -25,8 +25,8 @@ def plot_similarity_heatmap(
     tree: 'Tree | None' = None,
     order: Sequence[str] | None = None,
     clusters: 'ClusterResult | None' = None,
-    cluster_border_color: str = 'black',
-    cluster_border_lw: float = 2.0,
+    cluster_border_color: str = 'white',
+    cluster_border_lw: float = 3.0,
     cmap: str = 'viridis',
     colorbar: bool = True,
     cutoff: float | None = None,
@@ -51,11 +51,11 @@ def plot_similarity_heatmap(
     order : sequence of str, optional
         Explicit row/column order; mutually exclusive with *tree*.
     clusters : ClusterResult, optional
-        Draw a bold outline around each cluster's block of cells. A
+        Draw a dashed outline around each cluster's block of cells. A
         cluster whose members are not contiguous in the display order is
         outlined per contiguous run (with a log warning).
     cluster_border_color : str
-        Outline colour.
+        Outline colour (default white — readable on any colormap).
     cluster_border_lw : float
         Outline line width.
     cmap : str
@@ -70,11 +70,13 @@ def plot_similarity_heatmap(
     tree_width : float
         Width of the tree gutter in inches.
     figsize : tuple of float
-        Size of the heatmap portion in inches (tree/colorbar gutters are
-        added on top of this).
+        First element: side length of the (square) heatmap in inches;
+        the tree gutter, name labels and colorbar are added around it.
+        The second element is ignored (kept for API compatibility).
     annotate : bool
         Write the similarity value in each cell (readable for small
-        matrices only).
+        matrices only). For ``metric='ani'`` matrices with confidence
+        bounds, each off-diagonal cell also shows its 95% CI.
     title : str, optional
         Figure title.
     output_path : str, optional
@@ -116,51 +118,80 @@ def plot_similarity_heatmap(
         display = sim
 
     n = len(display.names)
-    hm_w, hm_h = figsize
-    widths = [hm_w]
-    if tree is not None:
-        widths.insert(0, tree_width)
-    if colorbar:
-        widths.append(0.25)
-    fig_w = sum(widths) + 0.4 * (len(widths) - 1)
-    fig = plt.figure(figsize=(fig_w, hm_h))
-    gs = fig.add_gridspec(1, len(widths), width_ratios=widths, wspace=0.15)
+    side = float(figsize[0])  # square heatmap: this is the side length
+    longest = max(len(name) for name in display.names)
+    # Room for the tick labels: the sequence names sit between the tree and
+    # the heatmap (y) and below it (x), so both allowances scale with the
+    # longest name rather than assuming short labels.
+    name_in = min(3.0, max(0.35, longest * 0.085))
 
-    col = 0
+    # Figure geometry: a square heatmap box with the tree gutter, name
+    # labels and colorbar hung off it as inset axes.  Inset axes are
+    # positioned in the heatmap's own axes coordinates, so they follow
+    # its box even when the renderer resizes the figure (Shiny's plot
+    # output stretches figures to the container) and aspect='equal'
+    # shrinks the box — rows and tree tips can never drift apart.
+    left_in = (tree_width + name_in + 0.15) if tree is not None else name_in + 0.4
+    right_in = 0.95 if colorbar else 0.2
+    bottom_in = name_in + 0.4
+    top_in = 0.5 if title else 0.2
+    fig_w = side + left_in + right_in
+    fig_h = side + bottom_in + top_in
+    fig = plt.figure(figsize=(fig_w, fig_h))
+    # A one-cell gridspec rather than fig.add_axes: renderers that walk
+    # subplot specs (e.g. Shiny's plot output) require axes to have one.
+    gs = fig.add_gridspec(
+        1,
+        1,
+        left=left_in / fig_w,
+        right=(left_in + side) / fig_w,
+        bottom=bottom_in / fig_h,
+        top=(bottom_in + side) / fig_h,
+    )
+    ax = fig.add_subplot(gs[0, 0])
     tree_ax = None
     if tree is not None:
-        tree_ax = fig.add_subplot(gs[0, col])
-        col += 1
-    ax = fig.add_subplot(gs[0, col])
-    col += 1
-    cax = fig.add_subplot(gs[0, col]) if colorbar else None
+        # Left of the name gutter, same height as the heatmap box.
+        tree_ax = ax.inset_axes(
+            (-(tree_width + name_in) / side, 0.0, tree_width / side, 1.0)
+        )
+    cax = ax.inset_axes((1.03, 0.0, 0.25 / side, 1.0)) if colorbar else None
 
     image = ax.imshow(
         display.values,
         cmap=cmap,
         vmin=0.0,
         vmax=1.0,
-        aspect='auto',
+        aspect='equal',
         interpolation='nearest',
     )
     image.set_gid('rd-heatmap')
     ax.set_xticks(range(n), display.names, rotation=90, fontsize='small')
     ax.set_yticks(range(n), display.names, fontsize='small')
-    if tree is not None:
-        # The tree carries the row identity; avoid doubled labels.
-        ax.set_yticks([])
 
     if annotate:
+        show_ci = display.metric == 'ani' and display.ci_low is not None
         for i in range(n):
             for j in range(n):
                 value = display.values[i, j]
+                text = f'{value:.2f}'
+                # Collapsed bounds mean no CI was available for the pair
+                # (size-inaccurate sketch) — show just the point estimate.
+                if (
+                    show_ci
+                    and i != j
+                    and not (display.ci_low[i, j] == value == display.ci_high[i, j])
+                ):
+                    text += (
+                        f'\n({display.ci_low[i, j]:.2f}–{display.ci_high[i, j]:.2f})'
+                    )
                 ax.text(
                     j,
                     i,
-                    f'{value:.2f}',
+                    text,
                     ha='center',
                     va='center',
-                    fontsize='x-small',
+                    fontsize='xx-small' if show_ci else 'x-small',
                     color='white' if value < 0.5 else 'black',
                 )
 
@@ -175,13 +206,15 @@ def plot_similarity_heatmap(
 
     if tree_ax is not None and tree is not None:
         tree_ax.set_ylim(ax.get_ylim())  # imshow: (n-0.5, -0.5), rows aligned
+        # Names are the heatmap's y tick labels (they occupy the spacer
+        # column between tree and cells), so the tree draws tips only.
         draw_tree(
             tree_ax,
             tree,
             {name: i for i, name in enumerate(display.names)},
             cutoff=cutoff,
             scalebar=tree_scalebar,
-            leaf_labels=True,
+            leaf_labels=False,
         )
 
     if cax is not None:
@@ -243,6 +276,9 @@ def _outline_clusters(
                 fill=False,
                 edgecolor=color,
                 linewidth=lw,
+                # Dashed: reads as an annotation rather than a data cell
+                # boundary, whatever the colormap underneath.
+                linestyle=(0, (4, 2)),
                 zorder=5,
             )
             rect.set_gid(f'rd-hm-cluster-{cluster_name}')

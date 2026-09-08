@@ -886,11 +886,15 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
 
 .rd-heatmap-wrap {
   overflow: auto;
-  max-height: 72vh;
+  height: 68vh;
 }
 
 .rd-heatmap-wrap img {
+  /* Fit the full figure in the pane initially; heatmap-zoom.js lifts
+     these caps while zoomed. */
   max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
 }
 

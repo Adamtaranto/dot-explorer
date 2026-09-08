@@ -37,8 +37,10 @@
     if (newZoom === 1) {
       img.style.width = '';
       img.style.maxWidth = '';
+      img.style.maxHeight = '';
     } else {
       img.style.maxWidth = 'none';
+      img.style.maxHeight = 'none';
       img.style.width = base * newZoom + 'px';
     }
     img.dataset.rdZoom = String(newZoom);
@@ -50,6 +52,7 @@
   function reset(wrap, img) {
     img.style.width = '';
     img.style.maxWidth = '';
+    img.style.maxHeight = '';
     img.dataset.rdZoom = '1';
     wrap.scrollLeft = 0;
     wrap.scrollTop = 0;

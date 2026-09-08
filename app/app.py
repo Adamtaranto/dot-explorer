@@ -2967,11 +2967,6 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                                 },
                                 inline=True,
                             ),
-                            ui.download_button(
-                                'dl_matrix_csv',
-                                'Matrix (CSV)',
-                                class_='btn-sm',
-                            ),
                             class_='rd-cluster-actions',
                         ),
                         ui.output_ui('matrix_table'),
@@ -2995,19 +2990,6 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             ui.tags.b('double-click / Esc'),
                             ' = reset',
                             class_='rd-nav-hint',
-                        ),
-                        ui.div(
-                            ui.download_button(
-                                'dl_heatmap_svg',
-                                'Heatmap (SVG)',
-                                class_='btn-sm',
-                            ),
-                            ui.download_button(
-                                'dl_heatmap_png',
-                                'Heatmap (PNG)',
-                                class_='btn-sm',
-                            ),
-                            class_='rd-cluster-actions',
                         ),
                     ),
                     id='overview_tabs',
@@ -3662,6 +3644,14 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     class_='rd-dl-note',
                 ),
             ]
+        if sim_matrix() is not None:
+            # Clustering outputs: the matrix CSV exports whichever view the
+            # Matrix tab currently shows (similarity/containment/coverage).
+            parts += [
+                ui.download_button('dl_heatmap_svg', 'Heatmap (SVG)'),
+                ui.download_button('dl_heatmap_png', 'Heatmap (PNG)'),
+                ui.download_button('dl_matrix_csv', 'Pairwise matrix (CSV)'),
+            ]
         return ui.div(*parts)
 
     @render.plot
@@ -3905,6 +3895,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 return f'{value:.4f} ({low:.4f}–{high:.4f})'
             return f'{value:.4f}'
 
+        # Cells carry the heatmap palette, so the table and Heatmap tab
+        # read the same way; text flips light/dark on cell luminance.
+
+        colormap = matplotlib.colormaps[settings.get('cmap', 'viridis')]
+
+        def cell_style(value: float) -> str:
+            r, g, b, _a = colormap(min(1.0, max(0.0, float(value))))
+            luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            fg = '#000000' if luminance > 0.5 else '#ffffff'
+            return (
+                f'background-color: rgb({int(r * 255)}, {int(g * 255)}, '
+                f'{int(b * 255)}); color: {fg};'
+            )
+
         n = len(matrix.names)
         header = ui.tags.tr(
             ui.tags.th(''), *[ui.tags.th(name) for name in matrix.names]
@@ -3912,7 +3916,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         body = [
             ui.tags.tr(
                 ui.tags.th(matrix.names[i]),
-                *[ui.tags.td(cell(i, j)) for j in range(n)],
+                *[
+                    ui.tags.td(cell(i, j), style=cell_style(matrix.values[i, j]))
+                    for j in range(n)
+                ],
             )
             for i in range(n)
         ]

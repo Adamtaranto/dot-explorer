@@ -67,8 +67,11 @@ and this project adheres to
   outlines now white, dashed and heavier; the Heatmap tab gained the same
   navigation controls as the main plot (scroll to pan, Shift+scroll
   sideways, Cmd/Ctrl+scroll to zoom, drag to zoom to a region,
-  double-click or Esc to reset). The Apply-changes button moved to the
-  bottom of the Trees & clustering section. Dot-plot tree gutter widened (floored
+  double-click or Esc to reset; the figure opens fitted to the pane).
+  The Apply-changes button moved to the bottom of the Trees & clustering
+  section; the heatmap and pairwise-matrix downloads live in the sidebar
+  Downloads section; the Matrix tab's cells are coloured with the
+  selected heatmap palette. Dot-plot tree gutter widened (floored
   at 18% of the grid width) and the figure-level 'Position' label moved
   clear of the dendrogram.
 

@@ -30,6 +30,8 @@ from rusty_dot.paf_io import CrossIndex, PafAlignment
 if TYPE_CHECKING:
     from rusty_dot.annotation import GffAnnotation, GffFeature
     from rusty_dot.paf_io import CrossIndex
+    from rusty_dot.similarity import ClusterResult
+    from rusty_dot.tree import Tree
 
 _log = logging.getLogger(__name__)
 
@@ -668,6 +670,13 @@ class DotPlotter:
         identity_colorbar: bool = False,
         highlight_regions: Optional[list[dict]] = None,
         embed_sequences: bool = False,
+        tree: Optional['Tree'] = None,
+        tree_width: float = 1.2,
+        tree_cutoff: Optional[float] = None,
+        tree_scalebar: bool = True,
+        cluster_borders: Optional['ClusterResult'] = None,
+        cluster_border_color: str = 'black',
+        cluster_border_lw: float = 2.5,
     ) -> matplotlib.figure.Figure:
         """Plot an all-vs-all dotplot grid.
 
@@ -861,6 +870,36 @@ class DotPlotter:
             stores sequences and at most ~2 Mb of total match residues).
             Default is ``False`` — coordinates only, keeping reports small
             even with many alignments.
+        tree : Tree, optional
+            A :class:`rusty_dot.Tree` (user newick or
+            :meth:`~rusty_dot.Tree.from_linkage`) drawn left of the rows.
+            The row order is fixed to the tree's leaf order (and the
+            column order too when the plot is a self-comparison), so
+            *contig_order* and *auto_reverse* cannot be combined with a
+            tree.  Tip labels must match the query sequence names; row
+            name labels move onto the tree tips so they never obscure it.
+            Requires at least 2 rows (grid layouts only).
+        tree_width : float, optional
+            Width of the tree gutter in inches.  Increase it when long
+            sequence names crowd the dendrogram.  Default is ``1.2``.
+        tree_cutoff : float, optional
+            Draw a dashed clustering-cutoff line through the tree at this
+            distance from the tips (for linkage trees, ``1 - similarity
+            cutoff``).  Default is ``None`` (no line).
+        tree_scalebar : bool, optional
+            Show a branch-length scale bar under the tree.  Default is
+            ``True``.
+        cluster_borders : ClusterResult, optional
+            Cluster assignments (:func:`rusty_dot.assign_clusters` or
+            :func:`rusty_dot.assign_clusters_dual`); each cluster's block
+            of panels gets a bold border.  Only meaningful for
+            self-comparisons, where rows and columns share an order; a
+            cluster that is not contiguous in the display order is
+            outlined per contiguous block.
+        cluster_border_color : str, optional
+            Cluster border colour.  Default is ``'black'``.
+        cluster_border_lw : float, optional
+            Cluster border line width.  Default is ``2.5``.
 
         Returns
         -------
@@ -875,6 +914,17 @@ class DotPlotter:
             If *query_group* / *target_group* are provided but *index* is
             not a ``CrossIndex``.
         """
+        if tree is not None:
+            # A tree fixes the row order outright; the reordering and
+            # reorientation strategies would silently fight it.
+            if contig_order is not None:
+                raise ValueError('tree fixes the contig order; remove contig_order')
+            if auto_reverse:
+                raise ValueError(
+                    'auto_reverse reorients contigs independently of the '
+                    'tree; remove auto_reverse when passing a tree'
+                )
+
         # Apply the requested contig-ordering strategy (no-op when None).
         query_names, target_names, auto_reverse_set = self._apply_contig_order(
             contig_order, query_group, target_group, query_names, target_names
@@ -897,6 +947,23 @@ class DotPlotter:
             query_names = sorted(all_names)
         if target_names is None:
             target_names = sorted(all_names)
+
+        if tree is not None:
+            # Fix the row order to the tree's leaf order.  Tip labels use
+            # display names; map back to any group-prefixed internal names.
+            if len(query_names) < 2:
+                raise ValueError(
+                    'a tree needs at least 2 query sequences (grid layouts '
+                    'only, not the single-pair view)'
+                )
+            display_to_query = {self._strip_group_prefix(n): n for n in query_names}
+            tree.validate_labels(list(display_to_query))
+            query_names = [display_to_query[n] for n in tree.leaf_names()]
+            display_to_target = {self._strip_group_prefix(n): n for n in target_names}
+            if set(display_to_target) == set(display_to_query):
+                # Self-comparison: keep the matrix symmetric by applying
+                # the same order to the columns.
+                target_names = [display_to_target[n] for n in tree.leaf_names()]
 
         # Use the per-call override if available, otherwise fall back to the
         # paf_alignment set at construction time.
@@ -962,6 +1029,7 @@ class DotPlotter:
 
         y_track_ax = None
         x_track_ax = None
+        tree_ax = None
         if tracks_on:
             # Single-pair layout with side annotation tracks: a 2×2 gridspec
             # (mirroring plot_single) — y-track left of the main panel,
@@ -1001,27 +1069,42 @@ class DotPlotter:
             ]
             fig_w = sum(col_widths)
             fig_h = sum(row_heights)
-            fig, axes = plt.subplots(
-                nrows,
-                ncols,
-                figsize=(fig_w, fig_h),
-                squeeze=False,
-                gridspec_kw={
-                    'width_ratios': col_widths,
-                    'height_ratios': row_heights,
-                    **flush_kw,
-                },
-            )
+            if tree is not None:
+                fig, axes, tree_ax = self._make_tree_grid(
+                    fig_w, fig_h, col_widths, row_heights, flush_kw, tree_width
+                )
+            else:
+                fig, axes = plt.subplots(
+                    nrows,
+                    ncols,
+                    figsize=(fig_w, fig_h),
+                    squeeze=False,
+                    gridspec_kw={
+                        'width_ratios': col_widths,
+                        'height_ratios': row_heights,
+                        **flush_kw,
+                    },
+                )
         else:
             fig_w = figsize_per_panel * ncols
             fig_h = figsize_per_panel * nrows
-            fig, axes = plt.subplots(
-                nrows,
-                ncols,
-                figsize=(fig_w, fig_h),
-                squeeze=False,
-                gridspec_kw=flush_kw if hide_internal_axes else None,
-            )
+            if tree is not None:
+                fig, axes, tree_ax = self._make_tree_grid(
+                    fig_w,
+                    fig_h,
+                    [figsize_per_panel] * ncols,
+                    [figsize_per_panel] * nrows,
+                    flush_kw,
+                    tree_width,
+                )
+            else:
+                fig, axes = plt.subplots(
+                    nrows,
+                    ncols,
+                    figsize=(fig_w, fig_h),
+                    squeeze=False,
+                    gridspec_kw=flush_kw if hide_internal_axes else None,
+                )
 
         for row_idx, q_name in enumerate(query_names):
             for col_idx, t_name in enumerate(target_names):
@@ -1037,8 +1120,10 @@ class DotPlotter:
                     min_length=min_length,
                     # Sequence name labels: y-label on leftmost column only;
                     # column (x) labels are shown as titles on the top row.
+                    # With a tree the names live on the tree tips instead,
+                    # so panel row labels would double up and crowd it.
                     show_xlabel=False,
-                    show_ylabel=(col_idx == 0),
+                    show_ylabel=(col_idx == 0 and tree is None),
                     color_by_identity=color_by_identity,
                     identity_palette=identity_palette,
                     paf_alignment_override=effective_paf,
@@ -1379,10 +1464,11 @@ class DotPlotter:
             )
         else:
             plt.tight_layout()
-        if nrows > 1:
+        if nrows > 1 and tree is None:
             # Panel geometry is only final once the margins are set, so the
             # row labels are fitted to their rows here rather than in the
-            # drawing loop above.
+            # drawing loop above.  (With a tree there are no row labels —
+            # the names sit on the tree tips.)
             self._fit_row_labels(fig, axes, nrows)
         if color_by_identity and identity_colorbar:
             # After the layout pass: fig.colorbar steals its own space from
@@ -1401,6 +1487,28 @@ class DotPlotter:
             # the figure.  Must run after the colorbar has stolen its width.
             pos = axes[0][0].get_position()
             fig._suptitle.set_x((pos.x0 + pos.x1) / 2)
+        # Tree and cluster borders are drawn from the panels' final figure
+        # positions, so they must come after every layout adjustment above
+        # (nothing may call tight_layout past this point).
+        if tree is not None and tree_ax is not None:
+            self._draw_axis_tree(
+                tree_ax,
+                tree,
+                axes,
+                query_names,
+                cutoff=tree_cutoff,
+                scalebar=tree_scalebar,
+            )
+        if cluster_borders is not None:
+            self._draw_cluster_borders(
+                fig,
+                axes,
+                query_names,
+                target_names,
+                cluster_borders,
+                color=cluster_border_color,
+                lw=cluster_border_lw,
+            )
         if output_path is not None:
             self._save_figure(
                 fig,
@@ -1411,6 +1519,193 @@ class DotPlotter:
                 embed_sequences=embed_sequences,
             )
         return fig
+
+    def _make_tree_grid(
+        self,
+        fig_w: float,
+        fig_h: float,
+        col_widths: list[float],
+        row_heights: list[float],
+        flush_kw: dict[str, float],
+        tree_width: float,
+    ) -> tuple[matplotlib.figure.Figure, list[list], matplotlib.axes.Axes]:
+        """Build the panel grid with an extra tree-gutter column at the left.
+
+        Mirrors the plain ``plt.subplots`` grids in :meth:`plot`, adding a
+        full-height axis spanning all rows for the dendrogram.
+
+        Parameters
+        ----------
+        fig_w, fig_h : float
+            Panel-grid size in inches (the tree gutter is added on top).
+        col_widths, row_heights : list of float
+            Per-column/row size ratios (uniform or sequence-proportional).
+        flush_kw : dict
+            ``wspace``/``hspace`` overrides (from *hide_internal_axes*).
+        tree_width : float
+            Tree gutter width in inches.
+
+        Returns
+        -------
+        tuple
+            ``(figure, axes_rows, tree_ax)`` with *axes_rows* indexed as
+            ``axes[row][col]`` like the ``plt.subplots`` output.
+        """
+        nrows = len(row_heights)
+        ncols = len(col_widths)
+        fig = plt.figure(figsize=(fig_w + tree_width, fig_h))
+        gs = fig.add_gridspec(
+            nrows,
+            ncols + 1,
+            width_ratios=[tree_width, *col_widths],
+            height_ratios=row_heights,
+            **flush_kw,
+        )
+        tree_ax = fig.add_subplot(gs[:, 0])
+        # Keep the empty gutter invisible to layout passes (tight_layout
+        # runs before the tree is drawn into it).
+        tree_ax.set_xticks([])
+        tree_ax.set_yticks([])
+        for spine in tree_ax.spines.values():
+            spine.set_visible(False)
+        axes = [
+            [fig.add_subplot(gs[row, col + 1]) for col in range(ncols)]
+            for row in range(nrows)
+        ]
+        return fig, axes, tree_ax
+
+    def _draw_axis_tree(
+        self,
+        tree_ax,
+        tree: 'Tree',
+        axes: list[list],
+        query_names: list[str],
+        *,
+        cutoff: Optional[float],
+        scalebar: bool,
+    ) -> None:
+        """Render *tree* into the gutter axis, tips aligned to panel rows.
+
+        Leaf y positions come from each row's final figure-space centre,
+        so alignment holds for any row heights and inter-panel spacing;
+        callers must not adjust the layout afterwards.
+
+        Parameters
+        ----------
+        tree_ax : matplotlib.axes.Axes
+            The gutter axis from :meth:`_make_tree_grid`.
+        tree : Tree
+            Tree whose leaf order matches *query_names*.
+        axes : list of list
+            The panel grid, indexed ``axes[row][col]``.
+        query_names : list of str
+            Row sequence names (possibly group-prefixed).
+        cutoff : float or None
+            Distance-from-tips for the dashed cutoff line.
+        scalebar : bool
+            Draw the branch-length scale bar.
+        """
+        from rusty_dot.tree import draw_tree
+
+        # Map the gutter's data space onto figure fractions so panel
+        # centres can be used as leaf positions directly.
+        pos = tree_ax.get_position()
+        tree_ax.set_ylim(pos.y0, pos.y1)
+        leaf_pos = {}
+        for row_idx, name in enumerate(query_names):
+            panel = axes[row_idx][0].get_position()
+            leaf_pos[self._strip_group_prefix(name)] = (panel.y0 + panel.y1) / 2
+        draw_tree(
+            tree_ax,
+            tree,
+            leaf_pos,
+            cutoff=cutoff,
+            scalebar=scalebar,
+            leaf_labels=True,
+        )
+
+    def _draw_cluster_borders(
+        self,
+        fig,
+        axes: list[list],
+        query_names: list[str],
+        target_names: list[str],
+        clusters: 'ClusterResult',
+        *,
+        color: str,
+        lw: float,
+    ) -> None:
+        """Outline each cluster's block of panels with a bold border.
+
+        Draws figure-coordinate rectangles spanning the panels whose row
+        and column contigs belong to the same cluster.  Requires a
+        self-comparison (identical row and column order); otherwise a
+        warning is logged and nothing is drawn.  Non-contiguous clusters
+        are outlined per contiguous run.
+
+        Parameters
+        ----------
+        fig : matplotlib.figure.Figure
+            The figure to draw into.
+        axes : list of list
+            Panel grid, indexed ``axes[row][col]``.
+        query_names, target_names : list of str
+            Row and column sequence names (possibly group-prefixed).
+        clusters : ClusterResult
+            Cluster assignments keyed by display name.
+        color : str
+            Border colour.
+        lw : float
+            Border line width.
+        """
+        from rusty_dot.heatmap import _contiguous_runs
+
+        q_display = [self._strip_group_prefix(n) for n in query_names]
+        t_display = [self._strip_group_prefix(n) for n in target_names]
+        if q_display != t_display:
+            _log.warning(
+                'cluster borders need a self-comparison (identical row and '
+                'column order); skipping'
+            )
+            return
+        index_of = {name: i for i, name in enumerate(q_display)}
+        capture: dict[str, dict[str, list[list[int]]]] = {}
+        for cluster_name, members in clusters.clusters.items():
+            rows = sorted(index_of[m] for m in members if m in index_of)
+            if not rows:
+                continue
+            runs = _contiguous_runs(rows)
+            if len(runs) > 1:
+                _log.warning(
+                    'cluster %s is not contiguous in the display order; '
+                    'outlining %d separate blocks',
+                    cluster_name,
+                    len(runs),
+                )
+            for start, stop in runs:
+                top = axes[start][0].get_position().y1
+                bottom = axes[stop][0].get_position().y0
+                left = axes[0][start].get_position().x0
+                right = axes[0][stop].get_position().x1
+                rect = mpatches.Rectangle(
+                    (left, bottom),
+                    right - left,
+                    top - bottom,
+                    transform=fig.transFigure,
+                    fill=False,
+                    edgecolor=color,
+                    linewidth=lw,
+                    zorder=20,
+                    clip_on=False,
+                )
+                rect.set_gid(f'rd-cluster-border-{cluster_name}')
+                fig.add_artist(rect)
+            capture[cluster_name] = {
+                'rows': [list(run) for run in runs],
+                'cols': [list(run) for run in runs],
+            }
+        if self._html_capture is not None and capture:
+            self._html_capture['clusters'] = capture
 
     def _draw_highlight_bands(
         self,

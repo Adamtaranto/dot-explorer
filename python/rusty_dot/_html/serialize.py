@@ -252,6 +252,15 @@ def build_panel_payload(
             axis: [_track_entry(axis, n, group, feat) for n, group, feat in entries]
             for axis, entries in tracks.items()
         }
+    # Cluster-border blocks (name -> {'rows': [[r0, r1], ...], 'cols': ...})
+    # recorded by DotPlotter._draw_cluster_borders; the report JS uses them
+    # to highlight/dim panels when clusters are selected in the app.
+    clusters = capture.get('clusters')
+    if clusters:
+        payload['clusters'] = {
+            name: {k: [list(run) for run in v] for k, v in block.items()}
+            for name, block in clusters.items()
+        }
     return payload
 
 

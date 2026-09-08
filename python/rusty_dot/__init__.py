@@ -38,6 +38,7 @@ except ImportError:  # pragma: no cover - wasm-only branch
     py_read_fasta = None  # type: ignore[assignment]
 from rusty_dot.annotation import GffAnnotation, GffFeature  # noqa: F401
 from rusty_dot.dotplot import DotPlotter  # noqa: F401
+from rusty_dot.heatmap import plot_similarity_heatmap  # noqa: F401
 from rusty_dot.paf_io import (  # noqa: F401
     CrossIndex,
     PafAlignment,
@@ -47,7 +48,18 @@ from rusty_dot.paf_io import (  # noqa: F401
     parse_paf_file,
     reverse_complement,
 )
+from rusty_dot.similarity import (  # noqa: F401
+    ClusterResult,
+    SimilarityMatrix,
+    SketchParams,
+    assign_clusters,
+    assign_clusters_dual,
+    compute_sketches,
+    linkage_from_similarity,
+    pairwise_similarity,
+)
 from rusty_dot.style import NATURE_RC, nature_style, use_nature_style  # noqa: F401
+from rusty_dot.tree import Tree, TreeNode, draw_tree  # noqa: F401
 
 __version__ = '0.1.0'
 __all__ = [
@@ -72,4 +84,16 @@ __all__ = [
     'NATURE_RC',
     'nature_style',
     'use_nature_style',
+    'Tree',
+    'TreeNode',
+    'draw_tree',
+    'SketchParams',
+    'SimilarityMatrix',
+    'ClusterResult',
+    'compute_sketches',
+    'pairwise_similarity',
+    'linkage_from_similarity',
+    'assign_clusters',
+    'assign_clusters_dual',
+    'plot_similarity_heatmap',
 ]

@@ -46,6 +46,14 @@ app = [
     "pyfaidx",
 ]
 
+# Similarity/clustering features: sourmash sketches + scipy linkage.
+# Floor, not pin: the browser app runs Pyodide's bundled sourmash 4.8.11,
+# so library code must stick to 4.8-era sourmash APIs.
+cluster = [
+    "sourmash>=4.8",
+    "scipy>=1.10",
+]
+
 docs = [
     "zensical>=0.0.57",
     "mkdocstrings-python>=2.0",

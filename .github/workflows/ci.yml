@@ -87,8 +87,10 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install maturin and dependencies
+        # sourmash + scipy cover the `cluster` extra (tests/test_similarity.py
+        # and friends importorskip them, so a failed install only skips).
         run: |
-          pip install maturin pytest pytest-cov matplotlib numpy shiny pyfaidx
+          pip install maturin pytest pytest-cov matplotlib numpy shiny pyfaidx sourmash scipy
       - name: Build and install rusty-dot
         run: |
           maturin build --release
@@ -126,8 +128,11 @@ jobs:
         # free-threaded wheel and fails to build from source.  The suite does
         # not need it (same 741 passed / 6 skipped either way).  pyfaidx is
         # pure Python, so it is safe on 3.14t (tests/test_app_seqs.py).
+        # sourmash ships abi-agnostic (py2.py3, CFFI) wheels and scipy has
+        # cp314t wheels, so the cluster extra runs here too; the similarity
+        # tests importorskip them if either install ever breaks.
         run: |
-          pip install maturin pytest pytest-cov matplotlib numpy pyfaidx
+          pip install maturin pytest pytest-cov matplotlib numpy pyfaidx sourmash scipy
       - name: Build and install rusty-dot
         # The wheel is tagged cp314-cp314t (python tag cp314, abi tag cp314t).
         run: |

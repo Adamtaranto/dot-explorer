@@ -53,6 +53,20 @@ and this project adheres to
   the matrix and assignments. sourmash + scipy stay out of the first-load
   bundle — under Pyodide they micropip-install (~25 MB, one-time) when
   clustering is first enabled; natively install `rusty-dot[cluster]`.
+- Clustering refinements: an **Apply changes** button gates every Trees &
+  clustering setting (nothing recomputes or redraws until clicked); a
+  **Matrix** tab shows the pairwise matrix with row/column names, a
+  metric explanation, ANI 95% CIs per cell, asymmetric containment and
+  alignment-coverage views, and the matrix CSV download (moved from the
+  Clusters tab); the Heatmap tab gained in-cell values and SVG/PNG
+  downloads; a **coverage source** option lets the identity+coverage
+  mode use alignment block coverage from the current run (SNP-robust)
+  instead of sourmash containment.
+- Heatmap figure polish: square cells, sequence names placed between the
+  tree and the heatmap (long-name safe, no tree-tip overlap), cluster
+  outlines now white and heavier. Dot-plot tree gutter widened (floored
+  at 18% of the grid width) and the figure-level 'Position' label moved
+  clear of the dendrogram.
 
 - `SequenceIndex.approx_bytes()` (and `CrossIndex.approx_bytes()`): exact
   per-component heap accounting for the k-mer index (sequence bytes, CSR

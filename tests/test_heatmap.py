@@ -61,7 +61,9 @@ class TestHeatmap:
     def test_basic_axes(self, sim):
         fig = plot_similarity_heatmap(sim)
         try:
-            assert len(fig.axes) == 2  # heatmap + colorbar
+            # Colorbar hangs off the heatmap box as an inset (child) axis.
+            assert len(fig.axes) == 1
+            assert len(fig.axes[0].child_axes) == 1
         finally:
             plt.close(fig)
 
@@ -75,7 +77,8 @@ class TestHeatmap:
     def test_tree_adds_axis_and_reorders(self, sim, tree):
         fig = plot_similarity_heatmap(sim, tree=tree)
         try:
-            assert len(fig.axes) == 3  # tree + heatmap + colorbar
+            # Tree + colorbar are inset (child) axes of the heatmap box.
+            assert len(fig.axes[0].child_axes) == 2
             svg = _svg_of(fig)
             assert 'rd-heatmap' in svg
             assert 'rd-tree' in svg
@@ -144,3 +147,49 @@ class TestHeatmapValidation:
     def test_html_output_rejected(self, sim, tmp_path):
         with pytest.raises(ValueError, match='HTML'):
             plot_similarity_heatmap(sim, output_path=str(tmp_path / 'x.html'))
+
+
+class TestHeatmapGeometry:
+    def test_axes_box_is_square(self, sim, tree):
+        fig = plot_similarity_heatmap(sim, tree=tree)
+        try:
+            hm_ax = next(
+                a
+                for a in fig.axes
+                if a.get_images()  # the imshow axis
+            )
+            pos = hm_ax.get_position()
+            w_in = pos.width * fig.get_figwidth()
+            h_in = pos.height * fig.get_figheight()
+            assert w_in == pytest.approx(h_in, rel=0.05)
+        finally:
+            plt.close(fig)
+
+    def test_names_shown_beside_tree(self, sim, tree):
+        # With a tree the names are the heatmap's y tick labels (in the
+        # spacer between tree and cells), not tree-axis text.
+        fig = plot_similarity_heatmap(sim, tree=tree)
+        try:
+            hm_ax = next(a for a in fig.axes if a.get_images())
+            labels = [t.get_text() for t in hm_ax.get_yticklabels()]
+            assert labels == tree.leaf_names()
+        finally:
+            plt.close(fig)
+
+    def test_ani_annotate_shows_ci(self):
+        names = ['A', 'B']
+        values = np.array([[1.0, 0.98], [0.98, 1.0]])
+        ci = np.array([[1.0, 0.96], [0.96, 1.0]])
+        ani = SimilarityMatrix(
+            names=names,
+            values=values,
+            metric='ani',
+            ci_low=ci,
+            ci_high=np.array([[1.0, 0.99], [0.99, 1.0]]),
+        )
+        fig = plot_similarity_heatmap(ani, annotate=True, colorbar=False)
+        try:
+            texts = [t.get_text() for t in fig.axes[0].texts]
+            assert any('0.96' in t and '0.99' in t for t in texts)
+        finally:
+            plt.close(fig)

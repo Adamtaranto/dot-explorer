@@ -863,3 +863,33 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
 .rd-cluster-table tr.rd-cluster-selected:hover {
   background: color-mix(in srgb, #d97706 28%, transparent);
 }
+
+.rd-matrix-blurb {
+  max-width: 70rem;
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color, #555);
+}
+
+.rd-matrix-scroll {
+  overflow-x: auto;
+}
+
+.rd-matrix-table th {
+  white-space: nowrap;
+}
+
+.rd-matrix-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-heatmap-wrap {
+  overflow: auto;
+  max-height: 72vh;
+}
+
+.rd-heatmap-wrap img {
+  max-width: 100%;
+  height: auto;
+}

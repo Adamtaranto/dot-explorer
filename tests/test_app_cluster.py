@@ -106,3 +106,76 @@ def test_cluster_deps_missing_reports_installed_state():
     # In the test env both are installed; the contract is the type/shape.
     assert isinstance(missing, list)
     assert all(m in ('sourmash', 'scipy') for m in missing)
+
+
+class TestMergeIntervals:
+    def test_overlapping_and_adjacent(self):
+        from core.cluster import merge_intervals
+
+        assert merge_intervals([(0, 10), (5, 15), (15, 20), (30, 40)]) == [
+            (0, 20),
+            (30, 40),
+        ]
+
+    def test_reversed_and_empty_intervals(self):
+        from core.cluster import merge_intervals
+
+        assert merge_intervals([(10, 0), (5, 5)]) == [(0, 10)]
+        assert merge_intervals([]) == []
+
+
+class TestAlignmentCoverageMatrix:
+    def _record(self, q, qs, qe, t, ts, te):
+        from rusty_dot import PafRecord
+
+        return PafRecord(
+            query_name=q,
+            query_len=100,
+            query_start=qs,
+            query_end=qe,
+            strand='+',
+            target_name=t,
+            target_len=100,
+            target_start=ts,
+            target_end=te,
+            residue_matches=qe - qs,
+            alignment_block_len=qe - qs,
+            mapping_quality=60,
+        )
+
+    def test_asymmetric_nested_fragment(self):
+        from core.cluster import alignment_coverage_matrix
+
+        # frag (100 bp) fully aligns into a 400 bp region of chrom.
+        records = [self._record('frag', 0, 100, 'chrom', 100, 200)]
+        sim = alignment_coverage_matrix(
+            records, ['frag', 'chrom'], {'frag': 100, 'chrom': 400}
+        )
+        assert sim.metric == 'aln_coverage'
+        assert sim[('frag', 'chrom')] == pytest.approx(1.0)
+        assert sim[('chrom', 'frag')] == pytest.approx(0.25)
+
+    def test_overlapping_blocks_not_double_counted(self):
+        from core.cluster import alignment_coverage_matrix
+
+        records = [
+            self._record('a', 0, 60, 'b', 0, 60),
+            self._record('a', 40, 100, 'b', 40, 100),
+        ]
+        sim = alignment_coverage_matrix(records, ['a', 'b'], {'a': 100, 'b': 200})
+        assert sim[('a', 'b')] == pytest.approx(1.0)
+        assert sim[('b', 'a')] == pytest.approx(0.5)
+
+    def test_missing_pair_and_normalize(self):
+        from core.cluster import alignment_coverage_matrix
+
+        records = [self._record('query:a', 0, 50, 'target:b', 0, 50)]
+        sim = alignment_coverage_matrix(
+            records,
+            ['a', 'b', 'c'],
+            {'a': 100, 'b': 100, 'c': 100},
+            normalize=lambda n: n.split(':', 1)[1] if ':' in n else n,
+        )
+        assert sim[('a', 'b')] == pytest.approx(0.5)
+        assert sim[('a', 'c')] == 0.0
+        assert sim[('c', 'a')] == 0.0

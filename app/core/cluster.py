@@ -9,9 +9,10 @@ scipy) are absent.
 from __future__ import annotations
 
 import importlib.util
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Callable, Iterable, Mapping
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
+    from rusty_dot.paf_io import PafRecord
     from rusty_dot.similarity import ClusterResult, SimilarityMatrix
 
     from .seqs import SequenceProvider
@@ -142,3 +143,91 @@ def tree_layout_order(
     if len(ordered) != len(plotted_set):
         return None
     return ordered
+
+
+def merge_intervals(intervals: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Union possibly-overlapping half-open ``(start, end)`` intervals.
+
+    Parameters
+    ----------
+    intervals : iterable of (int, int)
+        Interval endpoints; ``start > end`` pairs are swapped.
+
+    Returns
+    -------
+    list of (int, int)
+        Sorted, non-overlapping intervals covering the same positions.
+    """
+    fixed = sorted(
+        (min(s, e), max(s, e)) for s, e in intervals if min(s, e) != max(s, e)
+    )
+    merged: list[tuple[int, int]] = []
+    for start, end in fixed:
+        if merged and start <= merged[-1][1]:
+            if end > merged[-1][1]:
+                merged[-1] = (merged[-1][0], end)
+            continue
+        merged.append((start, end))
+    return merged
+
+
+def alignment_coverage_matrix(
+    records: Iterable['PafRecord'],
+    names: list[str],
+    lengths: Mapping[str, int],
+    *,
+    normalize: Callable[[str], str] | None = None,
+) -> 'SimilarityMatrix':
+    """Pairwise coverage from alignment records (an ANI-robust containment).
+
+    ``values[i, j]`` is the fraction of contig *i* covered by the union of
+    its alignment blocks against contig *j* — from whichever aligner
+    produced the current result (minimap2, nucmer, the k-mer engine, or an
+    imported PAF). Unlike sourmash containment, block coverage does not
+    collapse when relatives differ by scattered SNPs. Asymmetric, like
+    containment: a nested fragment is fully covered by its parent, not
+    vice versa.
+
+    Parameters
+    ----------
+    records : iterable of PafRecord
+        Alignment records for the self-comparison (both orientations of a
+        pair contribute: the query side covers ``query_name``, the target
+        side ``target_name``).
+    names : list of str
+        Display contig names, in matrix order.
+    lengths : mapping of str to int
+        Display name → contig length in bp.
+    normalize : callable, optional
+        Maps record names to display names (e.g. stripping the
+        CrossIndex ``group:`` prefix). Default: identity.
+
+    Returns
+    -------
+    SimilarityMatrix
+        ``metric='aln_coverage'`` matrix with a unit diagonal.
+    """
+    import numpy as np
+
+    from rusty_dot.similarity import SimilarityMatrix
+
+    norm = normalize or (lambda name: name)
+    per_pair: dict[tuple[str, str], list[tuple[int, int]]] = {}
+    for rec in records:
+        q, t = norm(rec.query_name), norm(rec.target_name)
+        per_pair.setdefault((q, t), []).append((rec.query_start, rec.query_end))
+        per_pair.setdefault((t, q), []).append((rec.target_start, rec.target_end))
+
+    n = len(names)
+    values = np.eye(n)
+    for i, a in enumerate(names):
+        length = int(lengths.get(a, 0))
+        for j, b in enumerate(names):
+            if i == j:
+                continue
+            intervals = per_pair.get((a, b))
+            if not intervals or length <= 0:
+                continue
+            covered = sum(end - start for start, end in merge_intervals(intervals))
+            values[i, j] = min(1.0, covered / length)
+    return SimilarityMatrix(names=list(names), values=values, metric='aln_coverage')

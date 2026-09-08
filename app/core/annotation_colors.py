@@ -1,6 +1,6 @@
 """Shared, case-insensitive colour assignment for GFF feature types.
 
-:class:`~rusty_dot.annotation.GffAnnotation` colours its own types by their
+:class:`~dot_explorer.annotation.GffAnnotation` colours its own types by their
 index into its own sorted type list, so the *same* type lands on different
 palette entries in two different uploads -- ``gene`` green on the x track
 and blue on the y track -- and ``CDS`` vs ``cds`` are treated as unrelated.
@@ -18,7 +18,7 @@ The rules here are:
   rather than silently repeating.
 
 Assignment is over the *union* of types across all uploads, so query and
-target always agree.  Everything is plain Python: no ``rusty_dot`` import,
+target always agree.  Everything is plain Python: no ``dot_explorer`` import,
 so this stays unit-testable without a Shiny session or the compiled
 extension.
 """
@@ -165,7 +165,7 @@ def color_map_for(feature_types: list[str], shared: dict[str, str]) -> dict[str,
     -------
     dict[str, str]
         ``raw feature type -> hex colour``, ready for
-        :meth:`~rusty_dot.annotation.GffAnnotation.set_colors`.  Types
+        :meth:`~dot_explorer.annotation.GffAnnotation.set_colors`.  Types
         absent from *shared* are omitted rather than defaulted, leaving the
         library's own colour in place.
     """

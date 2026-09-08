@@ -2,7 +2,7 @@
 
 import pytest
 
-from rusty_dot._rusty_dot import py_read_fasta
+from dot_explorer._dot_explorer import py_read_fasta
 
 
 def test_read_fasta_plain(fasta_file):

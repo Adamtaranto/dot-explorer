@@ -31,7 +31,7 @@ _SLOT_JS = '__RD_JS__'
 
 
 def _load_asset(name: str) -> str:
-    """Read a packaged asset file from ``rusty_dot._html``.
+    """Read a packaged asset file from ``dot_explorer._html``.
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ def _load_asset(name: str) -> str:
     str
         The asset's text content.
     """
-    return files('rusty_dot._html').joinpath(name).read_text(encoding='utf-8')
+    return files('dot_explorer._html').joinpath(name).read_text(encoding='utf-8')
 
 
 def _figure_to_svg(fig: matplotlib.figure.Figure) -> str:
@@ -78,7 +78,7 @@ def render_html_report(
     fig: matplotlib.figure.Figure,
     payload: dict[str, Any],
     output_path: Union[str, Path],
-    title: str = 'rusty-dot report',
+    title: str = 'dot-explorer report',
 ) -> Path:
     """Write a self-contained interactive HTML report for a dotplot figure.
 
@@ -86,16 +86,16 @@ def render_html_report(
     ----------
     fig : matplotlib.figure.Figure
         The dotplot grid figure.  Panel axes and match collections must be
-        gid-tagged (``rd-panel-*`` / ``rd-matches-*``) so the embedded JS can
-        find them; :meth:`~rusty_dot.dotplot.DotPlotter.plot` does this when
+        gid-tagged (``de-panel-*`` / ``de-matches-*``) so the embedded JS can
+        find them; :meth:`~dot_explorer.dotplot.DotPlotter.plot` does this when
         HTML output is requested.
     payload : dict
         JSON-ready match payload from
-        :func:`rusty_dot._html.serialize.build_panel_payload`.
+        :func:`dot_explorer._html.serialize.build_panel_payload`.
     output_path : str or Path
         Destination ``.html`` file path.
     title : str, optional
-        Document and header title.  Default is ``'rusty-dot report'``.
+        Document and header title.  Default is ``'dot-explorer report'``.
 
     Returns
     -------

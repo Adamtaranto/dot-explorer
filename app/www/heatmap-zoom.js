@@ -18,7 +18,7 @@
   var drag = null; // {wrap, img, startX, startY, box}
 
   function wrapOf(target) {
-    return target && target.closest && target.closest('.rd-heatmap-wrap');
+    return target && target.closest && target.closest('.de-heatmap-wrap');
   }
 
   function imgOf(wrap) {
@@ -111,7 +111,7 @@
         return; // ignore jitter until it reads as a drag
       }
       drag.box = document.createElement('div');
-      drag.box.className = 'rd-hm-selbox';
+      drag.box.className = 'de-hm-selbox';
       drag.wrap.appendChild(drag.box);
     }
     var left = Math.min(x, drag.startX);
@@ -158,7 +158,7 @@
 
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Escape') return;
-    document.querySelectorAll('.rd-heatmap-wrap').forEach(function (wrap) {
+    document.querySelectorAll('.de-heatmap-wrap').forEach(function (wrap) {
       var img = imgOf(wrap);
       if (img && zoomOf(img) !== 1) reset(wrap, img);
     });

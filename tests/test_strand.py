@@ -2,7 +2,7 @@
 
 import pytest
 
-from rusty_dot._rusty_dot import (
+from dot_explorer._dot_explorer import (
     SequenceIndex,
     py_build_kmer_set,
     py_find_kmer_coords,
@@ -282,7 +282,7 @@ class TestOptimalContigOrder:
         FM-index path.  For the SequenceIndex.optimal_contig_order method we
         just verify that the returned names are unchanged as a set.
         """
-        from rusty_dot.paf_io import PafAlignment, PafRecord
+        from dot_explorer.paf_io import PafAlignment, PafRecord
 
         # Construct explicit records where q_early clearly maps to the start
         # of the target and q_late maps to the end, with no ambiguity.

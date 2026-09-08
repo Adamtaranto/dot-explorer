@@ -1,5 +1,5 @@
 """
-Nature-journal-style plot formatting for rusty-dot.
+Nature-journal-style plot formatting for dot-explorer.
 
 Provides an opt-in matplotlib style tuned to Nature journal figure
 guidelines: Helvetica/Arial sans-serif fonts at 5-7 pt, 0.5 pt line and
@@ -13,13 +13,13 @@ Examples
 --------
 Scoped application via the context manager:
 
->>> from rusty_dot import DotPlotter, nature_style
+>>> from dot_explorer import DotPlotter, nature_style
 >>> with nature_style():  # doctest: +SKIP
 ...     fig = plotter.plot(output_path='dotplot.png')
 
 Global application:
 
->>> from rusty_dot import use_nature_style
+>>> from dot_explorer import use_nature_style
 >>> use_nature_style()  # doctest: +SKIP
 """
 
@@ -96,7 +96,7 @@ def nature_style() -> AbstractContextManager[None]:
     Examples
     --------
     >>> import matplotlib
-    >>> from rusty_dot.style import nature_style
+    >>> from dot_explorer.style import nature_style
     >>> with nature_style():
     ...     assert matplotlib.rcParams['savefig.dpi'] == 300
     """
@@ -120,7 +120,7 @@ def use_nature_style() -> None:
     Examples
     --------
     >>> import matplotlib
-    >>> from rusty_dot.style import use_nature_style
+    >>> from dot_explorer.style import use_nature_style
     >>> use_nature_style()
     >>> matplotlib.rcParams['axes.spines.top']
     False

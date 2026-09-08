@@ -2,10 +2,10 @@
 
 These tests exercise the real-data hot paths with the git-ignored fungal
 assemblies under ``.plans/data/asm``.  They are skipped unless the files
-exist AND ``RUSTY_DOT_PRIVATE_DATA=1`` is set, so ordinary test runs (local
+exist AND ``DOT_EXPLORER_PRIVATE_DATA=1`` is set, so ordinary test runs (local
 and CI) never touch them:
 
-    RUSTY_DOT_PRIVATE_DATA=1 pytest tests/test_private_data.py -m private_data -s
+    DOT_EXPLORER_PRIVATE_DATA=1 pytest tests/test_private_data.py -m private_data -s
 
 Timings are printed with ``-s`` for before/after comparisons in PR
 descriptions; nothing derived from the private data is written to the repo.
@@ -29,8 +29,8 @@ sys.path.insert(0, str(_REPO / 'app'))
 pytestmark = [
     pytest.mark.private_data,
     pytest.mark.skipif(
-        os.environ.get('RUSTY_DOT_PRIVATE_DATA') != '1' or len(_ASSEMBLIES) < 2,
-        reason='set RUSTY_DOT_PRIVATE_DATA=1 with assemblies in .plans/data/asm',
+        os.environ.get('DOT_EXPLORER_PRIVATE_DATA') != '1' or len(_ASSEMBLIES) < 2,
+        reason='set DOT_EXPLORER_PRIVATE_DATA=1 with assemblies in .plans/data/asm',
     ),
 ]
 
@@ -60,7 +60,7 @@ def test_kmer_pipeline_real_assemblies():
     """Full k-mer pipeline on real data: index build, matches, reorder."""
     from core.fasta import parse_fasta_bytes
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     query = parse_fasta_bytes(_ASSEMBLIES[0].read_bytes())
     target = parse_fasta_bytes(_ASSEMBLIES[1].read_bytes())

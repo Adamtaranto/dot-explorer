@@ -65,7 +65,7 @@ def worker(length: int, k: int, min_block_len: int) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'python/benchmarks'))
     from _synth import homologous_pair
 
-    from rusty_dot import CrossIndex
+    from dot_explorer import CrossIndex
 
     query, target = homologous_pair(length, seed=42, divergence=0.02)
     baseline = _current_rss()

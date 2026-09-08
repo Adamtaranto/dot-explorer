@@ -1,6 +1,6 @@
 name: Publish to PyPI
 
-# rusty-dot is a PyO3 extension built with maturin, and it is deliberately NOT
+# dot-explorer is a PyO3 extension built with maturin, and it is deliberately NOT
 # abi3 (Pyodide rejects abi3 wheels), so every interpreter needs its own wheel --
 # including a separate cp314t build for the free-threaded interpreter.  This
 # workflow builds that matrix plus an sdist and uploads the lot in one go.
@@ -63,7 +63,7 @@ jobs:
             --interpreter python3.12 python3.13 python3.14 python3.14t
       - name: Check wheel tags
         # Free-threaded wheels carry the abi tag cp314t with the python tag
-        # still cp314 (rusty_dot-0.1.0-cp314-cp314t-...), so match on the abi.
+        # still cp314 (dot_explorer-0.1.0-cp314-cp314t-...), so match on the abi.
         run: |
           ls dist/
           for tag in cp312-cp312 cp313-cp313 cp314-cp314 cp314-cp314t; do
@@ -213,4 +213,4 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.RUSTYDOT_PYPI_TOKEN }}
+          password: ${{ secrets.DOT_EXPLORER_PYPI_TOKEN }}

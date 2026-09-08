@@ -1,7 +1,7 @@
 """FASTA parsing from in-memory bytes.
 
 The browser app receives uploads as raw bytes and the wasm build of
-rusty-dot excludes its native FASTA reader (needletail), so parsing happens
+dot-explorer excludes its native FASTA reader (needletail), so parsing happens
 here in pure Python.  Plain and gzip-compressed FASTA are supported.
 """
 

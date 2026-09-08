@@ -11,7 +11,7 @@ This module provides:
 - :class:`CrossIndex` — multi-group sequence index for cross-group pairwise
   comparisons (e.g. two or more genome assemblies).  Sequences are organised
   into named groups; alignments are computed between non-self group pairs.
-  Compatible with :class:`~rusty_dot.dotplot.DotPlotter`.
+  Compatible with :class:`~dot_explorer.dotplot.DotPlotter`.
 
 CIGAR support
 -------------
@@ -34,7 +34,7 @@ following alignment statistics are derived automatically:
 
 Examples
 --------
->>> from rusty_dot.paf_io import PafAlignment
+>>> from dot_explorer.paf_io import PafAlignment
 >>> aln = PafAlignment.from_file("matches.paf")
 >>> q_order, t_order = aln.reorder_contigs(aln.query_names, aln.target_names)
 """
@@ -48,7 +48,7 @@ from pathlib import Path
 import re
 from typing import Any, Generator, Iterable
 
-from rusty_dot._rusty_dot import SequenceIndex
+from dot_explorer._dot_explorer import SequenceIndex
 
 _log = logging.getLogger(__name__)
 
@@ -819,7 +819,7 @@ class PafAlignment:
 
         The list contains each name at most once, in the order it was first
         encountered (queries before targets within each record).  This method
-        makes :class:`PafAlignment` compatible with :class:`~rusty_dot.dotplot.DotPlotter`.
+        makes :class:`PafAlignment` compatible with :class:`~dot_explorer.dotplot.DotPlotter`.
 
         Returns
         -------
@@ -838,7 +838,7 @@ class PafAlignment:
         Looks up *name* in the ``query_name`` and ``target_name`` fields of
         every record and returns the corresponding ``query_len`` or
         ``target_len``.  This method makes :class:`PafAlignment` compatible
-        with :class:`~rusty_dot.dotplot.DotPlotter`.
+        with :class:`~dot_explorer.dotplot.DotPlotter`.
 
         Parameters
         ----------
@@ -1097,7 +1097,7 @@ class PafAlignment:
 
         Empty until :meth:`reorder_contigs` has been called.  These contigs
         align in reverse orientation against their best-matching target and can
-        be passed to :meth:`~rusty_dot.dotplot.DotPlotter.plot` via
+        be passed to :meth:`~dot_explorer.dotplot.DotPlotter.plot` via
         ``reverse_contigs=`` to be rendered flipped along the main diagonal.
 
         Returns
@@ -1118,7 +1118,7 @@ class CrossIndex:
 
     Sequences are organised into named groups (e.g. ``'assembly_a'``,
     ``'assembly_b'``).  Each sequence is stored in a shared
-    :class:`~rusty_dot.SequenceIndex` under a ``group:name`` internal key,
+    :class:`~dot_explorer.SequenceIndex` under a ``group:name`` internal key,
     which keeps names unique even when the same sequence identifier appears
     in multiple groups.
 
@@ -1147,14 +1147,14 @@ class CrossIndex:
 
     ``CrossIndex`` exposes :meth:`get_sequence_length`,
     :meth:`compare_sequences_stranded`, and :meth:`sequence_names` so that it
-    can be passed directly to :class:`~rusty_dot.dotplot.DotPlotter`::
+    can be passed directly to :class:`~dot_explorer.dotplot.DotPlotter`::
 
         cross = CrossIndex(k=15)
         cross.load_fasta("assembly_a.fasta", group="a")
         cross.load_fasta("assembly_b.fasta", group="b")
         cross.compute_matches()
 
-        from rusty_dot.dotplot import DotPlotter
+        from dot_explorer.dotplot import DotPlotter
         plotter = DotPlotter(cross)
         plotter.plot(
             query_names=cross.sequence_names(group="a"),
@@ -1169,7 +1169,7 @@ class CrossIndex:
 
     Examples
     --------
-    >>> from rusty_dot.paf_io import CrossIndex
+    >>> from dot_explorer.paf_io import CrossIndex
     >>> cross = CrossIndex(k=10)
     >>> cross.load_fasta("genome_a.fasta", group="a")
     >>> cross.load_fasta("genome_b.fasta", group="b")
@@ -1251,7 +1251,7 @@ class CrossIndex:
 
         This is the public counterpart of the internal :meth:`_make_internal`
         helper and is suitable for use by external code such as
-        :class:`~rusty_dot.dotplot.DotPlotter`.
+        :class:`~dot_explorer.dotplot.DotPlotter`.
 
         Parameters
         ----------
@@ -1383,7 +1383,7 @@ class CrossIndex:
         """
         if ':' in group:
             raise ValueError(f"Group name must not contain ':', got {group!r}")
-        from rusty_dot._rusty_dot import py_read_fasta
+        from dot_explorer._dot_explorer import py_read_fasta
 
         _log.info('CrossIndex: loading sequences from %r into group %r', path, group)
         seqs = py_read_fasta(path)
@@ -1570,7 +1570,7 @@ class CrossIndex:
 
         Only the logical membership list is updated; sequences already indexed
         are not moved or removed from the underlying
-        :class:`~rusty_dot.SequenceIndex`.
+        :class:`~dot_explorer.SequenceIndex`.
 
         Parameters
         ----------
@@ -1695,7 +1695,7 @@ class CrossIndex:
         """Build both-strand PAF records for a single sequence pair.
 
         Matches come from
-        :meth:`~rusty_dot.SequenceIndex.compare_sequences_stranded`, which
+        :meth:`~dot_explorer.SequenceIndex.compare_sequences_stranded`, which
         reports forward (``'+'``) and reverse-complement (``'-'``) matches.
         Query coordinates are always on the forward strand, as required by
         the PAF specification.
@@ -1731,7 +1731,7 @@ class CrossIndex:
         """Build both-strand PAF records for a group pair from the k-mer engine.
 
         Both the gravity ordering and the reverse-orientation check are driven
-        from :meth:`~rusty_dot.SequenceIndex.compare_sequences_stranded`, which
+        from :meth:`~dot_explorer.SequenceIndex.compare_sequences_stranded`, which
         reports forward and reverse matches.  :meth:`compute_matches` caches
         records built through this same mechanism.
 

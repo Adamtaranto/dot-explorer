@@ -5,7 +5,7 @@
 // pyo3 pyfunction/pymethods return types trigger a false-positive useless_conversion lint.
 #![allow(clippy::useless_conversion)]
 
-use crate::error::RustyDotError;
+use crate::error::DotExplorerError;
 use crate::kmer::build_kmer_set;
 use crate::kmer_hash::{shared_fwd_pairs, shared_stranded_pairs, KmerIndex};
 use crate::merge::{merge_fwd_pairs, merge_rev_fwd_pairs, merge_rev_pairs, CoordPair};
@@ -139,9 +139,9 @@ fn gravity_order(
 /// the canonical-hash k-mer table).  It is a free function taking
 /// no `&self` so it can be called from a rayon parallel iterator while building
 /// many sequences concurrently.
-fn build_sequence_data(seq: &str, k: usize) -> Result<SequenceData, RustyDotError> {
+fn build_sequence_data(seq: &str, k: usize) -> Result<SequenceData, DotExplorerError> {
     if k == 0 {
-        return Err(RustyDotError::InvalidKmerLength(k));
+        return Err(DotExplorerError::InvalidKmerLength(k));
     }
     let seq_bytes = seq.as_bytes().to_vec();
     let index = KmerIndex::build(&seq_bytes, k);
@@ -162,7 +162,7 @@ fn build_sequence_data(seq: &str, k: usize) -> Result<SequenceData, RustyDotErro
 fn build_many_sequence_data(
     records: &[(String, String)],
     k: usize,
-) -> Result<Vec<SequenceData>, RustyDotError> {
+) -> Result<Vec<SequenceData>, DotExplorerError> {
     #[cfg(feature = "parallel")]
     {
         records
@@ -546,10 +546,11 @@ impl SequenceIndex {
         // the CPU-heavy index construction to a parallel pass.
         let mut records: Vec<(String, String)> = Vec::new();
         let mut reader = parse_fastx_file(Path::new(path))
-            .map_err(|e| -> pyo3::PyErr { RustyDotError::FastaParse(e.to_string()).into() })?;
+            .map_err(|e| -> pyo3::PyErr { DotExplorerError::FastaParse(e.to_string()).into() })?;
         while let Some(record) = reader.next() {
-            let record = record
-                .map_err(|e| -> pyo3::PyErr { RustyDotError::FastaParse(e.to_string()).into() })?;
+            let record = record.map_err(|e| -> pyo3::PyErr {
+                DotExplorerError::FastaParse(e.to_string()).into()
+            })?;
             let name = String::from_utf8_lossy(record.id())
                 .split_whitespace()
                 .next()
@@ -558,7 +559,7 @@ impl SequenceIndex {
             let seq = String::from_utf8_lossy(&record.seq()).to_uppercase();
 
             if !seen_in_file.insert(name.clone()) {
-                return Err(RustyDotError::FastaParse(format!(
+                return Err(DotExplorerError::FastaParse(format!(
                     "duplicate sequence name '{name}' in FASTA file '{path}'"
                 ))
                 .into());

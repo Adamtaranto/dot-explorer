@@ -6,7 +6,7 @@ import textwrap
 
 import pytest
 
-from rusty_dot.paf_io import (
+from dot_explorer.paf_io import (
     PafAlignment,
     PafRecord,
     compute_gravity_contigs,
@@ -367,7 +367,7 @@ class TestReorderContigs:
 
 class TestCrossIndex:
     def test_add_sequence_and_repr(self):
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGT', group='a')
@@ -379,7 +379,7 @@ class TestCrossIndex:
 
     def test_group_colon_in_name_raises(self):
         """Group names must not contain ':'."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         with pytest.raises(ValueError, match="must not contain ':'"):
@@ -387,14 +387,14 @@ class TestCrossIndex:
 
     def test_arbitrary_group_names_accepted(self):
         """Any group name without ':' is accepted."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('x', 'ACGT' * 4, group='assembly_c')
         assert 'assembly_c' in cross.group_names
 
     def test_get_paf_all_cross(self):
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -409,7 +409,7 @@ class TestCrossIndex:
 
     def test_get_paf_all_single_group(self):
         """get_paf_all with no group-B sequences does all-vs-all within group A."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='a')
@@ -420,7 +420,7 @@ class TestCrossIndex:
         assert queries == {'s1', 's2'}
 
     def test_reorder_contigs_raises_without_group_b(self):
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='a')
@@ -428,7 +428,7 @@ class TestCrossIndex:
             cross.reorder_contigs()
 
     def test_reorder_contigs_returns_original_names(self):
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -441,7 +441,7 @@ class TestCrossIndex:
 
     def test_contig_order_default_insertion(self):
         """contig_order reflects insertion order by default."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('c', 'CCCC' * 4, group='g')
@@ -451,7 +451,7 @@ class TestCrossIndex:
 
     def test_reorder_by_length(self):
         """reorder_by_length sorts within a group by descending sequence length."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('short', 'ACGT' * 4, group='g')  # 16 bp
@@ -462,7 +462,7 @@ class TestCrossIndex:
 
     def test_reorder_by_length_all_groups(self):
         """reorder_by_length with group=None sorts all groups."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s', 'ACGT' * 4, group='g1')
@@ -475,7 +475,7 @@ class TestCrossIndex:
 
     def test_reorder_for_colinearity_updates_contig_order(self):
         """reorder_for_colinearity updates contig_order for both groups."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGT' * 4, group='a')
@@ -490,7 +490,7 @@ class TestCrossIndex:
 
     def test_sequence_names_returns_prefixed(self):
         """sequence_names returns 'group:name' strings."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('seq1', 'ACGT' * 4, group='g')
@@ -499,7 +499,7 @@ class TestCrossIndex:
 
     def test_sequence_names_all_groups(self):
         """sequence_names with no group returns all groups combined."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT' * 4, group='a')
@@ -509,7 +509,7 @@ class TestCrossIndex:
 
     def test_get_sequence_length_via_internal_name(self):
         """get_sequence_length works with 'group:name' key."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT' * 5, group='a')
@@ -517,7 +517,7 @@ class TestCrossIndex:
 
     def test_get_paf_two_groups(self):
         """get_paf returns un-prefixed names in PAF fields."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -531,7 +531,7 @@ class TestCrossIndex:
 
     def test_str_summary(self):
         """__str__ includes group stats."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGT' * 4, group='a')
@@ -543,7 +543,7 @@ class TestCrossIndex:
 
     def test_three_group_default_pairs(self):
         """With 3 groups, all non-self ordered pairs are aligned."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='g1')
@@ -554,7 +554,7 @@ class TestCrossIndex:
 
     def test_get_paf_explicit_group_pairs(self):
         """get_paf respects explicit group_pairs argument."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='g1')
@@ -569,8 +569,8 @@ class TestCrossIndex:
 
     def test_dotplotter_compatibility(self, tmp_path):
         """CrossIndex can be passed to DotPlotter."""
-        from rusty_dot.dotplot import DotPlotter
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.dotplot import DotPlotter
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGT' * 15, group='a')
@@ -587,7 +587,7 @@ class TestCrossIndex:
 
     def test_reorder_contigs_custom_group_names(self):
         """reorder_contigs works when groups have non-default names."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='Group_A')
@@ -599,7 +599,7 @@ class TestCrossIndex:
 
     def test_reorder_contigs_explicit_group_params(self):
         """reorder_contigs accepts explicit query_group and target_group."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='g1')
@@ -614,7 +614,7 @@ class TestCrossIndex:
 
     def test_reorder_contigs_raises_three_groups_no_params(self):
         """reorder_contigs raises ValueError with 3 groups and no explicit params."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='g1')
@@ -625,7 +625,7 @@ class TestCrossIndex:
 
     def test_reorder_contigs_raises_one_group_param_only(self):
         """reorder_contigs raises when only one of query_group/target_group given."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -635,7 +635,7 @@ class TestCrossIndex:
 
     def test_rename_group_updates_label(self):
         """rename_group changes the group label while preserving sequences."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='old_name')
@@ -646,7 +646,7 @@ class TestCrossIndex:
 
     def test_rename_group_allows_subsequent_reorder(self):
         """After rename_group, compute_matches and reorder_contigs still work."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='Group_A')
@@ -663,7 +663,7 @@ class TestCrossIndex:
 
     def test_rename_group_raises_unknown_group(self):
         """rename_group raises KeyError for unknown old_name."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT', group='a')
@@ -672,7 +672,7 @@ class TestCrossIndex:
 
     def test_rename_group_raises_duplicate_new_name(self):
         """rename_group raises ValueError when new_name already exists."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT', group='a')
@@ -682,7 +682,7 @@ class TestCrossIndex:
 
     def test_rename_group_raises_colon_in_name(self):
         """rename_group raises ValueError when new_name contains ':'."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT', group='a')
@@ -691,7 +691,7 @@ class TestCrossIndex:
 
     def test_set_group_members_updates_list(self):
         """set_group_members replaces the sequence list for a group."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGT' * 4, group='g')
@@ -704,7 +704,7 @@ class TestCrossIndex:
         """set_group_members logs a warning when a name appears in another group."""
         import logging
 
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('shared', 'ACGT' * 4, group='g1')
@@ -715,7 +715,7 @@ class TestCrossIndex:
 
     def test_set_group_members_raises_unknown_group(self):
         """set_group_members raises KeyError for unknown group."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         with pytest.raises(KeyError):
@@ -723,7 +723,7 @@ class TestCrossIndex:
 
     def test_compute_matches_populates_records(self):
         """compute_matches stores PAF records for the computed pair."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -734,7 +734,7 @@ class TestCrossIndex:
 
     def test_computed_group_pairs_empty_before_compute(self):
         """computed_group_pairs is empty before compute_matches is called."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -743,7 +743,7 @@ class TestCrossIndex:
 
     def test_computed_group_pairs_after_compute(self):
         """computed_group_pairs reflects pairs after compute_matches."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -753,7 +753,7 @@ class TestCrossIndex:
 
     def test_reorder_contigs_raises_without_compute_matches(self):
         """reorder_contigs raises if compute_matches was not called first."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -763,7 +763,7 @@ class TestCrossIndex:
 
     def test_reorder_for_colinearity_raises_without_compute_matches(self):
         """reorder_for_colinearity raises if compute_matches was not called."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGT' * 4, group='a')
@@ -773,7 +773,7 @@ class TestCrossIndex:
 
     def test_compute_matches_explicit_groups(self):
         """compute_matches with explicit group names stores the correct pair."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('s1', 'ACGTACGTACGTACGT', group='g1')
@@ -787,12 +787,12 @@ class TestCrossIndex:
         """compute_matches emits INFO-level log messages."""
         import logging
 
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
         cross.add_sequence('t1', 'ACGTACGTACGTACGT', group='b')
-        with caplog.at_level(logging.INFO, logger='rusty_dot.paf_io'):
+        with caplog.at_level(logging.INFO, logger='dot_explorer.paf_io'):
             cross.compute_matches()
         assert any('compute_matches' in msg for msg in caplog.messages)
 
@@ -800,10 +800,10 @@ class TestCrossIndex:
         """add_sequence emits DEBUG-level log messages."""
         import logging
 
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
-        with caplog.at_level(logging.DEBUG, logger='rusty_dot.paf_io'):
+        with caplog.at_level(logging.DEBUG, logger='dot_explorer.paf_io'):
             cross.add_sequence('q1', 'ACGT' * 4, group='a')
         assert any('q1' in msg for msg in caplog.messages)
 
@@ -811,11 +811,11 @@ class TestCrossIndex:
         """add_sequence warns when adding a name that exists in the same group."""
         import logging
 
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('dup', 'ACGT' * 4, group='a')
-        with caplog.at_level(logging.WARNING, logger='rusty_dot.paf_io'):
+        with caplog.at_level(logging.WARNING, logger='dot_explorer.paf_io'):
             cross.add_sequence('dup', 'TTTT' * 4, group='a')
         assert any('dup' in msg for msg in caplog.messages)
 
@@ -823,17 +823,17 @@ class TestCrossIndex:
         """add_sequence warns when adding a name that exists in another group."""
         import logging
 
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('seq1', 'ACGT' * 4, group='a')
-        with caplog.at_level(logging.WARNING, logger='rusty_dot.paf_io'):
+        with caplog.at_level(logging.WARNING, logger='dot_explorer.paf_io'):
             cross.add_sequence('seq1', 'TTTT' * 4, group='b')
         assert any('seq1' in msg for msg in caplog.messages)
 
     def test_run_merge_populates_paf_records(self):
         """run_merge populates _paf_records (via compute_matches)."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=4)
         cross.add_sequence('q1', 'ACGTACGTACGTACGT', group='a')
@@ -941,7 +941,7 @@ class TestBestMatchingChromosome:
     def test_argmax_uses_best_chromosome(self):
         """A contig's best chromosome is its single big match's target, not the
         many small hits on another chromosome (squared weighting + argmax)."""
-        from rusty_dot.paf_io import _gravity_order
+        from dot_explorer.paf_io import _gravity_order
 
         # q_multi has five tiny hits on chrA but one large hit on chrB.  Squared
         # weighting makes the single big block dominate, so argmax → chrB.
@@ -1083,7 +1083,7 @@ class TestReversedContigsAPI:
 
     def test_crossindex_reversed_contigs_populated(self):
         """reorder_for_colinearity records the reverse-oriented query contigs."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         def revcomp(s):
             return s.translate(str.maketrans('ACGT', 'TGCA'))[::-1]
@@ -1107,7 +1107,7 @@ class TestReversedContigsAPI:
 
     def test_crossindex_reversed_contigs_empty_for_unreordered_group(self):
         """A group never used as query axis has an empty reversed set."""
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=6)
         cross.add_sequence('q', 'ACGTACGTACGT' * 3, group='a')
@@ -1122,20 +1122,20 @@ class TestReversedContigsAPI:
 
 class TestReverseComplement:
     def test_basic(self):
-        from rusty_dot.paf_io import reverse_complement
+        from dot_explorer.paf_io import reverse_complement
 
         assert reverse_complement('ACGT') == 'ACGT'
         assert reverse_complement('AAAA') == 'TTTT'
         assert reverse_complement('ACGTN') == 'NACGT'
 
     def test_case_preserved(self):
-        from rusty_dot.paf_io import reverse_complement
+        from dot_explorer.paf_io import reverse_complement
 
         assert reverse_complement('acgt') == 'acgt'
         assert reverse_complement('AcgT') == 'AcgT'
 
     def test_double_reverse_is_identity(self):
-        from rusty_dot.paf_io import reverse_complement
+        from dot_explorer.paf_io import reverse_complement
 
         seq = 'ACGTTGCAAGGCCTTAGCTAGGATCCGATCG'
         assert reverse_complement(reverse_complement(seq)) == seq
@@ -1177,7 +1177,7 @@ _FASTA_SEQ = (
 
 class TestCrossIndexFasta:
     def _cross(self):
-        from rusty_dot.paf_io import CrossIndex
+        from dot_explorer.paf_io import CrossIndex
 
         cross = CrossIndex(k=11)
         cross.add_sequence('fwd', _FASTA_SEQ, group='a')
@@ -1277,7 +1277,7 @@ def _stranded_cross():
     """Two-group CrossIndex whose only query contig is reverse-complemented."""
     import random
 
-    from rusty_dot.paf_io import CrossIndex
+    from dot_explorer.paf_io import CrossIndex
 
     rng = random.Random(11)
     chrom = ''.join(rng.choice('ACGT') for _ in range(200))

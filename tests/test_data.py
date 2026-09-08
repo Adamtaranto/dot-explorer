@@ -1,4 +1,4 @@
-"""Shared test data and fixtures for rusty-dot tests."""
+"""Shared test data and fixtures for dot-explorer tests."""
 
 # Short test sequences with known shared k-mers
 SEQ_A = 'ACGTACGTACGTACGTACGT'

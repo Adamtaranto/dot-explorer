@@ -1,4 +1,4 @@
-"""Tests for rusty_dot.tree: newick parsing, linkage conversion, drawing."""
+"""Tests for dot_explorer.tree: newick parsing, linkage conversion, drawing."""
 
 from pathlib import Path
 
@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot import Tree, draw_tree
+from dot_explorer import Tree, draw_tree
 
 DATA = Path(__file__).parent / 'data'
 
@@ -136,10 +136,10 @@ class TestDrawTree:
             ax.set_ylim(0, 3)
             draw_tree(ax, tree, pos, cutoff=0.1, leaf_labels=True)
             gids = {a.get_gid() for a in ax.get_children() if a.get_gid()}
-            assert 'rd-tree' in gids
-            assert 'rd-tree-cutoff' in gids
-            assert 'rd-tree-scalebar' in gids
-            assert 'rd-tree-label' in gids
+            assert 'de-tree' in gids
+            assert 'de-tree-cutoff' in gids
+            assert 'de-tree-scalebar' in gids
+            assert 'de-tree-label' in gids
         finally:
             plt.close(fig)
 

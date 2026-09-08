@@ -6,7 +6,7 @@
 
 mod common;
 
-use _rusty_dot::kmer_hash::{shared_fwd_coords, shared_rev_coords, KmerIndex};
+use _dot_explorer::kmer_hash::{shared_fwd_coords, shared_rev_coords, KmerIndex};
 use codspeed_criterion_compat::{black_box, criterion_group, criterion_main, Criterion};
 use common::homologous_pair;
 

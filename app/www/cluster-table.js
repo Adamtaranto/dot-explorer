@@ -6,7 +6,7 @@
  * 'cluster_select' input, and the server forwards them to the report
  * iframe (bridge.js, 'rd_highlight_clusters') to dim non-members.
  *
- * bridge.js dispatches the 'rd-cluster-clear' DOM event when the server
+ * bridge.js dispatches the 'de-cluster-clear' DOM event when the server
  * clears the highlight (new result / new assignments), so the table's
  * row styling cannot go stale.
  */
@@ -16,9 +16,9 @@
   var selected = {};
 
   function applyRowClasses() {
-    document.querySelectorAll('tr.rd-cluster-row').forEach(function (row) {
+    document.querySelectorAll('tr.de-cluster-row').forEach(function (row) {
       row.classList.toggle(
-        'rd-cluster-selected',
+        'de-cluster-selected',
         !!selected[row.getAttribute('data-cluster')]
       );
     });
@@ -36,7 +36,7 @@
 
   document.addEventListener('click', function (ev) {
     var row =
-      ev.target && ev.target.closest && ev.target.closest('tr.rd-cluster-row');
+      ev.target && ev.target.closest && ev.target.closest('tr.de-cluster-row');
     if (!row) return;
     var name = row.getAttribute('data-cluster');
     if (!name) return;
@@ -49,7 +49,7 @@
     announce();
   });
 
-  document.addEventListener('rd-cluster-clear', function () {
+  document.addEventListener('de-cluster-clear', function () {
     selected = {};
     applyRowClasses();
   });

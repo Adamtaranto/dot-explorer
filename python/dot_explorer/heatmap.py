@@ -1,6 +1,6 @@
 """Pairwise similarity heatmap with optional clustering tree and outlines.
 
-Renders a :class:`rusty_dot.similarity.SimilarityMatrix` as a matrix
+Renders a :class:`dot_explorer.similarity.SimilarityMatrix` as a matrix
 heatmap: tree (user-supplied or from linkage) drawn left of the y-axis,
 cluster membership outlined on the cells, colorbar at the right.
 """
@@ -165,7 +165,7 @@ def plot_similarity_heatmap(
         aspect='equal',
         interpolation='nearest',
     )
-    image.set_gid('rd-heatmap')
+    image.set_gid('de-heatmap')
     ax.set_xticks(range(n), display.names, rotation=90, fontsize='small')
     ax.set_yticks(range(n), display.names, fontsize='small')
 
@@ -220,7 +220,7 @@ def plot_similarity_heatmap(
     if cax is not None:
         cbar = fig.colorbar(image, cax=cax)
         cbar.set_label(_metric_label(display.metric))
-        cbar.ax.set_gid('rd-heatmap-scale')
+        cbar.ax.set_gid('de-heatmap-scale')
 
     if title:
         fig.suptitle(title)
@@ -281,7 +281,7 @@ def _outline_clusters(
                 linestyle=(0, (4, 2)),
                 zorder=5,
             )
-            rect.set_gid(f'rd-hm-cluster-{cluster_name}')
+            rect.set_gid(f'de-hm-cluster-{cluster_name}')
             ax.add_patch(rect)
 
 

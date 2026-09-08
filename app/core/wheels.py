@@ -1,4 +1,4 @@
-"""Selection of the bundled rusty-dot wasm wheel at app startup.
+"""Selection of the bundled dot-explorer wasm wheel at app startup.
 
 The app ships one (ideally) wasm wheel in ``app/wheels/``.  CI caching has
 previously leaked wheels built for other Emscripten versions into the
@@ -53,7 +53,7 @@ def pick_wasm_wheel(wheels: list[Path], platform_tag: str) -> Path:
     """
     if not wheels:
         raise RuntimeError(
-            'No rusty-dot wasm wheel bundled with the app '
+            'No dot-explorer wasm wheel bundled with the app '
             '(expected app/wheels/*.whl at export time).'
         )
     matching = sorted(w for w in wheels if platform_tag in w.name)

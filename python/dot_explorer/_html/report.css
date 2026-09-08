@@ -1,13 +1,13 @@
-/* rusty-dot interactive report styles.
+/* dot-explorer interactive report styles.
    Inlined into <style> in the single-file HTML report. */
 
 :root {
-  --rd-bg: #ffffff;
-  --rd-fg: #1a1a2e;
-  --rd-muted: #667085;
-  --rd-accent: #2563eb;
-  --rd-bar-bg: #111827;
-  --rd-bar-fg: #f9fafb;
+  --de-bg: #ffffff;
+  --de-fg: #1a1a2e;
+  --de-muted: #667085;
+  --de-accent: #2563eb;
+  --de-bar-bg: #111827;
+  --de-bar-fg: #f9fafb;
 }
 
 * { box-sizing: border-box; }
@@ -15,35 +15,35 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: var(--rd-bg);
-  color: var(--rd-fg);
+  background: var(--de-bg);
+  color: var(--de-fg);
   /* Leave room for the fixed detail bar at the bottom. */
   padding-bottom: 10rem;
 }
 
-#rd-header {
+#de-header {
   padding: 0.75rem 1.25rem 0.25rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
-#rd-header h1 {
+#de-header h1 {
   margin: 0 0 0.25rem;
   font-size: 1.2rem;
 }
 
-#rd-help {
+#de-help {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-#rd-help span { white-space: nowrap; }
+#de-help span { white-space: nowrap; }
 
 /* Key-combo chips in the navigation instruction bar. */
-#rd-help kbd {
+#de-help kbd {
   font-family: inherit;
   font-size: 0.72rem;
-  color: var(--rd-fg);
+  color: var(--de-fg);
   background: #f3f4f6;
   border: 1px solid #d1d5db;
   border-bottom-width: 2px;
@@ -51,7 +51,7 @@ body {
   padding: 0.05rem 0.3rem;
 }
 
-#rd-figure {
+#de-figure {
   padding: 1rem;
   overflow: auto;
   /* Prevent text/image selection flicker while drag-selecting a region. */
@@ -59,7 +59,7 @@ body {
   -webkit-user-select: none;
 }
 
-#rd-figure svg {
+#de-figure svg {
   display: block;
   margin: 0 auto;
   max-width: 100%;
@@ -69,15 +69,15 @@ body {
 }
 
 /* Panels: pointer feedback plus dimming of unselected panels. */
-g[id^='rd-panel-'] { cursor: pointer; }
+g[id^='de-panel-'] { cursor: pointer; }
 
-g[id^='rd-panel-'].rd-dim { opacity: 0.2; }
+g[id^='de-panel-'].de-dim { opacity: 0.2; }
 
 /* Match lines: clicks register on the stroke, not the (empty) fill.
    Widened invisible overlay strokes (added by JS) make hairlines clickable. */
-g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
+g[id^='de-matches-'] * { pointer-events: stroke; cursor: pointer; }
 
-.rd-hit {
+.de-hit {
   fill: none;
   stroke: #000;
   stroke-opacity: 0;
@@ -88,9 +88,9 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
 
 /* Rubber-band rectangle drawn while drag-selecting a region to zoom to.
    non-scaling-stroke keeps the outline hairline at any zoom level. */
-.rd-drag-rect {
+.de-drag-rect {
   fill: rgba(37, 99, 235, 0.12);
-  stroke: var(--rd-accent);
+  stroke: var(--de-accent);
   stroke-width: 1.5px;
   stroke-dasharray: 5 4;
   vector-effect: non-scaling-stroke;
@@ -99,7 +99,7 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
 
 /* Rubber-band rectangle for Shift+drag match selection: same shape as the
    zoom rect but amber, so the gesture reads as "select", not "zoom". */
-.rd-select-rect {
+.de-select-rect {
   fill: rgba(245, 158, 11, 0.12);
   stroke: #f59e0b;
   stroke-width: 1.5px;
@@ -109,15 +109,15 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
 }
 
 /* Selection bands: a selected match's query/target ranges drawn through
-   every panel in its grid row/column (mirrors .rd-band for track
+   every panel in its grid row/column (mirrors .de-band for track
    features; amber to match the selected strokes). */
-.rd-selband {
+.de-selband {
   fill: #f59e0b;
   fill-opacity: 0.16;
   pointer-events: none;
 }
 
-.rd-selected-match {
+.de-selected-match {
   /* !important so the highlight beats matplotlib's inline styles. */
   stroke: #f59e0b !important;
   stroke-opacity: 0.9 !important;
@@ -125,24 +125,24 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
 }
 
 /* Fixed bottom detail bar showing coords/strand/identity/sequence. */
-#rd-detail {
+#de-detail {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--rd-bar-bg);
-  color: var(--rd-bar-fg);
+  background: var(--de-bar-bg);
+  color: var(--de-bar-fg);
   padding: 0.6rem 2.5rem 0.6rem 1.25rem;
   font-size: 0.85rem;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
   z-index: 10;
 }
 
-#rd-detail-coords { line-height: 1.5; }
+#de-detail-coords { line-height: 1.5; }
 
-#rd-detail-coords b { color: #93c5fd; }
+#de-detail-coords b { color: #93c5fd; }
 
-#rd-detail-seq {
+#de-detail-seq {
   margin: 0.4rem 0 0;
   max-height: 5.5rem;
   overflow: auto;
@@ -155,15 +155,15 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
   border-radius: 4px;
 }
 
-#rd-detail-actions {
+#de-detail-actions {
   margin: 0.35rem 0 0;
   display: flex;
   gap: 0.5rem;
 }
 
-#rd-detail-actions button {
+#de-detail-actions button {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--rd-bar-fg);
+  color: var(--de-bar-fg);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 4px;
   padding: 0.15rem 0.55rem;
@@ -171,42 +171,42 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
   cursor: pointer;
 }
 
-#rd-detail-actions button:hover {
+#de-detail-actions button:hover {
   background: rgba(255, 255, 255, 0.22);
 }
 
 /* Gapped query/match/target blocks: keep columns aligned (no soft wrap)
    and scroll instead. */
-#rd-detail-seq.rd-aligned {
+#de-detail-seq.de-aligned {
   white-space: pre;
   word-break: normal;
   max-height: 12rem;
 }
 
-#rd-detail-close {
+#de-detail-close {
   position: absolute;
   top: 0.35rem;
   right: 0.6rem;
   background: none;
   border: none;
-  color: var(--rd-bar-fg);
+  color: var(--de-bar-fg);
   font-size: 1.1rem;
   cursor: pointer;
 }
 
-#rd-detail-close:hover { color: var(--rd-accent); }
+#de-detail-close:hover { color: var(--de-accent); }
 
 /* Diagonal-panel GFF features are clickable. */
-.rd-annot {
+.de-annot {
   cursor: pointer;
 }
 
 /* Side-track features are clickable too (behaviour 5). */
-.rd-track-feature {
+.de-track-feature {
   cursor: pointer;
 }
 
-.rd-track-feature.rd-track-active {
+.de-track-feature.de-track-active {
   stroke: #222;
   stroke-width: 0.6;
 }
@@ -215,37 +215,37 @@ g[id^='rd-matches-'] * { pointer-events: stroke; cursor: pointer; }
    bands remain readable and the dots stay visible through them; document
    order (inserted right after the panel background) puts it behind the
    match strokes without needing a z-index. */
-.rd-band {
+.de-band {
   fill-opacity: 0.22;
   pointer-events: none;
 }
 
 /* Segments hidden by the embedded min-match-length filter (behaviour 6). */
-.rd-len-hidden {
+.de-len-hidden {
   display: none;
 }
 
-/* Embedding app is fullscreen ('rd-fullscreen' messages): scale the SVG
+/* Embedding app is fullscreen ('de-fullscreen' messages): scale the SVG
    to fill the iframe viewport.  Width and height are both set, so the
    default preserveAspectRatio letterboxes instead of distorting. */
-body.rd-fs {
+body.de-fs {
   padding-bottom: 0;
 }
 
-body.rd-fs #rd-figure {
+body.de-fs #de-figure {
   padding: 0.5rem;
 }
 
-body.rd-fs #rd-figure svg {
+body.de-fs #de-figure svg {
   width: 100%;
   height: calc(100vh - 1rem);
 }
 
 /* Cluster borders emphasised while their cluster is selected in the
-   embedding app's cluster table ('rd-highlight-clusters' messages).
+   embedding app's cluster table ('de-highlight-clusters' messages).
    Targets the child path: matplotlib writes the stroke as an inline
    style there, which only an !important rule can override. */
-.rd-cluster-active path {
+.de-cluster-active path {
   stroke: #d97706 !important;
   stroke-width: 4 !important;
 }

@@ -58,8 +58,8 @@ class Tree:
     Construct via :meth:`from_newick`, :meth:`read`, or
     :meth:`from_linkage`; the leaf order (:meth:`leaf_names`) defines the
     plot row order when the tree is passed to
-    :meth:`rusty_dot.DotPlotter.plot` or
-    :func:`rusty_dot.plot_similarity_heatmap`.
+    :meth:`dot_explorer.DotPlotter.plot` or
+    :func:`dot_explorer.plot_similarity_heatmap`.
     """
 
     def __init__(self, root: TreeNode):
@@ -445,7 +445,7 @@ def draw_tree(
     label_size: float | None = None,
     color: str = '0.2',
     lw: float = 1.0,
-    gid_prefix: str = 'rd-tree',
+    gid_prefix: str = 'de-tree',
 ) -> None:
     """Draw *tree* as a rectangular dendrogram on *ax*.
 

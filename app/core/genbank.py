@@ -12,9 +12,9 @@ The result is a :class:`GenbankInput` carrying
   everything downstream (aligners, the k-mer index, the dataset cache)
   consumes exactly what it already consumes for a FASTA upload; and
 * GFF3 **text** for the FEATURES tables, handed to
-  :meth:`rusty_dot.annotation.GffAnnotation.from_text` rather than
+  :meth:`dot_explorer.annotation.GffAnnotation.from_text` rather than
   constructing ``GffFeature`` objects here.  That keeps this module free
-  of any ``rusty_dot`` import (matching the rest of ``app/core``), makes
+  of any ``dot_explorer`` import (matching the rest of ``app/core``), makes
   the tests plain string comparisons, and inherits attribute
   percent-decoding and 1-based → 0-based coordinate conversion from the
   already-tested parser.
@@ -99,7 +99,7 @@ class GenbankInput:
         *gff_text* so the annotation lines resolve against the contigs.
     gff_text : str
         GFF3 text for every feature, ready for
-        :meth:`~rusty_dot.annotation.GffAnnotation.from_text`.  Empty
+        :meth:`~dot_explorer.annotation.GffAnnotation.from_text`.  Empty
         (header only) when the file carries no usable features.
     n_features : int
         Number of GenBank features emitted (a multi-part feature counts

@@ -1,6 +1,6 @@
 # Plot Style
 
-This module provides opt-in Nature-journal-style formatting for rusty-dot
+This module provides opt-in Nature-journal-style formatting for dot-explorer
 plots: Helvetica/Arial fonts at 5&ndash;7&thinsp;pt, 0.5&thinsp;pt line and
 axes widths, no top/right spines, outward ticks, and 300&thinsp;dpi
 tight-bbox figure export defaults.
@@ -8,7 +8,7 @@ tight-bbox figure export defaults.
 Use the context manager to style a single plot:
 
 ```python
-from rusty_dot import DotPlotter, SequenceIndex, nature_style
+from dot_explorer import DotPlotter, SequenceIndex, nature_style
 
 idx = SequenceIndex(k=10)
 idx.add_sequence("seq1", "ACGTACGTACGTACGTACGT")
@@ -30,17 +30,17 @@ with nature_style():
 Or apply the style globally for the session:
 
 ```python
-from rusty_dot import use_nature_style
+from dot_explorer import use_nature_style
 
 use_nature_style()
 ```
 
 ## Constants
 
-::: rusty_dot.style.NATURE_RC
+::: dot_explorer.style.NATURE_RC
 
 ## Functions
 
-::: rusty_dot.style.nature_style
+::: dot_explorer.style.nature_style
 
-::: rusty_dot.style.use_nature_style
+::: dot_explorer.style.use_nature_style

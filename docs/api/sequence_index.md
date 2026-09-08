@@ -16,7 +16,7 @@ This means:
 * **Pairwise comparisons use two independent indexes.** `compare_sequences` and `compare_sequences_stranded` look up the two named sequences from the dictionary and compare their individual k-mer indexes — no combined or merged index is ever created.
 
 ```python
-from rusty_dot import SequenceIndex
+from dot_explorer import SequenceIndex
 import warnings
 
 idx = SequenceIndex(k=15)
@@ -48,4 +48,4 @@ except ValueError as e:
 
 ## Class
 
-::: rusty_dot._rusty_dot.SequenceIndex
+::: dot_explorer._dot_explorer.SequenceIndex

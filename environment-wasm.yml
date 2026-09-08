@@ -16,7 +16,7 @@
 # `nodejs` is only needed for the optional smoke test (scripts/wasm_smoke_test.mjs).
 #
 # The Rust side needs a pinned nightly toolchain as well; see app/README.md.
-name: rustydot-wasm
+name: dot-explorer-wasm
 channels:
   - conda-forge
 dependencies:

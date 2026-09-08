@@ -1,13 +1,13 @@
-/* rusty-dot interactive report behaviours (vanilla JS, no dependencies).
+/* dot-explorer interactive report behaviours (vanilla JS, no dependencies).
  *
  * Wiring contract with the Python side:
- *  - The figure is inline SVG inside #rd-figure.
- *  - Each dotplot panel's axes group is <g id="rd-panel-<row>-<col>">.
- *  - Each match layer is <g id="rd-matches-<row>-<col>-<layer>"> where
+ *  - The figure is inline SVG inside #de-figure.
+ *  - Each dotplot panel's axes group is <g id="de-panel-<row>-<col>">.
+ *  - Each match layer is <g id="de-matches-<row>-<col>-<layer>"> where
  *    <layer> is 'fwd', 'rev' or 'identity'.  The nth drawable child
  *    (<path> or <use>) of that group, in document order, corresponds to the
- *    nth entry of payload.panels['rd-panel-<row>-<col>'].segments[<layer>].
- *  - Match metadata lives in <script type="application/json" id="rd-data">.
+ *    nth entry of payload.panels['de-panel-<row>-<col>'].segments[<layer>].
+ *  - Match metadata lives in <script type="application/json" id="de-data">.
  *
  * Behaviours:
  *  1. Click a panel        -> zoom the SVG viewBox to that panel and dim the
@@ -33,15 +33,15 @@
 (function () {
   'use strict';
 
-  var dataEl = document.getElementById('rd-data');
-  var svg = document.querySelector('#rd-figure svg');
+  var dataEl = document.getElementById('de-data');
+  var svg = document.querySelector('#de-figure svg');
   if (!dataEl || !svg) return;
 
   var payload;
   try {
     payload = JSON.parse(dataEl.textContent);
   } catch (err) {
-    console.error('rusty-dot: failed to parse embedded payload', err);
+    console.error('dot-explorer: failed to parse embedded payload', err);
     return;
   }
 
@@ -142,7 +142,7 @@
    * can contain descendants whose ids merely start the same way; matching
    * loosely once made the axes background masquerade as a second panel,
    * which dimmed the plot it was supposed to select and broke drill-down. */
-  var PANEL_ID_RE = /^rd-panel-\d+-\d+$/;
+  var PANEL_ID_RE = /^de-panel-\d+-\d+$/;
 
   /* Nearest ancestor (inclusive) that is a real panel group, or null. */
   function closestPanel(el) {
@@ -156,7 +156,7 @@
   }
 
   var panelGroups = Array.prototype.filter.call(
-    svg.querySelectorAll('g[id^="rd-panel-"]'),
+    svg.querySelectorAll('g[id^="de-panel-"]'),
     function (g) {
       return PANEL_ID_RE.test(g.id);
     }
@@ -167,7 +167,7 @@
     selectedPanel = null;
     setViewBox(homeViewBox);
     panelGroups.forEach(function (g) {
-      g.classList.remove('rd-dim');
+      g.classList.remove('de-dim');
     });
   }
 
@@ -187,7 +187,7 @@
       })
     );
     panelGroups.forEach(function (g) {
-      g.classList.toggle('rd-dim', g !== panel);
+      g.classList.toggle('de-dim', g !== panel);
     });
   }
 
@@ -355,7 +355,7 @@
     // Only drags starting inside a panel arm region select.
     var panel = closestPanel(evt.target);
     if (!panel) return;
-    var pm = panel.id.match(/^rd-panel-(\d+)-(\d+)$/);
+    var pm = panel.id.match(/^de-panel-(\d+)-(\d+)$/);
     drag = {
       cx0: evt.clientX,
       cy0: evt.clientY,
@@ -382,7 +382,7 @@
       drag.rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       drag.rect.setAttribute(
         'class',
-        drag.shift ? 'rd-select-rect' : 'rd-drag-rect'
+        drag.shift ? 'de-select-rect' : 'de-drag-rect'
       );
       svg.appendChild(drag.rect);
     }
@@ -462,7 +462,7 @@
         return (
           e.row === row &&
           e.col === col &&
-          !e.el.classList.contains('rd-len-hidden') &&
+          !e.el.classList.contains('de-len-hidden') &&
           segTouchesRegion(e, region)
         );
       });
@@ -484,7 +484,7 @@
       clearAllSelection();
       clearBands();
       if (!hadSelection && window.parent !== window) {
-        window.parent.postMessage({ type: 'rd-esc' }, '*');
+        window.parent.postMessage({ type: 'de-esc' }, '*');
       }
     }
   });
@@ -493,12 +493,12 @@
   // 4. Match click -> detail bar
   // ---------------------------------------------------------------------
 
-  var detail = document.getElementById('rd-detail');
-  var detailCoords = document.getElementById('rd-detail-coords');
-  var detailSeq = document.getElementById('rd-detail-seq');
-  var detailActions = document.getElementById('rd-detail-actions');
-  var copyQueryBtn = document.getElementById('rd-copy-query');
-  var copyTargetBtn = document.getElementById('rd-copy-target');
+  var detail = document.getElementById('de-detail');
+  var detailCoords = document.getElementById('de-detail-coords');
+  var detailSeq = document.getElementById('de-detail-seq');
+  var detailActions = document.getElementById('de-detail-actions');
+  var copyQueryBtn = document.getElementById('de-copy-query');
+  var copyTargetBtn = document.getElementById('de-copy-target');
   // Match selection persists after the detail bar closes and can hold
   // several segments (Shift+drag box select).  Keyed "row:col:layer:idx"
   // onto segmentRegistry entries.  Annotation/track features keep their
@@ -507,7 +507,7 @@
   var selectedSegs = {};
   var selectedFeatureEl = null;
   // Key ("row:col:layer:idx") of the aligned-sequence request in flight;
-  // guards against stale 'rd-seq-response' messages after another click.
+  // guards against stale 'de-seq-response' messages after another click.
   var pendingSeqKey = null;
   // Copy-button state for the selected match.  Full sequences are NOT
   // shipped with the preview (that made clicks slow on megabase
@@ -595,7 +595,7 @@
       btn.disabled = true;
       btn.textContent = 'Fetching…';
       window.parent.postMessage(
-        Object.assign({ type: 'rd-copy-request', side: side }, currentSeg),
+        Object.assign({ type: 'de-copy-request', side: side }, currentSeg),
         '*'
       );
     });
@@ -657,7 +657,7 @@
 
   function clearMatchSelection() {
     Object.keys(selectedSegs).forEach(function (k) {
-      selectedSegs[k].el.classList.remove('rd-selected-match');
+      selectedSegs[k].el.classList.remove('de-selected-match');
     });
     selectedSegs = {};
     updateRowColHighlights();
@@ -667,7 +667,7 @@
   function setMatchSelection(entries) {
     clearMatchSelection();
     entries.forEach(function (e) {
-      e.el.classList.add('rd-selected-match');
+      e.el.classList.add('de-selected-match');
       selectedSegs[e.key] = e;
     });
     updateRowColHighlights();
@@ -677,7 +677,7 @@
     closeDetailBar();
     clearMatchSelection();
     if (selectedFeatureEl) {
-      selectedFeatureEl.classList.remove('rd-selected-match');
+      selectedFeatureEl.classList.remove('de-selected-match');
       selectedFeatureEl = null;
     }
     announceFeatureSelection(null);
@@ -699,7 +699,7 @@
   function notifySelectionState() {
     if (window.parent === window) return;
     window.parent.postMessage(
-      { type: 'rd-selection-state', any: hasAnySelection() },
+      { type: 'de-selection-state', any: hasAnySelection() },
       '*'
     );
   }
@@ -726,7 +726,7 @@
       });
     });
     window.parent.postMessage(
-      { type: 'rd-match-selection', pairs: reportPairs, matches: matches },
+      { type: 'de-match-selection', pairs: reportPairs, matches: matches },
       '*'
     );
   }
@@ -736,7 +736,7 @@
     if (window.parent === window) return;
     window.parent.postMessage(
       {
-        type: 'rd-feature-selection',
+        type: 'de-feature-selection',
         feature: feat
           ? {
               seqname: feat.seqname,
@@ -752,7 +752,7 @@
   }
 
   document
-    .getElementById('rd-detail-close')
+    .getElementById('de-detail-close')
     .addEventListener('click', closeDetailBar);
 
   function showMatchDetail(panelGid, layer, idx, el, additive) {
@@ -761,14 +761,14 @@
     var seg = panel.segments[layer][idx];
     if (!seg) return;
 
-    var pm = panelGid.match(/^rd-panel-(\d+)-(\d+)$/);
+    var pm = panelGid.match(/^de-panel-(\d+)-(\d+)$/);
     if (!pm) return;
     var row = parseInt(pm[1], 10);
     var col = parseInt(pm[2], 10);
     var key = row + ':' + col + ':' + layer + ':' + idx;
     if (additive && selectedSegs[key]) {
       // Cmd/Ctrl-click on a selected match drops just that match.
-      selectedSegs[key].el.classList.remove('rd-selected-match');
+      selectedSegs[key].el.classList.remove('de-selected-match');
       delete selectedSegs[key];
       updateRowColHighlights();
       if (!detail.hidden && currentSeg && segKey(currentSeg) === key) {
@@ -807,7 +807,7 @@
       payload.has_sequences && panel.seqs && panel.seqs[layer]
         ? panel.seqs[layer][idx]
         : null;
-    detailSeq.classList.remove('rd-aligned');
+    detailSeq.classList.remove('de-aligned');
     currentSeg = null;
     setCopyState(false, false, null, null);
     if (seq) {
@@ -834,7 +834,7 @@
       detailSeq.textContent = 'Fetching sequences…';
       detailSeq.hidden = false;
       window.parent.postMessage(
-        Object.assign({ type: 'rd-match-select' }, currentSeg),
+        Object.assign({ type: 'de-match-select' }, currentSeg),
         '*'
       );
     } else {
@@ -847,7 +847,7 @@
     detail.hidden = false;
 
     if (selectedFeatureEl) {
-      selectedFeatureEl.classList.remove('rd-selected-match');
+      selectedFeatureEl.classList.remove('de-selected-match');
       selectedFeatureEl = null;
       announceFeatureSelection(null);
     }
@@ -858,7 +858,7 @@
     };
     if (additive) {
       // Cmd/Ctrl-click adds to the selection instead of replacing it.
-      entry.el.classList.add('rd-selected-match');
+      entry.el.classList.add('de-selected-match');
       selectedSegs[entry.key] = entry;
       updateRowColHighlights();
     } else {
@@ -874,13 +874,13 @@
   var segmentRegistry = []; // {el, hit, qlen, row, col, layer, idx, key, bbox}
   var registryByKey = {};
   var matchGroups = Array.prototype.slice.call(
-    svg.querySelectorAll('g[id^="rd-matches-"]')
+    svg.querySelectorAll('g[id^="de-matches-"]')
   );
   matchGroups.forEach(function (group) {
-    // gid: rd-matches-<row>-<col>-<layer>
-    var m = group.id.match(/^rd-matches-(\d+)-(\d+)-(\w+)$/);
+    // gid: de-matches-<row>-<col>-<layer>
+    var m = group.id.match(/^de-matches-(\d+)-(\d+)-(\w+)$/);
     if (!m) return;
-    var panelGid = 'rd-panel-' + m[1] + '-' + m[2];
+    var panelGid = 'de-panel-' + m[1] + '-' + m[2];
     var layer = m[3];
     var row = parseInt(m[1], 10);
     var col = parseInt(m[2], 10);
@@ -906,7 +906,7 @@
       var hit = el.cloneNode(false);
       hit.removeAttribute('style');
       hit.removeAttribute('id');
-      hit.setAttribute('class', 'rd-hit');
+      hit.setAttribute('class', 'de-hit');
       hit.addEventListener('click', onClick);
       group.appendChild(hit);
       if (segs && segs[idx]) {
@@ -950,13 +950,13 @@
   });
 
   /* Axes backgrounds carry their own gid prefix (deliberately outside
-   * rd-panel- so they never masquerade as panels); selection bands are
+   * de-panel- so they never masquerade as panels); selection bands are
    * inserted right after them so they paint behind the match strokes. */
   var plotBgs = [];
   Array.prototype.forEach.call(
-    svg.querySelectorAll('[id^="rd-plotbg-"]'),
+    svg.querySelectorAll('[id^="de-plotbg-"]'),
     function (el) {
-      var m = el.id.match(/^rd-plotbg-(\d+)-(\d+)$/);
+      var m = el.id.match(/^de-plotbg-(\d+)-(\d+)$/);
       if (m) {
         plotBgs.push({
           el: el,
@@ -1035,13 +1035,13 @@
 
   function addSelectionBand(bg, x, y, w, h) {
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('class', 'rd-selband');
+    rect.setAttribute('class', 'de-selband');
     rect.setAttribute('x', x);
     rect.setAttribute('y', y);
     rect.setAttribute('width', w);
     rect.setAttribute('height', h);
     // Right after the background: behind the match strokes by document
-    // order, same trick as the track bands (.rd-band).
+    // order, same trick as the track bands (.de-band).
     bg.el.parentNode.insertBefore(rect, bg.el.nextSibling);
     selectionBandEls.push(rect);
   }
@@ -1086,31 +1086,31 @@
     // A feature click replaces any match selection (and its row/column
     // marks) but lives in its own slot; Escape clears it.
     clearMatchSelection();
-    if (selectedFeatureEl) selectedFeatureEl.classList.remove('rd-selected-match');
+    if (selectedFeatureEl) selectedFeatureEl.classList.remove('de-selected-match');
     selectedFeatureEl = el;
-    el.classList.add('rd-selected-match');
+    el.classList.add('de-selected-match');
     announceFeatureSelection(feat);
     notifySelectionState();
   }
 
   /* Wire up every diagonal-annotation group: the n-th drawable child of
-   * 'rd-annot-<row>-<col>' corresponds to panels[gid].annotations[n]
+   * 'de-annot-<row>-<col>' corresponds to panels[gid].annotations[n]
    * (serialisation contract — patch draw order equals SVG child order). */
   var annotRegistry = []; // {el, feat} — for re-applying a restored selection
   var annotGroups = Array.prototype.slice.call(
-    svg.querySelectorAll('g[id^="rd-annot-"]')
+    svg.querySelectorAll('g[id^="de-annot-"]')
   );
   annotGroups.forEach(function (group) {
-    var m = group.id.match(/^rd-annot-(\d+)-(\d+)$/);
+    var m = group.id.match(/^de-annot-(\d+)-(\d+)$/);
     if (!m) return;
-    var panelGid = 'rd-panel-' + m[1] + '-' + m[2];
+    var panelGid = 'de-panel-' + m[1] + '-' + m[2];
     var feats = (payload.panels[panelGid] || {}).annotations || [];
 
     var children = Array.prototype.slice.call(
       group.querySelectorAll('path, use')
     );
     children.forEach(function (el, idx) {
-      el.classList.add('rd-annot');
+      el.classList.add('de-annot');
       if (feats[idx]) annotRegistry.push({ el: el, feat: feats[idx] });
       el.addEventListener('click', function (evt) {
         if (consumeDragClick()) {
@@ -1163,12 +1163,12 @@
         color: entry.color || patchFill(document.getElementById(gid)),
       };
     });
-    window.parent.postMessage({ type: 'rd-bands', bands: bands }, '*');
+    window.parent.postMessage({ type: 'de-bands', bands: bands }, '*');
     notifySelectionState();
   }
 
   function panelBackground() {
-    return svg.querySelector('[id="rd-plotbg-0-0"]');
+    return svg.querySelector('[id="de-plotbg-0-0"]');
   }
 
   /* Lazily create the band group, inserted directly after the panel
@@ -1179,7 +1179,7 @@
     if (!bg) return null;
     var host = bg.parentNode;
     bandLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    bandLayer.setAttribute('id', 'rd-bands');
+    bandLayer.setAttribute('id', 'de-bands');
     host.insertBefore(bandLayer, bg.nextSibling);
     return bandLayer;
   }
@@ -1189,7 +1189,7 @@
       var rect = activeBands[gid];
       if (rect && rect.parentNode) rect.parentNode.removeChild(rect);
       var el = document.getElementById(gid);
-      if (el) el.classList.remove('rd-track-active');
+      if (el) el.classList.remove('de-track-active');
     });
     activeBands = {};
     bandEntries = {};
@@ -1242,11 +1242,11 @@
       rect.setAttribute('height', feat.h);
     }
     rect.setAttribute('fill', (entry && entry.color) || patchFill(el));
-    rect.setAttribute('class', 'rd-band');
+    rect.setAttribute('class', 'de-band');
     layer.appendChild(rect);
     activeBands[gid] = rect;
     bandEntries[gid] = { axis: axis, entry: entry };
-    el.classList.add('rd-track-active');
+    el.classList.add('de-track-active');
   }
 
   function removeBand(gid) {
@@ -1255,7 +1255,7 @@
     delete activeBands[gid];
     delete bandEntries[gid];
     var el = document.getElementById(gid);
-    if (el) el.classList.remove('rd-track-active');
+    if (el) el.classList.remove('de-track-active');
   }
 
   function toggleBands(gids, entries, axis) {
@@ -1273,7 +1273,7 @@
   }
 
   // Bands driven by the embedding app's annotations-table selection
-  // ('rd-highlight-features' messages).  Kept in their own set so
+  // ('de-highlight-features' messages).  Kept in their own set so
   // replacing the selection never removes a band the user click-toggled
   // on a track glyph themselves.
   var selectionGids = {};
@@ -1336,10 +1336,10 @@
   }
 
   /* Cluster highlighting driven by the embedding app's cluster table
-   * ('rd-highlight-clusters' messages).  payload.clusters records each
+   * ('de-highlight-clusters' messages).  payload.clusters records each
    * cluster's contiguous row/col index runs at plot time; panels outside
    * every selected cluster's blocks are dimmed and the matching
-   * 'rd-cluster-border-<name>' outlines get the active style. */
+   * 'de-cluster-border-<name>' outlines get the active style. */
   function applyClusterHighlights(names) {
     var clusters = payload.clusters || {};
     var selected = (Array.isArray(names) ? names : []).filter(function (n) {
@@ -1355,8 +1355,8 @@
       );
     }
 
-    svg.querySelectorAll('g[id^="rd-panel-"]').forEach(function (el) {
-      var m = el.id.match(/^rd-panel-(\d+)-(\d+)$/);
+    svg.querySelectorAll('g[id^="de-panel-"]').forEach(function (el) {
+      var m = el.id.match(/^de-panel-(\d+)-(\d+)$/);
       if (!m) return;
       var row = Number(m[1]);
       var col = Number(m[2]);
@@ -1371,9 +1371,9 @@
     Object.keys(clusters).forEach(function (n) {
       var active = selected.indexOf(n) !== -1;
       svg
-        .querySelectorAll('[id="rd-cluster-border-' + n + '"]')
+        .querySelectorAll('[id="de-cluster-border-' + n + '"]')
         .forEach(function (el) {
-          el.classList.toggle('rd-cluster-active', active);
+          el.classList.toggle('de-cluster-active', active);
         });
     });
   }
@@ -1415,7 +1415,7 @@
       entries.forEach(function (entry) {
         var el = document.getElementById(entry.gid);
         if (!el) return;
-        el.classList.add('rd-track-feature');
+        el.classList.add('de-track-feature');
         el.addEventListener('click', function (evt) {
           if (consumeDragClick()) {
             evt.stopPropagation();
@@ -1440,12 +1440,12 @@
   // 6. Embedded display options (line width, min match length)
   // ---------------------------------------------------------------------
   //
-  // When the report is embedded by the rusty-dot app it is rendered with
+  // When the report is embedded by the dot-explorer app it is rendered with
   // min_length=0 and the default line width; the app then drives both
-  // options client-side via 'rd-display-opts' messages, so a cosmetic
+  // options client-side via 'de-display-opts' messages, so a cosmetic
   // change never re-renders matplotlib.  Line width is one injected CSS
   // rule (!important beats the per-path inline styles); min length toggles
-  // a hiding class on each segment path and its .rd-hit clone using the
+  // a hiding class on each segment path and its .de-hit clone using the
   // query-side spans registered above.  Standalone reports simply never
   // receive these messages.
 
@@ -1456,7 +1456,7 @@
   function applyDisplayOpts(opts) {
     if (typeof opts.dot_size === 'number' && opts.dot_size > 0) {
       displayStyle.textContent =
-        'g[id^="rd-matches-"] > path:not(.rd-hit) { stroke-width: ' +
+        'g[id^="de-matches-"] > path:not(.de-hit) { stroke-width: ' +
         opts.dot_size +
         'px !important; }';
     }
@@ -1468,8 +1468,8 @@
       currentMinLength = opts.min_length;
       segmentRegistry.forEach(function (seg) {
         var hide = seg.qlen < currentMinLength;
-        seg.el.classList.toggle('rd-len-hidden', hide);
-        seg.hit.classList.toggle('rd-len-hidden', hide);
+        seg.el.classList.toggle('de-len-hidden', hide);
+        seg.hit.classList.toggle('de-len-hidden', hide);
       });
     }
   }
@@ -1499,10 +1499,10 @@
       var el = findFeatureElement(f);
       if (el) {
         if (selectedFeatureEl) {
-          selectedFeatureEl.classList.remove('rd-selected-match');
+          selectedFeatureEl.classList.remove('de-selected-match');
         }
         selectedFeatureEl = el;
-        el.classList.add('rd-selected-match');
+        el.classList.add('de-selected-match');
         notifySelectionState();
       }
     }
@@ -1541,29 +1541,29 @@
   window.addEventListener('message', function (ev) {
     var msg = ev && ev.data;
     if (!msg) return;
-    if (msg.type === 'rd-display-opts') {
+    if (msg.type === 'de-display-opts') {
       applyDisplayOpts(msg);
       return;
     }
-    if (msg.type === 'rd-highlight-features') {
+    if (msg.type === 'de-highlight-features') {
       applySelectionHighlights(msg.features);
       return;
     }
-    if (msg.type === 'rd-highlight-clusters') {
+    if (msg.type === 'de-highlight-clusters') {
       applyClusterHighlights(msg.clusters);
       return;
     }
-    if (msg.type === 'rd-fullscreen') {
+    if (msg.type === 'de-fullscreen') {
       // Embedding app entered/left fullscreen: scale the figure to fill
       // the iframe viewport (CSS keys off this class).
-      document.body.classList.toggle('rd-fs', !!msg.on);
+      document.body.classList.toggle('de-fs', !!msg.on);
       return;
     }
-    if (msg.type === 'rd-restore-selection') {
+    if (msg.type === 'de-restore-selection') {
       applyRestoredSelection(msg);
       return;
     }
-    if (msg.type === 'rd-clear-selection') {
+    if (msg.type === 'de-clear-selection') {
       // The app caught Escape while something was selected: clear here,
       // exactly as an in-report Escape would.
       cancelDrag();
@@ -1572,7 +1572,7 @@
       clearBands();
       return;
     }
-    if (msg.type === 'rd-seq-response') {
+    if (msg.type === 'de-seq-response') {
       // Sequences for the last clicked segment; ignore responses for
       // anything but the request currently in flight.
       var key = msg.row + ':' + msg.col + ':' + msg.layer + ':' + msg.idx;
@@ -1582,7 +1582,7 @@
         detailSeq.textContent = msg.text;
         // Gapped alignments need column-preserving layout; plain
         // query/target previews soft-wrap instead.
-        detailSeq.classList.toggle('rd-aligned', !!msg.aligned);
+        detailSeq.classList.toggle('de-aligned', !!msg.aligned);
         detailSeq.hidden = false;
         // Sequences exist server-side; they are fetched (and cached) on
         // the first copy press rather than shipped with the preview.
@@ -1593,7 +1593,7 @@
       }
       return;
     }
-    if (msg.type === 'rd-copy-response') {
+    if (msg.type === 'de-copy-response') {
       handleCopyResponse(msg);
     }
   });
@@ -1602,6 +1602,6 @@
   // replaced on every re-render, so the app re-sends the current options
   // in response to this ping).
   if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'rd-report-ready' }, '*');
+    window.parent.postMessage({ type: 'de-report-ready' }, '*');
   }
 })();

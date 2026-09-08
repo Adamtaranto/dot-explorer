@@ -11,8 +11,8 @@
 Clone the repository and build the Rust extension with [maturin](https://www.maturin.rs/):
 
 ```bash
-git clone https://github.com/Adamtaranto/rusty-dot.git
-cd rusty-dot
+git clone https://github.com/Adamtaranto/dot-explorer.git
+cd dot-explorer
 pip install maturin
 maturin develop --release
 ```
@@ -21,7 +21,7 @@ The `--release` flag enables full Rust compiler optimisations, which is strongly
 
 ## Install Python dependencies
 
-rusty-dot depends on:
+dot-explorer depends on:
 
 | Package | Purpose |
 |---------|---------|
@@ -35,7 +35,7 @@ These are declared as package dependencies and will be installed automatically b
 To build the documentation locally:
 
 ```bash
-pip install rusty-dot[docs]
+pip install dot-explorer[docs]
 python scripts/notebooks_to_md.py   # render the tutorial notebooks
 zensical serve
 ```
@@ -43,10 +43,10 @@ zensical serve
 ## Verify the installation
 
 ```python
-import rusty_dot
-print(rusty_dot.__version__)  # 0.1.0
+import dot_explorer
+print(dot_explorer.__version__)  # 0.1.0
 
-from rusty_dot import SequenceIndex
+from dot_explorer import SequenceIndex
 idx = SequenceIndex(k=10)
 idx.add_sequence("test", "ACGTACGTACGT")
 print(idx)  # SequenceIndex(k=10, sequences=1)

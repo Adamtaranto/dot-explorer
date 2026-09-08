@@ -4,4 +4,4 @@ The `DotPlotter` class generates all-vs-all dotplot figures from a populated `Se
 
 ## Class
 
-::: rusty_dot.dotplot.DotPlotter
+::: dot_explorer.dotplot.DotPlotter

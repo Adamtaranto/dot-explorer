@@ -1,6 +1,6 @@
 """Tests for PAF format output."""
 
-from rusty_dot._rusty_dot import py_coords_to_paf
+from dot_explorer._dot_explorer import py_coords_to_paf
 
 
 def test_paf_basic():

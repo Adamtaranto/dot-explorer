@@ -1,10 +1,10 @@
-# rusty-dot
+# dot-explorer
 
-**rusty-dot** is a Rust + PyO3 tool for making fast dot plot comparisons of DNA sequences.
+**dot-explorer** is a Rust + PyO3 tool for making fast dot plot comparisons of DNA sequences.
 
 ## Overview
 
-rusty-dot provides a high-performance toolkit for pairwise DNA sequence comparison and visualisation.
+dot-explorer provides a high-performance toolkit for pairwise DNA sequence comparison and visualisation.
 At its core, it builds a compact canonical-hash [ntHash](https://github.com/bcgsc/ntHash) k-mer index for each sequence — both strands in one sorted table, built in a single O(n) pass and in parallel across sequences — and intersects two indexes with a cache-friendly two-pointer walk to efficiently find shared subsequences between any two sequences in the collection.
 
 ### Key Features
@@ -24,8 +24,8 @@ At its core, it builds a compact canonical-hash [ntHash](https://github.com/bcgs
 ## Quick Start
 
 ```python
-from rusty_dot import SequenceIndex
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer import SequenceIndex
+from dot_explorer.dotplot import DotPlotter
 
 # Build index for two sequences
 idx = SequenceIndex(k=15)
@@ -52,7 +52,7 @@ plotter.plot(output_path="dotplot.svg")
 plotter.plot(output_path="dotplot_filtered.png", min_length=200)
 
 # Colour alignments by identity from a PAF file
-from rusty_dot.paf_io import PafAlignment
+from dot_explorer.paf_io import PafAlignment
 aln = PafAlignment.from_file("alignments.paf")
 plotter = DotPlotter(idx, paf_alignment=aln)
 plotter.plot(output_path="identity_dotplot.png", color_by_identity=True, identity_palette="viridis")
@@ -61,9 +61,9 @@ plotter.plot_identity_colorbar(palette="viridis", output_path="colorbar.png")
 
 ## Documentation Sections
 
-- **[Web App](webapp.md)** — try rusty-dot in your browser, no installation
+- **[Web App](webapp.md)** — try dot-explorer in your browser, no installation
   required: a fully client-side assembly-comparison app (files never leave
   your machine).
-- **[Installation](installation.md)** — how to install rusty-dot and its dependencies.
+- **[Installation](installation.md)** — how to install dot-explorer and its dependencies.
 - **[Tutorials](tutorials/quickstart.ipynb)** — step-by-step Jupyter notebook walkthroughs.
 - **[API Reference](api/index.md)** — full documentation for all classes and functions.

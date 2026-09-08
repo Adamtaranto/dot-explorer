@@ -1,8 +1,8 @@
 """Parity tests for the Rust and Python gravity-order implementations.
 
 The collinearity sort is implemented twice: in Rust
-(:meth:`rusty_dot.SequenceIndex.optimal_contig_order`, used by ``CrossIndex``)
-and in pure Python (:func:`rusty_dot.paf_io.compute_gravity_contigs`, used by
+(:meth:`dot_explorer.SequenceIndex.optimal_contig_order`, used by ``CrossIndex``)
+and in pure Python (:func:`dot_explorer.paf_io.compute_gravity_contigs`, used by
 ``PafAlignment``).  Both must produce identical orderings for the same matches.
 
 To make the two engines genuinely comparable, the PAF records fed to the Python
@@ -10,8 +10,8 @@ path are derived directly from the Rust index's own stranded matches, so both
 sides operate on exactly the same alignment blocks.
 """
 
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.paf_io import PafRecord, compute_gravity_contigs
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer.paf_io import PafRecord, compute_gravity_contigs
 
 
 def _records_from_index(

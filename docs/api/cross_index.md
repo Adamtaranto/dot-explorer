@@ -2,7 +2,7 @@
 
 `CrossIndex` manages sequences divided into named groups and computes
 cross-group pairwise comparisons.  It is compatible with
-[`DotPlotter`](dotplot.md#rusty_dot.dotplot.DotPlotter).
+[`DotPlotter`](dotplot.md#dot_explorer.dotplot.DotPlotter).
 
 ## Workflow
 
@@ -29,8 +29,8 @@ another group.
 ## Quick start
 
 ```python
-from rusty_dot.paf_io import CrossIndex
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer.paf_io import CrossIndex
+from dot_explorer.dotplot import DotPlotter
 
 cross = CrossIndex(k=15)
 cross.load_fasta("assembly_a.fasta", group="a")
@@ -61,8 +61,8 @@ plotter.plot(
 ## Writing reordered / reoriented FASTA
 
 `write_fasta()` persists a group's contigs in the current
-[`contig_order`](#rusty_dot.paf_io.CrossIndex.contig_order), reverse-complementing
-any contig flagged by [`reversed_contigs()`](#rusty_dot.paf_io.CrossIndex.reversed_contigs).
+[`contig_order`](#dot_explorer.paf_io.CrossIndex.contig_order), reverse-complementing
+any contig flagged by [`reversed_contigs()`](#dot_explorer.paf_io.CrossIndex.reversed_contigs).
 Orientation is always expressed relative to the target group, which stays the
 forward reference — so reorder the group you want to *change* as the **query**.
 
@@ -111,4 +111,4 @@ q_sorted, t_sorted = cross.reorder_contigs(query_group="query", target_group="ta
 
 ## Class
 
-::: rusty_dot.paf_io.CrossIndex
+::: dot_explorer.paf_io.CrossIndex

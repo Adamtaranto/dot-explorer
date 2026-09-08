@@ -13,22 +13,22 @@
   'use strict';
 
   function fsActive() {
-    return document.documentElement.classList.contains('rd-fullscreen');
+    return document.documentElement.classList.contains('de-fullscreen');
   }
 
   /* Toggle the state class and tell the bridge, which relays it into the
    * report iframe so the figure can scale to the viewport. */
   function applyState(on) {
-    document.documentElement.classList.toggle('rd-fullscreen', on);
+    document.documentElement.classList.toggle('de-fullscreen', on);
     document.dispatchEvent(
-      new CustomEvent('rd-fs-change', { detail: { on: on } })
+      new CustomEvent('de-fs-change', { detail: { on: on } })
     );
   }
 
   /* The drill-down tab strip is hidden in fullscreen, so make sure the
    * Plot pane (always the first tab) is the visible one before entering. */
   function activatePlotTab() {
-    var link = document.querySelector('.rd-plot-area .nav-tabs .nav-link');
+    var link = document.querySelector('.de-plot-area .nav-tabs .nav-link');
     if (link && !link.classList.contains('active')) link.click();
   }
 
@@ -45,15 +45,15 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var btn = ev.target.closest && ev.target.closest('.rd-fs-btn');
+    var btn = ev.target.closest && ev.target.closest('.de-fs-btn');
     if (!btn) return;
     setFullscreen(!fsActive());
   });
 
   // Escape with something selected clears the selection instead of
   // exiting; only an Escape with nothing selected leaves fullscreen.
-  // The report announces its selection state ('rd-selection-state') and
-  // the annotations table announces its rows ('rd-ft-selection').
+  // The report announces its selection state ('de-selection-state') and
+  // the annotations table announces its rows ('de-ft-selection').
   var reportHasSelection = false;
   var tableSelectionCount = 0;
 
@@ -62,27 +62,27 @@
   }
 
   function clearReportSelection() {
-    var frame = document.querySelector('iframe.rd-report-frame');
+    var frame = document.querySelector('iframe.de-report-frame');
     if (frame && frame.contentWindow) {
-      frame.contentWindow.postMessage({ type: 'rd-clear-selection' }, '*');
+      frame.contentWindow.postMessage({ type: 'de-clear-selection' }, '*');
     }
   }
 
   window.addEventListener('message', function (ev) {
     var msg = ev && ev.data;
     if (!msg) return;
-    if (msg.type === 'rd-selection-state') {
+    if (msg.type === 'de-selection-state') {
       reportHasSelection = !!msg.any;
-    } else if (msg.type === 'rd-report-ready') {
+    } else if (msg.type === 'de-report-ready') {
       // A fresh iframe starts with nothing selected.
       reportHasSelection = false;
-    } else if (msg.type === 'rd-esc' && fsActive()) {
+    } else if (msg.type === 'de-esc' && fsActive()) {
       // Escape inside the report with nothing left to clear.
       setFullscreen(false);
     }
   });
 
-  document.addEventListener('rd-ft-selection', function (ev) {
+  document.addEventListener('de-ft-selection', function (ev) {
     var features = ev && ev.detail && ev.detail.features;
     tableSelectionCount = Array.isArray(features) ? features.length : 0;
   });
@@ -104,7 +104,7 @@
   // Capture phase so this sees the selection state before the table's own
   // Escape handler clears it.  Only reaches this document when focus is
   // outside the sandboxed report iframe; Escape inside the iframe is
-  // handled by the report itself (clearing first, then 'rd-esc').
+  // handled by the report itself (clearing first, then 'de-esc').
   document.addEventListener(
     'keydown',
     function (ev) {

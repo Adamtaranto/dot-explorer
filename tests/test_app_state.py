@@ -41,7 +41,7 @@ def kmer_setup():
     first half of t1, qRevA reverse-matches the second half of t1, qB
     matches t2.  Query upload order is deliberately scrambled.
     """
-    from rusty_dot.paf_io import reverse_complement
+    from dot_explorer.paf_io import reverse_complement
 
     a = _rand_seq(400, seed=1)
     b = _rand_seq(400, seed=2)
@@ -166,7 +166,7 @@ def test_resolve_orders_does_not_mutate_index_or_inputs(kmer_setup):
 
 
 def test_fasta_export_kmer_path(kmer_setup, tmp_path):
-    from rusty_dot.paf_io import reverse_complement
+    from dot_explorer.paf_io import reverse_complement
 
     idx, q_fa, t_fa = kmer_setup
     records = idx.get_records_for_pair(QUERY_GROUP, TARGET_GROUP)
@@ -186,7 +186,7 @@ def test_fasta_export_kmer_path(kmer_setup, tmp_path):
 
 
 def test_fasta_export_paf_with_sequences_path():
-    from rusty_dot.paf_io import reverse_complement
+    from dot_explorer.paf_io import reverse_complement
 
     paf = (
         'q1\t100\t0\t50\t+\tt1\t200\t100\t150\t50\t50\t60\n'
@@ -230,7 +230,7 @@ def test_inject_panel_bridge_places_script_before_body_close():
 
     html = '<html><body><svg></svg></body></html>'
     out = app_module.inject_panel_bridge(html)
-    assert 'rd-panel-dblclick' in out
+    assert 'de-panel-dblclick' in out
     # The bridge declares its dblclick drill-down so report.js defers the
     # single-click focus zoom (no zoom-then-swap on double-click).
     assert 'RD_DBLCLICK_DRILLDOWN = true' in out
@@ -244,8 +244,8 @@ def test_generated_report_contains_bridge_and_panels(kmer_setup, tmp_path):
     """End-to-end: to_html + injection yields panels and a valid bridge."""
     pytest.importorskip('shiny')  # app.py imports shiny at module level
     import app as app_module
-    from rusty_dot import DotPlotter
-    from rusty_dot.paf_io import PafAlignment
+    from dot_explorer import DotPlotter
+    from dot_explorer.paf_io import PafAlignment
 
     idx, q_fa, t_fa = kmer_setup
     paf = PafAlignment(idx.get_records_for_pair(QUERY_GROUP, TARGET_GROUP))
@@ -258,12 +258,12 @@ def test_generated_report_contains_bridge_and_panels(kmer_setup, tmp_path):
 
     plt.close(fig)
     html = app_module.inject_panel_bridge(out.read_text())
-    assert 'id="rd-panel-0-0"' in html
-    assert f'id="rd-panel-{len(q_int) - 1}-{len(t_int) - 1}"' in html
-    assert html.count('rd-panel-dblclick') == 1
+    assert 'id="de-panel-0-0"' in html
+    assert f'id="de-panel-{len(q_int) - 1}-{len(t_int) - 1}"' in html
+    assert html.count('de-panel-dblclick') == 1
     assert 'window.parent.postMessage' in html
     # Injected regex survived Python string escaping intact.
-    assert r'/^rd-panel-(\d+)-(\d+)$/' in html
+    assert r'/^de-panel-(\d+)-(\d+)$/' in html
 
 
 # ----------------------------------------------------- UX round 2 helpers
@@ -275,8 +275,8 @@ def test_strip_report_header_hides_report_hint_bar():
 
     html = '<html><head><title>t</title></head><body><svg/></body></html>'
     out = app_module.strip_report_header(html)
-    assert '#rd-header{display:none}' in out
-    assert out.index('#rd-header') < out.index('</head>')
+    assert '#de-header{display:none}' in out
+    assert out.index('#de-header') < out.index('</head>')
     # No head tag: style is prepended, document body untouched.
     naked = app_module.strip_report_header('<svg/>')
     assert naked.startswith('<style>')
@@ -308,8 +308,8 @@ def test_identity_colored_plot_from_mixed_identity_records():
     """color_by_identity renders per-record identity colours for PAF results."""
     import matplotlib.pyplot as plt
 
-    from rusty_dot import DotPlotter
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer import DotPlotter
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     def rec(q, t, matches, block):
         return PafRecord(
@@ -345,8 +345,8 @@ def test_self_align_kmer_index_and_plot():
     from core.seqs import InMemoryProvider
     import matplotlib.pyplot as plt
 
-    from rusty_dot import DotPlotter
-    from rusty_dot.paf_io import PafAlignment
+    from dot_explorer import DotPlotter
+    from dot_explorer.paf_io import PafAlignment
 
     seq = 'ACGTTGCAAGGCTTAACCGGTTAACGGCCAATT' * 8
     q = InMemoryProvider(parse_fasta_bytes(f'>c1\n{seq}\n>c2\n{seq[::-1]}\n'.encode()))

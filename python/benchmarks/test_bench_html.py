@@ -13,9 +13,9 @@ from _synth import homologous_pair
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot import SequenceIndex
-from rusty_dot._html.serialize import build_panel_payload
-from rusty_dot.dotplot import DotPlotter
+from dot_explorer import SequenceIndex
+from dot_explorer._html.serialize import build_panel_payload
+from dot_explorer.dotplot import DotPlotter
 
 # Small enough to keep the figure render tractable under instrumentation,
 # large enough to produce hundreds of match segments per panel.
@@ -46,7 +46,7 @@ def html_capture(html_bench_index: SequenceIndex) -> dict:
                 q_name, t_name, True
             ):
                 (rev if strand == '-' else fwd).append([qs, qe, ts, te])
-            panels[f'rd-panel-{row}-{col}'] = {
+            panels[f'de-panel-{row}-{col}'] = {
                 'query': q_name,
                 'target': t_name,
                 'query_id': q_name,

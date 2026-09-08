@@ -1,7 +1,7 @@
 // Minimal Shiny input binding for native <input type="color"> pickers.
 //
 // Shiny for Python ships no colour input; this binding turns any
-// <input type="color" class="rd-color-input" id="..."> into a regular
+// <input type="color" class="de-color-input" id="..."> into a regular
 // Shiny input whose value is the '#rrggbb' hex string.  Change events are
 // debounced by the 250 ms rate policy so dragging inside the OS colour
 // dialog doesn't re-render the plot per intermediate colour.
@@ -18,7 +18,7 @@
     Object.assign(binding, {
       find: function (scope) {
         return scope.querySelectorAll ?
-          scope.querySelectorAll('input.rd-color-input') :
+          scope.querySelectorAll('input.de-color-input') :
           [];
       },
       getId: function (el) {
@@ -46,7 +46,7 @@
         return { policy: 'debounce', delay: 250 };
       },
     });
-    window.Shiny.inputBindings.register(binding, 'rusty-dot.colorInput');
+    window.Shiny.inputBindings.register(binding, 'dot-explorer.colorInput');
   }
 
   register();

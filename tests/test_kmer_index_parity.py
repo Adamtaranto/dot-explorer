@@ -12,7 +12,7 @@ import random
 
 import pytest
 
-from rusty_dot._rusty_dot import SequenceIndex
+from dot_explorer._dot_explorer import SequenceIndex
 
 _COMPLEMENT = str.maketrans('ACGT', 'TGCA')
 

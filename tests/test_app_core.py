@@ -213,7 +213,7 @@ def test_plot_config_kwargs_mapping():
 
 def test_cached_index_plots_like_the_app():
     """The exact call path the app's make_figure uses must produce a Figure."""
-    from rusty_dot import DotPlotter
+    from dot_explorer import DotPlotter
 
     cache = SessionCache()
     q, t = _two_assemblies()
@@ -255,14 +255,14 @@ def test_pick_wasm_wheel_matches_platform():
     from core.wheels import pick_wasm_wheel
 
     tag = 'emscripten_3_1_58_wasm32'
-    good = Path('wheels/rusty_dot-0.1.0-cp312-cp312-emscripten_3_1_58_wasm32.whl')
-    stale = Path('wheels/rusty_dot-0.1.0-cp312-cp312-emscripten_3_1_65_wasm32.whl')
+    good = Path('wheels/dot_explorer-0.1.0-cp312-cp312-emscripten_3_1_58_wasm32.whl')
+    stale = Path('wheels/dot_explorer-0.1.0-cp312-cp312-emscripten_3_1_65_wasm32.whl')
     # A stale wheel from another Emscripten version sorts last lexically —
     # the picker must select by platform tag, not sort order.
     assert pick_wasm_wheel([good, stale], tag) == good
     assert pick_wasm_wheel([stale, good], tag) == good
     # Multiple matches: lexically last (highest version) wins.
-    newer = Path('wheels/rusty_dot-0.2.0-cp312-cp312-emscripten_3_1_58_wasm32.whl')
+    newer = Path('wheels/dot_explorer-0.2.0-cp312-cp312-emscripten_3_1_58_wasm32.whl')
     assert pick_wasm_wheel([good, newer, stale], tag) == newer
 
 
@@ -272,9 +272,9 @@ def test_pick_wasm_wheel_errors():
     from core.wheels import pick_wasm_wheel
     import pytest as _pytest
 
-    with _pytest.raises(RuntimeError, match='No rusty-dot wasm wheel'):
+    with _pytest.raises(RuntimeError, match='No dot-explorer wasm wheel'):
         pick_wasm_wheel([], 'emscripten_3_1_58_wasm32')
-    stale = Path('wheels/rusty_dot-0.1.0-cp312-cp312-emscripten_3_1_65_wasm32.whl')
+    stale = Path('wheels/dot_explorer-0.1.0-cp312-cp312-emscripten_3_1_65_wasm32.whl')
     with _pytest.raises(RuntimeError, match='different Pyodide'):
         pick_wasm_wheel([stale], 'emscripten_3_1_58_wasm32')
 
@@ -361,7 +361,7 @@ def test_kmer_cache_evicts_least_recently_used():
 
 
 def test_paf_cache_evicts_and_refreshes_on_hit():
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     cache = SessionCache()
     line = 'q\t100\t0\t50\t+\tt\t100\t0\t50\t50\t50\t255'
@@ -474,7 +474,7 @@ def test_display_name_prefers_the_common_spelling():
 def test_apply_annotation_config_filters_and_recolours():
     from core.annotation_state import apply_annotation_config
 
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
     ann = GffAnnotation.from_text(
         'c1\tt\tgene\t1\t100\t.\t+\t.\tID=g\nc1\tt\tCDS\t1\t50\t.\t+\t0\tID=c\n'
@@ -492,8 +492,8 @@ def test_make_figure_call_path_accepts_annotations():
     """plot() accepts the exact annotation kwargs the app forwards."""
     from core.state import PlotConfig
 
-    from rusty_dot import DotPlotter
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer import DotPlotter
+    from dot_explorer.annotation import GffAnnotation
 
     cache = SessionCache()
     q, t = _two_assemblies()
@@ -525,7 +525,7 @@ def test_has_self_pair_detects_shared_contigs():
 def test_merge_annotations_concatenates_and_keeps_colours():
     from core.annotation_state import merge_annotations
 
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
     a = GffAnnotation.from_text('c1\tt\tgene\t1\t10\t.\t+\t.\tID=a')
     b = GffAnnotation.from_text('c1\tt\texon\t20\t30\t.\t+\t.\tID=b')
@@ -541,8 +541,8 @@ def test_merge_annotations_concatenates_and_keeps_colours():
     assert merge_annotations([a, None]) is a  # single input passes through
 
 
-def test_merge_annotations_needs_no_rusty_dot_when_there_is_nothing_to_merge():
-    """The empty case must not import rusty_dot.
+def test_merge_annotations_needs_no_dot_explorer_when_there_is_nothing_to_merge():
+    """The empty case must not import dot_explorer.
 
     Under Shinylive the app boots while the wasm wheel is still installing,
     and the annotation controls are primed at startup with no uploads yet.
@@ -557,8 +557,8 @@ def test_merge_annotations_needs_no_rusty_dot_when_there_is_nothing_to_merge():
     real_import = builtins.__import__
 
     def blocked(name, *args, **kwargs):
-        if name.startswith('rusty_dot'):
-            raise ModuleNotFoundError("No module named 'rusty_dot'")
+        if name.startswith('dot_explorer'):
+            raise ModuleNotFoundError("No module named 'dot_explorer'")
         return real_import(name, *args, **kwargs)
 
     builtins.__import__ = blocked
@@ -579,7 +579,7 @@ FEATURE_GFF = (
 
 
 def _feature_ann():
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
     return GffAnnotation.from_text(FEATURE_GFF)
 
@@ -679,7 +679,7 @@ def test_feature_table_js_contract():
     assert "setInputValue('feature_table_change'" in js
     for kind in ("'vis'", "'color'", "'bulk'"):
         assert kind in js
-    assert 'rd-feature-table' in js and 'rd-feature-table' in app_py
+    assert 'de-feature-table' in js and 'de-feature-table' in app_py
     assert 'input.feature_table_change' in app_py
     # The table must stay unbound: one Shiny input per feature would mean
     # ~1200 bindings on a real GFF and a visible Pyodide freeze.
@@ -716,7 +716,7 @@ def test_new_result_clears_the_paf_pair_index():
 
 
 def _ann(text='c1\tt\tgene\t1\t10\t.\t+\t.\tID=a'):
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
     return GffAnnotation.from_text(text)
 
@@ -806,7 +806,7 @@ def test_nav_tips_hides_click_to_focus_on_a_single_panel():
 
 def test_report_js_matches_panel_ids_strictly():
     """Prefix-only matching let the axes background pose as a panel."""
-    import rusty_dot._html as html_pkg
+    import dot_explorer._html as html_pkg
 
     js = (Path(html_pkg.__file__).parent / 'report.js').read_text()
     assert 'PANEL_ID_RE' in js
@@ -818,7 +818,7 @@ def test_report_js_matches_panel_ids_strictly():
     css = (Path(html_pkg.__file__).parent / 'report.css').read_text()
     dotplot = (Path(html_pkg.__file__).parent.parent / 'dotplot.py').read_text()
     for src in (js, css, dotplot):
-        assert 'rd-panel-0-0-bg' not in src
+        assert 'de-panel-0-0-bg' not in src
         assert "f'{gid}-bg'" not in src
 
 
@@ -830,7 +830,7 @@ def test_panel_dblclick_bridge_walks_ancestors():
     assert 'parentNode' in bridge
     # The exact-shape regex is what makes the walk terminate correctly, and
     # tests/test_app_state.py pins that it survives Python escaping.
-    assert r'/^rd-panel-(\\d+)-(\\d+)$/' in bridge
+    assert r'/^de-panel-(\\d+)-(\\d+)$/' in bridge
 
 
 def test_annotation_toggles_are_static_so_a_rerun_cannot_reset_them():
@@ -869,7 +869,7 @@ def test_panel_click_is_delegated_so_any_click_can_reset():
     Per-panel listeners each called stopPropagation, so no click outside the
     focused panel could ever reach a reset.
     """
-    import rusty_dot._html as html_pkg
+    import dot_explorer._html as html_pkg
 
     js = (Path(html_pkg.__file__).parent / 'report.js').read_text()
     block = js.split('if (panelGroups.length > 1)')[1].split('// ---')[0]
@@ -1157,7 +1157,7 @@ def test_drilldown_plot_pane_is_a_flex_column_like_the_overview():
     In the drill-down `plot_area` wraps the frame in `ui.navset_tab`, whose
     `.tab-content` / `.tab-pane` are plain block boxes -- and Shiny's output
     wrappers are `display: contents`, so the frame is a flex item of
-    whatever box encloses it.  Under block layout `.rd-plot-area` measured
+    whatever box encloses it.  Under block layout `.de-plot-area` measured
     ~90px shorter than the frame it contained, and `aligner_log_ui` (the
     next sibling in the page body, with no z-index on either side) was laid
     out inside that overflow and painted on top of the frame -- hiding the
@@ -1177,11 +1177,11 @@ def test_drilldown_plot_pane_is_a_flex_column_like_the_overview():
 
     # The frame itself: an inline replaced element is sized through a line
     # box, which leaves its wrapper measuring 0 tall.
-    assert 'display: block;' in rule('.rd-report-frame')
+    assert 'display: block;' in rule('.de-report-frame')
 
     for selector in (
-        '.rd-plot-area .tab-content',
-        '.rd-plot-area .tab-content > .tab-pane.active',
+        '.de-plot-area .tab-content',
+        '.de-plot-area .tab-content > .tab-pane.active',
     ):
         body = rule(selector)
         assert 'display: flex;' in body, f'{selector} is not a flex container'
@@ -1190,7 +1190,7 @@ def test_drilldown_plot_pane_is_a_flex_column_like_the_overview():
 
     # The annotations tab is the same story: its scroller has to shrink with
     # the pane rather than hold a fixed 62vh and overflow it.
-    for selector in ('.rd-ft-panel', '.rd-ft-scroll'):
+    for selector in ('.de-ft-panel', '.de-ft-scroll'):
         body = rule(selector)
         assert 'flex: 1 1 auto;' in body, f'{selector} does not grow/shrink'
         assert 'min-height: 0;' in body, f'{selector} cannot shrink'

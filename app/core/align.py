@@ -2,7 +2,7 @@
 
 Two method families exist:
 
-* **In-Pyodide** — k-mer matching via the rusty-dot Rust core, and PAF
+* **In-Pyodide** — k-mer matching via the dot-explorer Rust core, and PAF
   import (parsed directly from uploaded text).  Implemented here.
 * **biowasm tools** — minimap2 / nucmer run in an Aioli WebWorker
   on the JS side (``app/www/aligners.js``); their text output is handed
@@ -22,11 +22,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
 #: Method key -> UI label for every planned alignment method.
 METHOD_LABELS: dict[str, str] = {
-    'kmer': 'k-mer matching (rusty-dot)',
+    'kmer': 'k-mer matching (dot-explorer)',
     'paf': 'Import PAF file',
     'minimap2': 'minimap2 (biowasm)',
     'nucmer': 'nucmer / MUMmer4 (biowasm)',
@@ -67,7 +67,7 @@ def paf_alignment_from_text(text: str) -> PafAlignment:
 
     Returns
     -------
-    rusty_dot.paf_io.PafAlignment
+    dot_explorer.paf_io.PafAlignment
         Alignment holding one record per PAF line.
 
     Raises
@@ -76,7 +76,7 @@ def paf_alignment_from_text(text: str) -> PafAlignment:
         If no PAF records are found, or a line is not valid PAF (propagated
         from ``PafRecord.from_line`` with the line number added).
     """
-    from rusty_dot.paf_io import PafAlignment, PafRecord
+    from dot_explorer.paf_io import PafAlignment, PafRecord
 
     records = []
     for lineno, line in enumerate(text.splitlines(), start=1):
@@ -97,7 +97,7 @@ def paf_text_from_alignment(alignment: PafAlignment) -> str:
 
     Parameters
     ----------
-    alignment : rusty_dot.paf_io.PafAlignment
+    alignment : dot_explorer.paf_io.PafAlignment
         Alignment to serialise.
 
     Returns
@@ -234,7 +234,7 @@ def nucmer_delta_to_records(text: str) -> list[PafRecord]:
 
     Returns
     -------
-    list[rusty_dot.paf_io.PafRecord]
+    list[dot_explorer.paf_io.PafRecord]
         One record per alignment, with 0-based half-open forward-strand
         coordinates as required by the PAF spec.
 
@@ -244,7 +244,7 @@ def nucmer_delta_to_records(text: str) -> list[PafRecord]:
         If a header or coordinate line is malformed, or no alignments are
         found.
     """
-    from rusty_dot.paf_io import PafRecord
+    from dot_explorer.paf_io import PafRecord
 
     records: list[PafRecord] = []
     ref = qry = ''
@@ -337,7 +337,7 @@ def alignment_from_tool_output(tool: str, text: str) -> PafAlignment:
 
     Returns
     -------
-    rusty_dot.paf_io.PafAlignment
+    dot_explorer.paf_io.PafAlignment
         Parsed alignment.
 
     Raises
@@ -346,7 +346,7 @@ def alignment_from_tool_output(tool: str, text: str) -> PafAlignment:
         If *tool* is unknown or the output cannot be parsed / holds no
         alignments.
     """
-    from rusty_dot.paf_io import PafAlignment
+    from dot_explorer.paf_io import PafAlignment
 
     if tool == 'minimap2':
         return paf_alignment_from_text(text)

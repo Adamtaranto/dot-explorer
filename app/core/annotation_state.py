@@ -3,7 +3,7 @@
 The dynamic per-feature-type toggle/colour UI needs stable Shiny input ids
 (alphanumeric + underscore) derived from arbitrary GFF type names, and a
 way to apply the user's selections to a parsed
-:class:`~rusty_dot.annotation.GffAnnotation`.  Everything here is plain
+:class:`~dot_explorer.annotation.GffAnnotation`.  Everything here is plain
 Python so it can be unit-tested without a Shiny session.
 """
 
@@ -13,7 +13,7 @@ import re
 from typing import TYPE_CHECKING, Mapping
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer.annotation import GffAnnotation
 
 #: Roles a GFF upload can play (query = y axis, target = x axis).
 ANNOTATION_ROLES: tuple[str, str] = ('query', 'target')
@@ -94,7 +94,7 @@ def merge_annotations(
     """
     # Imported only on the path that actually constructs one.  Under
     # Shinylive the app boots before the wasm wheel finishes installing, and
-    # a startup read that imports rusty_dot would raise -- poisoning the
+    # a startup read that imports dot_explorer would raise -- poisoning the
     # reactive.calc that made the read, since a cached error is re-raised
     # until the calc's dependencies change.  With no annotations there is
     # nothing to merge, so the common boot-time call needs no import at all.
@@ -104,7 +104,7 @@ def merge_annotations(
     if len(present) == 1:
         return present[0]
 
-    from rusty_dot.annotation import GffAnnotation  # noqa: PLC0415
+    from dot_explorer.annotation import GffAnnotation  # noqa: PLC0415
 
     colors: dict[str, str] = {}
     records: list = []
@@ -287,7 +287,7 @@ def apply_feature_overrides(
         input is returned unchanged when nothing is hidden (colours are
         applied in place either way).
     """
-    from rusty_dot.annotation import GffAnnotation  # noqa: PLC0415
+    from dot_explorer.annotation import GffAnnotation  # noqa: PLC0415
 
     if annotation is None:
         return None

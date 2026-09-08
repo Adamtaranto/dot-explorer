@@ -1,16 +1,16 @@
 [package]
-name = "rusty-dot"
+name = "dot-explorer"
 version = "0.1.0"
 edition = "2021"
 description = "Fast dot plot comparisons of DNA sequences using an FM-Index"
 license = "GPL-3.0-or-later"
 
 [lib]
-name = "_rusty_dot"
+name = "_dot_explorer"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "rusty-dot"
+name = "dot-explorer"
 path = "src/main.rs"
 
 [dependencies]

@@ -1,11 +1,11 @@
-"""GFF feature annotation support for rusty-dot dotplots.
+"""GFF feature annotation support for dot-explorer dotplots.
 
 Provides the :class:`GffAnnotation` class for loading GFF features and
 mapping them onto dotplot axes.
 
 Examples
 --------
->>> from rusty_dot.annotation import GffAnnotation
+>>> from dot_explorer.annotation import GffAnnotation
 >>> ann = GffAnnotation.from_file("features.gff")
 >>> ann.feature_types()
 ['CDS', 'gene', 'repeat_region']
@@ -282,7 +282,7 @@ class GffAnnotation:
 
     Examples
     --------
-    >>> from rusty_dot.annotation import GffAnnotation
+    >>> from dot_explorer.annotation import GffAnnotation
     >>> ann = GffAnnotation.from_file("features.gff", palette="Set2")
     >>> ann.keep_feature_types(["gene"]).sequence_names()
     ['chr1', 'chr2']

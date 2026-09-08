@@ -18,12 +18,12 @@
 //
 // Filtering, sorting and row selection are purely client-side and never
 // reach the server; selected rows are announced to bridge.js through a
-// 'rd-ft-selection' CustomEvent so the report can band them.
+// 'de-ft-selection' CustomEvent so the report can band them.
 
 (function () {
   'use strict';
 
-  var TABLE_ID = 'rd-feature-table';
+  var TABLE_ID = 'de-feature-table';
 
   function send(payload) {
     if (!window.Shiny || !window.Shiny.setInputValue) return;
@@ -82,24 +82,24 @@
       '<td><input type="color" data-uid="' + esc(r.uid) +
       '" data-kind="color" value="' + esc(r.color) +
       '" data-type-color="' + esc(r.type_color) +
-      '" class="rd-color-input"></td>' +
-      '<td class="rd-ft-role">' + esc(r.role) + '</td>' +
-      '<td class="rd-ft-contig">' + esc(r.contig) + '</td>' +
-      '<td class="rd-ft-type">' + esc(r.type) + '</td>' +
-      '<td class="rd-ft-name">' + esc(r.name) + '</td>' +
-      '<td class="rd-ft-num">' + fmt(r.start) + '</td>' +
-      '<td class="rd-ft-num">' + fmt(r.end) + '</td>' +
-      '<td class="rd-ft-num">' + fmt(r.length) + '</td>' +
+      '" class="de-color-input"></td>' +
+      '<td class="de-ft-role">' + esc(r.role) + '</td>' +
+      '<td class="de-ft-contig">' + esc(r.contig) + '</td>' +
+      '<td class="de-ft-type">' + esc(r.type) + '</td>' +
+      '<td class="de-ft-name">' + esc(r.name) + '</td>' +
+      '<td class="de-ft-num">' + fmt(r.start) + '</td>' +
+      '<td class="de-ft-num">' + fmt(r.end) + '</td>' +
+      '<td class="de-ft-num">' + fmt(r.length) + '</td>' +
       '<td>' + esc(r.strand) + '</td>' +
-      '<td class="rd-ft-src">' + esc(r.source) + '</td>' +
-      '<td class="rd-ft-attrs" title="' + esc(r.attrs) + '">' +
+      '<td class="de-ft-src">' + esc(r.source) + '</td>' +
+      '<td class="de-ft-attrs" title="' + esc(r.attrs) + '">' +
       esc(r.attrs) + '</td>' +
       '</tr>'
     );
   }
 
   function fillColumnSelect(t) {
-    var sel = document.getElementById('rd-ft-filter-col');
+    var sel = document.getElementById('de-ft-filter-col');
     if (!sel) return;
     var opts = '<option value="-1">Any column</option>';
     Array.prototype.forEach.call(t.tHead.rows[0].cells, function (th, i) {
@@ -116,7 +116,7 @@
     sortDir = 0;
     Array.prototype.forEach.call(t.tHead.rows[0].cells, function (cell) {
       cell.setAttribute('aria-sort', 'none');
-      cell.classList.remove('rd-sort-asc', 'rd-sort-desc');
+      cell.classList.remove('de-sort-asc', 'de-sort-desc');
     });
   }
 
@@ -131,7 +131,7 @@
     // highlights -- new rows mean the old uids no longer apply.
     clearSelection(true);
     applyFilters();
-    var caption = document.querySelector('.rd-ft-caption');
+    var caption = document.querySelector('.de-ft-caption');
     if (caption && lastPayload.pair) {
       caption.innerHTML =
         '<b>' + rows.length + '</b> feature(s) on <b>' +
@@ -289,8 +289,8 @@
         'aria-sort',
         active ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'
       );
-      cell.classList.toggle('rd-sort-asc', active && sortDir === 1);
-      cell.classList.toggle('rd-sort-desc', active && sortDir === -1);
+      cell.classList.toggle('de-sort-asc', active && sortDir === 1);
+      cell.classList.toggle('de-sort-desc', active && sortDir === -1);
     });
   }
 
@@ -316,12 +316,12 @@
   var filters = []; // {colIndex, label, needle}
 
   function renderChips() {
-    var box = document.getElementById('rd-ft-chips');
+    var box = document.getElementById('de-ft-chips');
     if (!box) return;
     box.innerHTML = filters
       .map(function (f, i) {
         return (
-          '<span class="rd-ft-chip">' + esc(f.label) + ': “' +
+          '<span class="de-ft-chip">' + esc(f.label) + ': “' +
           esc(f.needle) + '”' +
           '<button type="button" data-chip="' + i +
           '" title="Remove this filter" aria-label="Remove filter">' +
@@ -353,8 +353,8 @@
   }
 
   function addFilterFromInput() {
-    var input = document.getElementById('rd-ft-filter');
-    var sel = document.getElementById('rd-ft-filter-col');
+    var input = document.getElementById('de-ft-filter');
+    var sel = document.getElementById('de-ft-filter-col');
     if (!input || !sel) return;
     var needle = input.value.trim().toLowerCase();
     if (!needle) return;
@@ -370,11 +370,11 @@
   document.addEventListener('click', function (ev) {
     var el = ev.target;
     if (!el || !el.getAttribute) return;
-    if (el.id === 'rd-ft-filter-add') {
+    if (el.id === 'de-ft-filter-add') {
       addFilterFromInput();
       return;
     }
-    if (el.id === 'rd-ft-filter-apply') {
+    if (el.id === 'de-ft-filter-apply') {
       // Text still sitting in the box counts too, so typing one filter
       // and pressing Apply works without an explicit Add.
       addFilterFromInput();
@@ -382,7 +382,7 @@
       return;
     }
     var chip = el.getAttribute('data-chip');
-    if (chip !== null && el.closest('#rd-ft-chips')) {
+    if (chip !== null && el.closest('#de-ft-chips')) {
       filters.splice(Number(chip), 1);
       renderChips();
       applyFilters(); // removing a filter is itself the action
@@ -392,7 +392,7 @@
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Enter') return;
     var el = ev.target;
-    if (!el || el.id !== 'rd-ft-filter') return;
+    if (!el || el.id !== 'de-ft-filter') return;
     ev.preventDefault();
     addFilterFromInput();
     applyFilters();
@@ -423,7 +423,7 @@
       });
     }
     document.dispatchEvent(
-      new CustomEvent('rd-ft-selection', { detail: { features: features } })
+      new CustomEvent('de-ft-selection', { detail: { features: features } })
     );
   }
 
@@ -432,9 +432,9 @@
     var t = table();
     if (t) {
       Array.prototype.forEach.call(
-        t.querySelectorAll('tr.rd-row-selected'),
+        t.querySelectorAll('tr.de-row-selected'),
         function (row) {
-          row.classList.remove('rd-row-selected');
+          row.classList.remove('de-row-selected');
         }
       );
     }
@@ -454,10 +454,10 @@
     if (ev.metaKey || ev.ctrlKey) {
       if (selectedUids.has(uid)) {
         selectedUids.delete(uid);
-        row.classList.remove('rd-row-selected');
+        row.classList.remove('de-row-selected');
       } else {
         selectedUids.add(uid);
-        row.classList.add('rd-row-selected');
+        row.classList.add('de-row-selected');
       }
     } else if (selectedUids.has(uid)) {
       // A plain click on an already-selected row clears the whole
@@ -466,7 +466,7 @@
     } else {
       clearSelection(false);
       selectedUids.add(uid);
-      row.classList.add('rd-row-selected');
+      row.classList.add('de-row-selected');
     }
     announceSelection();
   });

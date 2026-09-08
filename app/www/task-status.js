@@ -4,7 +4,7 @@
 // synchronously mid-computation, which a reactive output cannot do -- but
 // the popup card it draws (a .shiny-progress-notification inside the
 // notification panel) duplicates the busy pill, so app.css hides it and
-// this observer copies its text into #rd-task-status at the right end of
+// this observer copies its text into #de-task-status at the right end of
 // the header bar instead.  Ordinary ui.notification_show toasts have no
 // .shiny-progress-notification node and are untouched.
 
@@ -15,7 +15,7 @@
 
   function sync() {
     scheduled = false;
-    var slot = document.getElementById('rd-task-status');
+    var slot = document.getElementById('de-task-status');
     if (!slot) return;
     var cards = document.querySelectorAll('.shiny-progress-notification');
     if (!cards.length) {

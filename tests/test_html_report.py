@@ -1,4 +1,4 @@
-"""Tests for the interactive HTML dotplot report (rusty_dot._html)."""
+"""Tests for the interactive HTML dotplot report (dot_explorer._html)."""
 
 import json
 import re
@@ -10,10 +10,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pytest
 
-from rusty_dot._html.serialize import build_panel_payload
-from rusty_dot._rusty_dot import SequenceIndex
-from rusty_dot.dotplot import DotPlotter
-from rusty_dot.paf_io import PafAlignment, PafRecord
+from dot_explorer._dot_explorer import SequenceIndex
+from dot_explorer._html.serialize import build_panel_payload
+from dot_explorer.dotplot import DotPlotter
+from dot_explorer.paf_io import PafAlignment, PafRecord
 
 
 def _panel_segments(ax):
@@ -37,7 +37,7 @@ def _read_payload(html_path):
     """Extract and parse the embedded JSON payload from a report file."""
     html = html_path.read_text()
     m = re.search(
-        r'<script type="application/json" id="rd-data">(.*?)</script>',
+        r'<script type="application/json" id="de-data">(.*?)</script>',
         html,
         re.S,
     )
@@ -111,7 +111,7 @@ def test_to_html_creates_selfcontained_file(html_index, tmp_path):
     assert out.exists()
     html = out.read_text()
     assert '<svg' in html
-    assert 'id="rd-data"' in html
+    assert 'id="de-data"' in html
     assert '<title>my report</title>' in html
     # Assets are inlined, not referenced.
     assert '<link' not in html
@@ -130,8 +130,8 @@ def test_copy_buttons_start_in_fetch_state(html_index, tmp_path):
     plt.close(DotPlotter(html_index).to_html(out))
     html = out.read_text()
 
-    assert re.search(r'id="rd-copy-query"[^>]*>Fetch query seq<', html)
-    assert re.search(r'id="rd-copy-target"[^>]*>Fetch target seq<', html)
+    assert re.search(r'id="de-copy-query"[^>]*>Fetch query seq<', html)
+    assert re.search(r'id="de-copy-target"[^>]*>Fetch target seq<', html)
     # The label is derived from state, never captured as a constant.
     assert 'function labelFor(' in html
     assert 'Press again to copy' not in html
@@ -184,7 +184,7 @@ def test_payload_panel_count_and_gids(html_index, tmp_path):
         panel = payload['panels'][gid]
         for layer in ('fwd', 'rev'):
             if panel['segments'][layer]:
-                assert f'id="rd-matches-{row}-{col}-{layer}"' in html
+                assert f'id="de-matches-{row}-{col}-{layer}"' in html
 
     # Metadata sanity: names and lengths match the index.
     for panel in payload['panels'].values():
@@ -206,7 +206,7 @@ def test_payload_segment_counts_match_drawn_collections(html_index, tmp_path):
         for col in range(n):
             ax = fig.axes[row * n + col]
             drawn = len(_panel_segments(ax))
-            panel = payload['panels'][f'rd-panel-{row}-{col}']
+            panel = payload['panels'][f'de-panel-{row}-{col}']
             serialized = sum(
                 len(panel['segments'][layer]) for layer in ('fwd', 'rev', 'identity')
             )
@@ -228,7 +228,7 @@ def test_payload_svg_path_counts_match_segments(html_index, tmp_path):
         row, col = gid.rsplit('-', 2)[1:]
         for layer in ('fwd', 'rev', 'identity'):
             n_segs = len(panel['segments'][layer])
-            marker = f'id="rd-matches-{row}-{col}-{layer}"'
+            marker = f'id="de-matches-{row}-{col}-{layer}"'
             if n_segs == 0:
                 continue
             i = html.find(marker)
@@ -247,7 +247,7 @@ def test_reverse_strand_segments_serialized(tmp_path):
     plt.close(fig)
 
     payload = _read_payload(out)
-    panel = payload['panels']['rd-panel-0-1']
+    panel = payload['panels']['de-panel-0-1']
     assert panel['segments']['rev']
     # Segment coordinate rows are [qs, qe, ts, te] ints within bounds.
     for qs, qe, ts, te in panel['segments']['rev']:
@@ -266,7 +266,7 @@ def test_empty_match_panel_serialized(tmp_path):
     plt.close(fig)
 
     payload = _read_payload(out)
-    panel = payload['panels']['rd-panel-0-1']
+    panel = payload['panels']['de-panel-0-1']
     assert panel['segments'] == {'fwd': [], 'rev': [], 'identity': []}
 
 
@@ -333,7 +333,7 @@ def test_sequence_embedding_cap(html_index, tmp_path):
     # Direct serializer call with max_residues=0 must omit sequences.
     capture = {
         'panels': {
-            'rd-panel-0-0': {
+            'de-panel-0-0': {
                 'query': 'seq1',
                 'target': 'seq1',
                 'query_id': 'seq1',
@@ -347,7 +347,7 @@ def test_sequence_embedding_cap(html_index, tmp_path):
         capture, get_sequence=html_index.get_sequence, max_residues=0
     )
     assert payload['has_sequences'] is False
-    assert 'seqs' not in payload['panels']['rd-panel-0-0']
+    assert 'seqs' not in payload['panels']['de-panel-0-0']
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +417,7 @@ def test_palindromic_sequence(tmp_path):
     plt.close(fig)
 
     payload = _read_payload(out)
-    panel = payload['panels']['rd-panel-0-0']
+    panel = payload['panels']['de-panel-0-0']
     assert panel['segments']['fwd']  # the self diagonal
     assert panel['segments']['rev']  # the palindromic anti-diagonal
 
@@ -502,7 +502,7 @@ def test_rasterized_true_still_produces_clickable_paths(html_index, tmp_path):
             n_segs = len(panel['segments'][layer])
             if n_segs == 0:
                 continue
-            i = html.find(f'id="rd-matches-{row}-{col}-{layer}"')
+            i = html.find(f'id="de-matches-{row}-{col}-{layer}"')
             assert i != -1
             group = html[i : html.find('</g>', i)]
             assert '<image' not in group
@@ -550,8 +550,8 @@ def test_stale_capture_does_not_leak_into_colorbar(html_index, tmp_path, monkeyp
 
 
 def test_track_entry_carries_stamped_uid():
-    from rusty_dot._html.serialize import _track_entry
-    from rusty_dot.annotation import GffAnnotation
+    from dot_explorer._html.serialize import _track_entry
+    from dot_explorer.annotation import GffAnnotation
 
     ann = GffAnnotation.from_text('c1\tsrc\tgene\t1\t100\t.\t+\t.\tID=g1\n')
     feat = ann.records[0]

@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
-      # The bench binary links `rustydot` (an rlib), which pulls in pyo3 built
+      # The bench binary links `_dot_explorer` (an rlib), which pulls in pyo3 built
       # without the `extension-module` feature, so it dynamically links
       # libpython. Pin the interpreter for the build and expose its lib dir so
       # the loader can find libpython when `cargo codspeed run` executes the
@@ -62,7 +62,7 @@ jobs:
           python-version: '3.14'
       # maturin needs cargo to build the extension from the sdist/source tree.
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build rustydot and install benchmark dependencies
+      - name: Build dot-explorer and install benchmark dependencies
         # The maturin build backend compiles the extension; .[test] also pulls
         # in pytest and pytest-codspeed.
         run: |

@@ -1,6 +1,6 @@
 # Web App
 
-**rusty-dot** ships with a browser app for comparing two genome assemblies —
+**dot-explorer** ships with a browser app for comparing two genome assemblies —
 no installation required. The app is fully client-side: your FASTA files are
 parsed, aligned, and plotted **entirely in your browser** (via WebAssembly and
 [Pyodide](https://pyodide.org)) and **never leave your machine**.
@@ -23,7 +23,7 @@ from the docs site.
 | Category | Options |
 |---|---|
 | Input | Upload query and target assemblies as FASTA or gzipped FASTA (`.fa`, `.fasta`, `.fna`, or any of these gzipped), align an assembly to itself ("Align assembly to itself"), or import a pre-computed PAF file |
-| Alignment — offline | **k-mer matching** with rusty-dot's rolling-hash engine (the Rust crate compiled to a wasm wheel, running in Pyodide); **PAF import** (pure Python). Both work fully offline once the app has loaded. The k-mer method also offers a compute-time "min match block" filter (default 50 bp) that drops short blocks before they are materialised — changing it re-runs the comparison. |
+| Alignment — offline | **k-mer matching** with dot-explorer's rolling-hash engine (the Rust crate compiled to a wasm wheel, running in Pyodide); **PAF import** (pure Python). Both work fully offline once the app has loaded. The k-mer method also offers a compute-time "min match block" filter (default 50 bp) that drops short blocks before they are materialised — changing it re-runs the comparison. |
 | Alignment — via biowasm | **minimap2 2.22** (preset `asm20` by default; repeat-genome options `-m`, `-P` and, for self-alignments, `-D`; `-c` for base-level alignment, which adds `cg`/`NM`/`de` tags — slower, but identity colouring then uses the accurate gap-compressed `de` value instead of the PAF column 10/11 estimate, and clicking a match displays the gapped query/target alignment) and **nucmer (MUMmer4)** (`-l 100 -c 200` by default; `--maxmatch` / `--nosimplify` for repeats) run in-browser via the [biowasm](https://biowasm.com) CDN — assembly-scale defaults; the tool binaries are fetched from biowasm.com at runtime, so these need a network connection. Runs can be cancelled mid-flight (switch method or re-run), and each run's exact command line and stderr appear in the collapsible **Aligner log**. |
 | Plot reconfiguration (no recompute) | Sort contigs by size or maximise colinearity, auto-flip reverse-oriented contigs, hide internal axes, minimum alignment length filter, identity colouring (tool/PAF results only — k-mer matches are exact, so the option is hidden there) |
 | Trees & clustering (self-alignments) | Upload a newick / IQ-TREE `.treefile` to order the contigs and draw the tree beside the matrix, or compute a hierarchical clustering tree from sourmash similarity (Jaccard, abundance-weighted angular, or ANI with confidence bounds; user-set k and scaled; settings held until "Apply changes"). Cluster assignment by similarity cutoff or combined ANI + coverage thresholds (sourmash containment or SNP-robust alignment block coverage, optionally reciprocal), a cluster table whose rows highlight their clusters in the matrix, bold cluster outlines, a pairwise **Matrix** tab (named rows/columns, ANI with 95% CIs, asymmetric containment/coverage views, CSV export) and a square similarity **Heatmap** tab (selectable palette, in-cell values, SVG/PNG download). sourmash + scipy (~25 MB) download on first use — see [Similarity & Clustering](clustering.md) |
@@ -37,7 +37,7 @@ from the docs site.
   4 GB — measured directly: the heap tops out at 4096 MB, with ~4.0 GB
   allocatable before a clean `MemoryError` (a 90 Mb k-mer run peaked at
   2.9 GB). The app is best suited to viral, bacterial, and fungal-scale
-  assemblies; for large plant or animal genomes, use rusty-dot
+  assemblies; for large plant or animal genomes, use dot-explorer
   [locally](installation.md) instead. The sidebar shows the live wasm-heap
   usage against this cap.
 - **Input size limits** (measured empirically in Chrome with synthetic
@@ -49,7 +49,7 @@ from the docs site.
   k-mer index's CSR tables (~15 B/bp) plus match-record objects — not from
   stored alignment sequences — so it is inherent to the method at this heap
   size — at that scale, use minimap2/nucmer here or
-  run the [rusty-dot Python library](tutorials/quickstart.md) locally.
+  run the [dot-explorer Python library](tutorials/quickstart.md) locally.
   **minimap2** and **nucmer** run in their own workers: minimap2
   completed at **200 MB combined** and nucmer at **250 MB**; at 300 MB the
   browser tab itself crashed (both tools), so above ~200 MB the app
@@ -69,7 +69,7 @@ from the docs site.
 
 The app is a standard Shiny for Python app: the hosted version above is a
 Shinylive/WebAssembly export of the same `app/app.py`, which also runs
-natively on a workstation or HPC node with the installed rusty-dot instead
+natively on a workstation or HPC node with the installed dot-explorer instead
 of the wasm wheel.
 
 ### Install and run
@@ -77,9 +77,9 @@ of the wasm wheel.
 From a repository checkout:
 
 ```bash
-git clone https://github.com/Adamtaranto/rusty-dot.git
-cd rusty-dot
-pip install ".[app]"                    # rusty-dot + shiny + pyfaidx
+git clone https://github.com/Adamtaranto/dot-explorer.git
+cd dot-explorer
+pip install ".[app]"                    # dot-explorer + shiny + pyfaidx
 shiny run --launch-browser app/app.py
 ```
 
@@ -87,7 +87,7 @@ Run `shiny run` from the repo root (or from `app/`): the app uses
 path-relative `core.*` imports that resolve when Shiny puts `app/` on
 `sys.path`. Developers building the Rust extension from source use
 `maturin develop --release` plus `pip install shiny pyfaidx` instead — see
-[`app/README.md`](https://github.com/Adamtaranto/rusty-dot/blob/main/app/README.md)
+[`app/README.md`](https://github.com/Adamtaranto/dot-explorer/blob/main/app/README.md)
 for the development and Shinylive-export recipes, or `environment.yml` for
 the conda route.
 
@@ -108,13 +108,13 @@ is not exposed to other users on the network.
 
 | | Hosted web app | Local Shiny app |
 |---|---|---|
-| rusty-dot engine | wasm wheel in Pyodide | your installed rusty-dot (native speed, multi-core) |
+| dot-explorer engine | wasm wheel in Pyodide | your installed dot-explorer (native speed, multi-core) |
 | Uploads | never leave the browser | sent to the (local) Shiny server process |
 | Size limits | k-mer disabled above ~80 Mb combined; warnings at 200 MB for aligners | **none** — memory is bounded by your machine |
 | Memory readout | live wasm-heap usage vs the 4 GB cap | peak RSS of the server process |
 | minimap2 / nucmer | in the browser tab via the biowasm CDN | same — still browser-side, still needs network access to biowasm.com |
 | Sequence access | pyfaidx over the browser's in-memory filesystem | pyfaidx over the uploaded temp file on disk |
-| Clustering (sourmash + scipy) | downloaded from the Pyodide channel (~25 MB) on first use | `pip install "rusty-dot[cluster]"` once |
+| Clustering (sourmash + scipy) | downloaded from the Pyodide channel (~25 MB) on first use | `pip install "dot-explorer[cluster]"` once |
 
 The k-mer method and PAF import work fully offline locally; only the
 minimap2/nucmer buttons need a network connection (they fetch the tool

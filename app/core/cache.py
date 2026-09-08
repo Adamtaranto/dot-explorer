@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Any
 from .seqs import SequenceProvider
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checkers
-    from rusty_dot import CrossIndex
-    from rusty_dot.paf_io import PafAlignment
+    from dot_explorer import CrossIndex
+    from dot_explorer.paf_io import PafAlignment
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +103,11 @@ class SessionCache:
 
         Returns
         -------
-        rusty_dot.CrossIndex
+        dot_explorer.CrossIndex
             Index containing both assemblies (groups ``'query'`` and
             ``'target'``) with the stranded match cache populated.
         """
-        from rusty_dot import CrossIndex
+        from dot_explorer import CrossIndex
 
         key = (k, merge, min_block_len, query.digest, target.digest)
         cached = self._kmer.get(key)
@@ -155,7 +155,7 @@ class SessionCache:
 
         Returns
         -------
-        rusty_dot.paf_io.PafAlignment or None
+        dot_explorer.paf_io.PafAlignment or None
             The cached alignment, or ``None`` on miss.
         """
         key = (method, _params_key(params), *digests)
@@ -179,7 +179,7 @@ class SessionCache:
             Alignment method name.
         params : dict[str, Any]
             Method parameters used to produce the alignment.
-        alignment : rusty_dot.paf_io.PafAlignment
+        alignment : dot_explorer.paf_io.PafAlignment
             The result to cache.
         *digests : str
             Content digests of every input file involved.

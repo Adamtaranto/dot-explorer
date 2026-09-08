@@ -1,3 +1,3 @@
 fn main() {
-    println!("rusty-dot: use as a Python library via PyO3 bindings");
+    println!("dot-explorer: use as a Python library via PyO3 bindings");
 }

@@ -1,38 +1,38 @@
-/* rusty-dot browser app styling.
+/* dot-explorer browser app styling.
  *
  * Theming: every colour goes through the custom-property layer below, so
  * light and dark mode stay in lockstep — dark mode overrides only the
- * variables. Motion uses the shared --rd-transition timing; larger state
+ * variables. Motion uses the shared --de-transition timing; larger state
  * changes (busy, recalculating) get their own eased transitions.
  */
 
 :root {
   /* Palette — teal accent to match the docs site. */
-  --rd-accent: #14847e;
-  --rd-accent-soft: rgba(20, 132, 126, 0.12);
-  --rd-fg: #22303c;
-  --rd-muted: #4a5a6a;
-  --rd-faint: #6c757d;
-  --rd-surface: #f2f6fa;
-  --rd-surface-strong: #eef4fb;
-  --rd-on-surface-strong: #1f3a5f;
-  --rd-border: rgba(128, 128, 128, 0.25);
-  --rd-border-soft: #d5dee8;
-  --rd-error-bg: #fdecea;
-  --rd-error-fg: #7a1c13;
-  --rd-frame-bg: #ffffff;
+  --de-accent: #14847e;
+  --de-accent-soft: rgba(20, 132, 126, 0.12);
+  --de-fg: #22303c;
+  --de-muted: #4a5a6a;
+  --de-faint: #6c757d;
+  --de-surface: #f2f6fa;
+  --de-surface-strong: #eef4fb;
+  --de-on-surface-strong: #1f3a5f;
+  --de-border: rgba(128, 128, 128, 0.25);
+  --de-border-soft: #d5dee8;
+  --de-error-bg: #fdecea;
+  --de-error-fg: #7a1c13;
+  --de-frame-bg: #ffffff;
 
   /* Identity: translucent sidebar over a faint dot-grid page backdrop
      (the dotplot motif), display face for the wordmark and headings. */
-  --rd-sidebar-bg: rgba(242, 246, 250, 0.72);
-  --rd-page-dot: rgba(34, 48, 60, 0.1);
-  --rd-font-display: 'Space Grotesk', var(--bs-body-font-family, sans-serif);
+  --de-sidebar-bg: rgba(242, 246, 250, 0.72);
+  --de-page-dot: rgba(34, 48, 60, 0.1);
+  --de-font-display: 'Space Grotesk', var(--bs-body-font-family, sans-serif);
 
   /* Shape & motion. */
-  --rd-radius: 8px;
-  --rd-radius-sm: 5px;
-  --rd-transition: 160ms ease;
-  --rd-font-mono: var(--bs-font-monospace, monospace);
+  --de-radius: 8px;
+  --de-radius-sm: 5px;
+  --de-transition: 160ms ease;
+  --de-font-mono: var(--bs-font-monospace, monospace);
 }
 
 /* Dark palette.  The header toggle (ui.input_dark_mode) stamps
@@ -41,42 +41,42 @@
    'light' choice must beat. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-bs-theme='light']) {
-    --rd-accent: #2fb7b0;
-    --rd-accent-soft: rgba(47, 183, 176, 0.16);
-    --rd-fg: #d5dee7;
-    --rd-muted: #aabdd0;
-    --rd-faint: #8fa1b3;
-    --rd-surface: #1c2733;
-    --rd-surface-strong: #1d2b3d;
-    --rd-on-surface-strong: #cfe1f5;
-    --rd-border: rgba(160, 175, 190, 0.28);
-    --rd-border-soft: #33404f;
-    --rd-error-bg: #3d1d1d;
-    --rd-error-fg: #f5cfcf;
-    --rd-sidebar-bg: rgba(28, 39, 51, 0.72);
-    --rd-page-dot: rgba(213, 222, 231, 0.09);
+    --de-accent: #2fb7b0;
+    --de-accent-soft: rgba(47, 183, 176, 0.16);
+    --de-fg: #d5dee7;
+    --de-muted: #aabdd0;
+    --de-faint: #8fa1b3;
+    --de-surface: #1c2733;
+    --de-surface-strong: #1d2b3d;
+    --de-on-surface-strong: #cfe1f5;
+    --de-border: rgba(160, 175, 190, 0.28);
+    --de-border-soft: #33404f;
+    --de-error-bg: #3d1d1d;
+    --de-error-fg: #f5cfcf;
+    --de-sidebar-bg: rgba(28, 39, 51, 0.72);
+    --de-page-dot: rgba(213, 222, 231, 0.09);
     /* The embedded report document is always light-themed; a light
        backdrop stops it flashing against a dark app while loading. */
-    --rd-frame-bg: #f5f5f5;
+    --de-frame-bg: #f5f5f5;
   }
 }
 
 :root[data-bs-theme='dark'] {
-  --rd-accent: #2fb7b0;
-  --rd-accent-soft: rgba(47, 183, 176, 0.16);
-  --rd-fg: #d5dee7;
-  --rd-muted: #aabdd0;
-  --rd-faint: #8fa1b3;
-  --rd-surface: #1c2733;
-  --rd-surface-strong: #1d2b3d;
-  --rd-on-surface-strong: #cfe1f5;
-  --rd-border: rgba(160, 175, 190, 0.28);
-  --rd-border-soft: #33404f;
-  --rd-error-bg: #3d1d1d;
-  --rd-error-fg: #f5cfcf;
-  --rd-sidebar-bg: rgba(28, 39, 51, 0.72);
-  --rd-page-dot: rgba(213, 222, 231, 0.09);
-  --rd-frame-bg: #f5f5f5;
+  --de-accent: #2fb7b0;
+  --de-accent-soft: rgba(47, 183, 176, 0.16);
+  --de-fg: #d5dee7;
+  --de-muted: #aabdd0;
+  --de-faint: #8fa1b3;
+  --de-surface: #1c2733;
+  --de-surface-strong: #1d2b3d;
+  --de-on-surface-strong: #cfe1f5;
+  --de-border: rgba(160, 175, 190, 0.28);
+  --de-border-soft: #33404f;
+  --de-error-bg: #3d1d1d;
+  --de-error-fg: #f5cfcf;
+  --de-sidebar-bg: rgba(28, 39, 51, 0.72);
+  --de-page-dot: rgba(213, 222, 231, 0.09);
+  --de-frame-bg: #f5f5f5;
 }
 
 /* --- branding --------------------------------------------------------- */
@@ -85,13 +85,13 @@
    translucent sidebar (below) floats over it. */
 body {
   background-color: var(--bs-body-bg, #fff);
-  background-image: radial-gradient(var(--rd-page-dot) 1px, transparent 1.4px);
+  background-image: radial-gradient(var(--de-page-dot) 1px, transparent 1.4px);
   background-size: 22px 22px;
 }
 
 /* Page header: the title is a flex row — wordmark, tagline, and the
    task-status readout pushed to the right end. */
-.rd-header-flex {
+.de-header-flex {
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
@@ -106,25 +106,25 @@ body {
 
 /* The wordmark's middot is the brand: the one dot of the dotplot,
    set in the accent colour. */
-.rd-wordmark {
-  font-family: var(--rd-font-display);
+.de-wordmark {
+  font-family: var(--de-font-display);
   font-weight: 700;
   font-size: 1.3rem;
   letter-spacing: -0.02em;
-  color: var(--rd-fg);
+  color: var(--de-fg);
   white-space: nowrap;
 }
 
-.rd-wordmark-dot {
-  color: var(--rd-accent);
+.de-wordmark-dot {
+  color: var(--de-accent);
 }
 
-.rd-wordmark-sub {
+.de-wordmark-sub {
   font-size: 0.72rem;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--rd-muted);
+  color: var(--de-muted);
   white-space: nowrap;
 }
 
@@ -138,53 +138,53 @@ body {
   border-radius: 2px;
   background: linear-gradient(
     90deg,
-    var(--rd-accent),
-    var(--rd-accent-soft)
+    var(--de-accent),
+    var(--de-accent-soft)
   );
 }
 
 /* Manual dark-mode toggle at the far right of the header. */
-.rd-theme-toggle {
+.de-theme-toggle {
   flex: 0 0 auto;
   align-self: center;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-.rd-theme-toggle .form-check,
-.rd-theme-toggle bslib-input-dark-mode {
+.de-theme-toggle .form-check,
+.de-theme-toggle bslib-input-dark-mode {
   margin: 0;
 }
 
 /* Active-task readout at the right end of the header, fed by
    www/task-status.js from the (hidden) ui.Progress messages. */
-.rd-task-status {
+.de-task-status {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 0.45rem;
   font-size: 0.78rem;
   font-weight: 400;
-  color: var(--rd-muted);
+  color: var(--de-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0;
-  transition: opacity var(--rd-transition);
+  transition: opacity var(--de-transition);
 }
 
-.rd-task-status:not(:empty) {
+.de-task-status:not(:empty) {
   opacity: 1;
 }
 
-.rd-task-status:not(:empty)::before {
+.de-task-status:not(:empty)::before {
   content: '';
   flex: none;
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
-  border: 2px solid var(--rd-accent-soft);
-  border-top-color: var(--rd-accent);
-  animation: rd-spin 0.9s linear infinite;
+  border: 2px solid var(--de-accent-soft);
+  border-top-color: var(--de-accent);
+  animation: de-spin 0.9s linear infinite;
 }
 
 /* The ui.Progress popup card duplicates the header readout and the busy
@@ -198,30 +198,30 @@ body {
 
 /* --- base blocks ------------------------------------------------------ */
 
-.rd-status {
+.de-status {
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
-  border-radius: var(--rd-radius);
-  background: var(--rd-surface-strong);
-  color: var(--rd-on-surface-strong);
+  border-radius: var(--de-radius);
+  background: var(--de-surface-strong);
+  color: var(--de-on-surface-strong);
   font-size: 0.95rem;
   line-height: 1.45;
-  transition: background-color var(--rd-transition), color var(--rd-transition);
+  transition: background-color var(--de-transition), color var(--de-transition);
 }
 
-.rd-status-error {
-  background: var(--rd-error-bg);
-  color: var(--rd-error-fg);
+.de-status-error {
+  background: var(--de-error-bg);
+  color: var(--de-error-fg);
 }
 
 .sidebar .btn {
   width: 100%;
   margin-bottom: 0.35rem;
   transition:
-    background-color var(--rd-transition),
-    border-color var(--rd-transition),
-    box-shadow var(--rd-transition),
-    transform var(--rd-transition);
+    background-color var(--de-transition),
+    border-color var(--de-transition),
+    box-shadow var(--de-transition),
+    transform var(--de-transition);
 }
 
 .sidebar .btn:hover:not(:disabled) {
@@ -234,32 +234,32 @@ body {
 }
 
 .sidebar .btn-primary {
-  background: var(--rd-accent);
-  border-color: var(--rd-accent);
+  background: var(--de-accent);
+  border-color: var(--de-accent);
 }
 
 /* Translucent sidebar floating over the dot-grid backdrop. bslib paints
    the panel through its own --_sidebar-bg custom property; override both
    that and the background so the rule survives bslib version drift. */
 .bslib-sidebar-layout {
-  --_sidebar-bg: var(--rd-sidebar-bg);
+  --_sidebar-bg: var(--de-sidebar-bg);
 }
 
 .bslib-sidebar-layout > .sidebar {
-  background-color: var(--rd-sidebar-bg);
+  background-color: var(--de-sidebar-bg);
   backdrop-filter: blur(10px) saturate(1.1);
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  border-right: 1px solid var(--rd-border);
+  border-right: 1px solid var(--de-border);
 }
 
 /* Sidebar sections: subtle separation and tighter headings. */
 .sidebar h5 {
-  font-family: var(--rd-font-display);
+  font-family: var(--de-font-display);
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
   font-weight: 600;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--rd-border);
+  border-bottom: 1px solid var(--de-border);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -268,136 +268,136 @@ body {
 
 /* Info icon in input labels; the setting's explanation appears in a
    tooltip on hover (see _lbl in app.py). */
-.rd-info {
-  color: var(--rd-faint);
+.de-info {
+  color: var(--de-faint);
   font-size: 0.85em;
   cursor: help;
 }
 
-.rd-info:hover {
-  color: var(--rd-accent);
+.de-info:hover {
+  color: var(--de-accent);
 }
 
 .sidebar .form-control,
 .sidebar .form-select {
-  transition: border-color var(--rd-transition), box-shadow var(--rd-transition);
+  transition: border-color var(--de-transition), box-shadow var(--de-transition);
 }
 
 .sidebar .form-control:focus,
 .sidebar .form-select:focus {
-  border-color: var(--rd-accent);
-  box-shadow: 0 0 0 0.15rem var(--rd-accent-soft);
+  border-color: var(--de-accent);
+  box-shadow: 0 0 0 0.15rem var(--de-accent-soft);
 }
 
 /* --- plot area -------------------------------------------------------- */
 
 /* Drill-down tabs: quiet labels, accent underline on the active one. */
-.rd-plot-area .nav-tabs .nav-link {
-  font-family: var(--rd-font-display);
+.de-plot-area .nav-tabs .nav-link {
+  font-family: var(--de-font-display);
   font-weight: 500;
   font-size: 0.9rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-.rd-plot-area .nav-tabs .nav-link:hover {
-  color: var(--rd-fg);
+.de-plot-area .nav-tabs .nav-link:hover {
+  color: var(--de-fg);
 }
 
-.rd-plot-area .nav-tabs .nav-link.active {
-  color: var(--rd-fg);
+.de-plot-area .nav-tabs .nav-link.active {
+  color: var(--de-fg);
   background: transparent;
-  box-shadow: inset 0 -2px 0 var(--rd-accent);
+  box-shadow: inset 0 -2px 0 var(--de-accent);
 }
 
-.rd-plot-area {
+.de-plot-area {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-height: 0;
 }
 
-.rd-plot-toolbar {
+.de-plot-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.rd-back-btn {
+.de-back-btn {
   white-space: nowrap;
 }
 
-.rd-focus-label {
+.de-focus-label {
   font-weight: 600;
-  font-family: var(--rd-font-mono);
+  font-family: var(--de-font-mono);
   font-size: 0.9rem;
-  color: var(--rd-fg);
+  color: var(--de-fg);
 }
 
 /* Fullscreen toggle at the left end of the plot toolbar.  The icon pair
-   swaps on html.rd-fullscreen (toggled by www/fullscreen.js). */
-.rd-fs-btn {
+   swaps on html.de-fullscreen (toggled by www/fullscreen.js). */
+.de-fs-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.3rem;
-  border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius);
-  background: var(--rd-surface);
-  color: var(--rd-muted);
+  border: 1px solid var(--de-border);
+  border-radius: var(--de-radius);
+  background: var(--de-surface);
+  color: var(--de-muted);
   cursor: pointer;
   line-height: 0;
-  transition: color var(--rd-transition), border-color var(--rd-transition);
+  transition: color var(--de-transition), border-color var(--de-transition);
 }
 
-.rd-fs-btn:hover {
-  color: var(--rd-accent);
-  border-color: var(--rd-accent);
+.de-fs-btn:hover {
+  color: var(--de-accent);
+  border-color: var(--de-accent);
 }
 
-.rd-fs-btn .rd-fs-collapse {
+.de-fs-btn .de-fs-collapse {
   display: none;
 }
 
-html.rd-fullscreen .rd-fs-btn .rd-fs-expand {
+html.de-fullscreen .de-fs-btn .de-fs-expand {
   display: none;
 }
 
-html.rd-fullscreen .rd-fs-btn .rd-fs-collapse {
+html.de-fullscreen .de-fs-btn .de-fs-collapse {
   display: inline;
 }
 
 /* Compact 'how to navigate' hint below the interactive report. */
-.rd-nav-hint {
+.de-nav-hint {
   font-size: 0.78rem;
   line-height: 1.4;
-  color: var(--rd-muted);
-  background: var(--rd-surface);
-  border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius);
+  color: var(--de-muted);
+  background: var(--de-surface);
+  border: 1px solid var(--de-border);
+  border-radius: var(--de-radius);
   padding: 0.3rem 0.6rem;
-  transition: background-color var(--rd-transition), color var(--rd-transition);
+  transition: background-color var(--de-transition), color var(--de-transition);
 }
 
-.rd-nav-hint b {
-  color: var(--rd-fg);
+.de-nav-hint b {
+  color: var(--de-fg);
   font-weight: 600;
 }
 
-.rd-report-frame {
+.de-report-frame {
   width: 100%;
   height: 76vh;
   /* An inline replaced element leaves its wrapper measuring 0 tall, so the
      frame escapes every ancestor box that is not a flex container. */
   display: block;
-  border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius);
-  background: var(--rd-frame-bg);
+  border: 1px solid var(--de-border);
+  border-radius: var(--de-radius);
+  background: var(--de-frame-bg);
 }
 
 /* Fullscreen: the plot area becomes a fixed overlay covering the viewport;
    the frame drops its fixed height and fills the remaining column. */
-html.rd-fullscreen .rd-plot-area {
+html.de-fullscreen .de-plot-area {
   position: fixed;
   inset: 0;
   z-index: 1055;
@@ -407,7 +407,7 @@ html.rd-fullscreen .rd-plot-area {
   overflow: auto;
 }
 
-html.rd-fullscreen .rd-plot-area .rd-report-frame {
+html.de-fullscreen .de-plot-area .de-report-frame {
   height: auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -415,20 +415,20 @@ html.rd-fullscreen .rd-plot-area .rd-report-frame {
 
 /* Stretch the wrapper chain (shiny output div, tab panes) so the frame's
    flex:1 actually reaches the viewport height. */
-html.rd-fullscreen .rd-plot-area #report_frame {
+html.de-fullscreen .de-plot-area #report_frame {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-html.rd-fullscreen .rd-plot-area .shiny-plot-output {
+html.de-fullscreen .de-plot-area .shiny-plot-output {
   flex: 1 1 auto;
   height: auto !important;
   min-height: 0;
 }
 
-html.rd-fullscreen body {
+html.de-fullscreen body {
   overflow: hidden;
 }
 
@@ -438,46 +438,46 @@ html.rd-fullscreen body {
    never strand the user on the Annotations pane).  The back-to-overview
    button stays: it swaps the view while fullscreen persists, since the
    state lives as a class on <html>. */
-html.rd-fullscreen .rd-nav-hint,
-html.rd-fullscreen .rd-mem-fixed,
-html.rd-fullscreen .rd-plot-area .nav-tabs {
+html.de-fullscreen .de-nav-hint,
+html.de-fullscreen .de-mem-fixed,
+html.de-fullscreen .de-plot-area .nav-tabs {
   display: none !important;
 }
 
 /* The drill-down wraps the report in Bootstrap tab panes, which navset_tab
    leaves as plain block boxes.  Give the active pane the same flex column
    the overview uses, so the frame is measured the same way in both views --
-   otherwise .rd-plot-area computes shorter than the frame it contains, and
+   otherwise .de-plot-area computes shorter than the frame it contains, and
    the aligner log (the next sibling in the page body, with no z-index on
    either side) is laid out over the overflow and paints on top of it. */
-.rd-plot-area .tab-content {
+.de-plot-area .tab-content {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.rd-plot-area .tab-content > .tab-pane.active {
+.de-plot-area .tab-content > .tab-pane.active {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem; /* matches .rd-plot-area */
+  gap: 0.5rem; /* matches .de-plot-area */
   min-height: 0;
 }
 
 /* In fullscreen the tab panes must also grow, so the frame's flex:1 above
    reaches the viewport height. */
-html.rd-fullscreen .rd-plot-area .tab-content,
-html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
+html.de-fullscreen .de-plot-area .tab-content,
+html.de-fullscreen .de-plot-area .tab-content > .tab-pane.active {
   flex: 1 1 auto;
 }
 
 /* Loading states: dim outputs while Shiny recomputes them. */
 .recalculating,
-.rd-plot-area .recalculating {
+.de-plot-area .recalculating {
   opacity: 0.45;
   transition: opacity 250ms ease 250ms;
 }
 
-@keyframes rd-spin {
+@keyframes de-spin {
   to {
     transform: rotate(360deg);
   }
@@ -486,99 +486,99 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
 /* --- downloads -------------------------------------------------------- */
 
 /* Disabled download placeholders (no result generated yet). */
-.rd-dl-disabled {
+.de-dl-disabled {
   width: 100%;
   margin-bottom: 0.35rem;
   opacity: 0.5;
   cursor: not-allowed;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
 }
 
-.rd-dl-note {
+.de-dl-note {
   font-size: 0.8rem;
-  color: var(--rd-faint);
+  color: var(--de-faint);
   margin-bottom: 0.5rem;
 }
 
 /* Hidden helper outputs (e.g. #result_kind drives conditional panels). */
-.rd-hidden {
+.de-hidden {
   display: none;
 }
 
 /* --- aligner run log -------------------------------------------------- */
 
-.rd-log-accordion {
+.de-log-accordion {
   margin: 0.75rem 0;
 }
 
-.rd-log {
-  font-family: var(--rd-font-mono);
+.de-log {
+  font-family: var(--de-font-mono);
   font-size: 0.78rem;
-  background: var(--rd-surface);
-  border: 1px solid var(--rd-border-soft);
-  border-radius: var(--rd-radius-sm);
+  background: var(--de-surface);
+  border: 1px solid var(--de-border-soft);
+  border-radius: var(--de-radius-sm);
   padding: 0.5rem 0.7rem;
   max-height: 16rem;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--rd-fg);
+  color: var(--de-fg);
 }
 
 /* --- GFF annotation controls ------------------------------------------ */
 
-.rd-gff-section {
+.de-gff-section {
   margin: 0.4rem 0 0.6rem;
 }
 
-.rd-gff-section h6 {
+.de-gff-section h6 {
   margin: 0.3rem 0;
   font-size: 0.8rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
 /* Sidebar Apply for the feature-type toggles; its state is driven by
    ui.update_action_button, never by a re-render. */
-.rd-gff-section .rd-gff-apply {
+.de-gff-section .de-gff-apply {
   margin-top: 0.45rem;
 }
 
-.rd-gff-type-row {
+.de-gff-type-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
-.rd-gff-type-row .form-group,
-.rd-gff-type-row .checkbox {
+.de-gff-type-row .form-group,
+.de-gff-type-row .checkbox {
   margin-bottom: 0.15rem;
 }
 
 /* Q / T badges: which upload(s) a shared feature type came from. */
-.rd-gff-type-row .rd-gff-role {
+.de-gff-type-row .de-gff-role {
   margin-left: auto;
   padding: 0 0.28rem;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 3px;
   font-size: 0.62rem;
   line-height: 1.25;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-.rd-color-input {
+.de-color-input {
   width: 2rem;
   height: 1.4rem;
   padding: 0;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 3px;
   background: none;
   cursor: pointer;
-  transition: box-shadow var(--rd-transition);
+  transition: box-shadow var(--de-transition);
 }
 
-.rd-color-input:hover {
-  box-shadow: 0 0 0 0.15rem var(--rd-accent-soft);
+.de-color-input:hover {
+  box-shadow: 0 0 0 0.15rem var(--de-accent-soft);
 }
 
 /* --- memory readout --------------------------------------------------- */
@@ -586,7 +586,7 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
 /* Fixed note at the bottom-right of the page (the busy pill stacks just
    above it while computing).  Hidden while the readout text is empty —
    e.g. native runs, or before the Pyodide heap is queryable. */
-.rd-mem-fixed {
+.de-mem-fixed {
   position: fixed;
   right: 1rem;
   bottom: 1rem;
@@ -594,20 +594,20 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
   font-size: 0.72rem;
-  font-family: var(--rd-font-mono);
-  color: var(--rd-faint);
-  background: var(--rd-surface);
-  border: 1px solid var(--rd-border);
+  font-family: var(--de-font-mono);
+  color: var(--de-faint);
+  background: var(--de-surface);
+  border: 1px solid var(--de-border);
   pointer-events: none;
 }
 
-.rd-mem-fixed:has(.shiny-text-output:empty) {
+.de-mem-fixed:has(.shiny-text-output:empty) {
   display: none;
 }
 
 /* --- drill-down annotations table -------------------------------------- */
 
-.rd-ft-panel {
+.de-ft-panel {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -619,46 +619,46 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
   min-height: 0;
 }
 
-.rd-ft-caption {
+.de-ft-caption {
   font-size: 0.82rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-.rd-ft-tools {
+.de-ft-tools {
   display: flex;
   gap: 0.4rem;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.rd-ft-tools input[type='search'] {
+.de-ft-tools input[type='search'] {
   flex: 1 1 16rem;
   min-width: 10rem;
   padding: 0.22rem 0.45rem;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 4px;
-  background: var(--rd-surface);
-  color: var(--rd-fg);
+  background: var(--de-surface);
+  color: var(--de-fg);
   font-size: 0.82rem;
 }
 
-.rd-ft-tools button {
+.de-ft-tools button {
   padding: 0.22rem 0.6rem;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 4px;
   background: none;
-  color: var(--rd-fg);
+  color: var(--de-fg);
   font-size: 0.78rem;
   cursor: pointer;
 }
 
-.rd-ft-tools button:hover {
-  border-color: var(--rd-accent);
+.de-ft-tools button:hover {
+  border-color: var(--de-accent);
 }
 
 /* Per-column filter builder: a column picker, the text box, and the
    chips showing which filters are active. */
-.rd-ft-filters {
+.de-ft-filters {
   display: flex;
   gap: 0.4rem;
   align-items: center;
@@ -666,121 +666,121 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
   min-width: 14rem;
 }
 
-.rd-ft-filters select {
+.de-ft-filters select {
   padding: 0.22rem 0.3rem;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 4px;
-  background: var(--rd-surface);
-  color: var(--rd-fg);
+  background: var(--de-surface);
+  color: var(--de-fg);
   font-size: 0.78rem;
 }
 
-.rd-ft-chips {
+.de-ft-chips {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-.rd-ft-chips:empty {
+.de-ft-chips:empty {
   display: none;
 }
 
-.rd-ft-chip {
+.de-ft-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.1rem 0.3rem 0.1rem 0.5rem;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 999px;
-  background: var(--rd-accent-soft);
+  background: var(--de-accent-soft);
   font-size: 0.75rem;
-  color: var(--rd-fg);
+  color: var(--de-fg);
 }
 
-.rd-ft-chip button {
+.de-ft-chip button {
   border: none;
   background: none;
   padding: 0 0.15rem;
   font-size: 0.85rem;
   line-height: 1;
-  color: var(--rd-muted);
+  color: var(--de-muted);
   cursor: pointer;
 }
 
-.rd-ft-chip button:hover {
-  color: var(--rd-accent);
+.de-ft-chip button:hover {
+  color: var(--de-accent);
 }
 
 /* Selected rows, banded on the Plot tab. */
-#rd-feature-table tbody tr.rd-row-selected {
-  background: var(--rd-accent-soft);
-  box-shadow: inset 3px 0 0 var(--rd-accent);
+#de-feature-table tbody tr.de-row-selected {
+  background: var(--de-accent-soft);
+  box-shadow: inset 3px 0 0 var(--de-accent);
 }
 
-.rd-ft-hint {
+.de-ft-hint {
   font-size: 0.75rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
 /* The table scrolls inside its own box so the page never scrolls sideways,
    and shrinks to whatever height the pane leaves it (62vh is only a cap). */
-.rd-ft-scroll {
+.de-ft-scroll {
   flex: 1 1 auto;
   min-height: 0;
   max-height: 62vh;
   overflow: auto;
-  border: 1px solid var(--rd-border-soft);
+  border: 1px solid var(--de-border-soft);
   border-radius: 4px;
 }
 
-#rd-feature-table {
+#de-feature-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
 }
 
-#rd-feature-table thead th {
+#de-feature-table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
   padding: 0.3rem 0.45rem;
   text-align: left;
   white-space: nowrap;
-  background: var(--rd-surface);
-  border-bottom: 1px solid var(--rd-border-soft);
-  color: var(--rd-muted);
+  background: var(--de-surface);
+  border-bottom: 1px solid var(--de-border-soft);
+  color: var(--de-muted);
   font-weight: 600;
 }
 
-#rd-feature-table td {
+#de-feature-table td {
   padding: 0.18rem 0.45rem;
-  border-bottom: 1px solid var(--rd-border-soft);
+  border-bottom: 1px solid var(--de-border-soft);
   white-space: nowrap;
 }
 
-#rd-feature-table tbody tr:hover {
-  background: var(--rd-accent-soft);
+#de-feature-table tbody tr:hover {
+  background: var(--de-accent-soft);
 }
 
-#rd-feature-table .rd-ft-num {
+#de-feature-table .de-ft-num {
   text-align: right;
 }
 
-#rd-feature-table .rd-ft-attrs {
+#de-feature-table .de-ft-attrs {
   max-width: 24rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
-#rd-feature-table .rd-color-input {
+#de-feature-table .de-color-input {
   width: 1.6rem;
   height: 1.1rem;
 }
 
 /* Apply-changes bar above the drill-down annotations table. */
-.rd-ft-apply {
+.de-ft-apply {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -788,108 +788,108 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
   flex-wrap: wrap;
 }
 
-.rd-ft-apply .rd-ft-apply-note {
+.de-ft-apply .de-ft-apply-note {
   font-size: 0.78rem;
-  color: var(--rd-muted);
+  color: var(--de-muted);
 }
 
 /* Sortable annotation-table headers. */
-#rd-feature-table thead th[data-sort] {
+#de-feature-table thead th[data-sort] {
   cursor: pointer;
   user-select: none;
   padding-right: 1rem;
   position: sticky;
 }
 
-#rd-feature-table thead th[data-sort]:hover {
-  color: var(--rd-fg);
+#de-feature-table thead th[data-sort]:hover {
+  color: var(--de-fg);
 }
 
-#rd-feature-table thead th[data-sort]:focus-visible {
-  outline: 2px solid var(--rd-accent);
+#de-feature-table thead th[data-sort]:focus-visible {
+  outline: 2px solid var(--de-accent);
   outline-offset: -2px;
 }
 
 /* Direction marker, drawn in the padding reserved above so the header
    text never shifts when the sort changes. */
-#rd-feature-table thead th.rd-sort-asc::after,
-#rd-feature-table thead th.rd-sort-desc::after {
+#de-feature-table thead th.de-sort-asc::after,
+#de-feature-table thead th.de-sort-desc::after {
   position: absolute;
   right: 0.3rem;
-  color: var(--rd-accent);
+  color: var(--de-accent);
 }
 
-#rd-feature-table thead th.rd-sort-asc::after {
+#de-feature-table thead th.de-sort-asc::after {
   content: '▲';
 }
 
-#rd-feature-table thead th.rd-sort-desc::after {
+#de-feature-table thead th.de-sort-desc::after {
   content: '▼';
 }
 
 /* --- Trees & clustering ---------------------------------------------- */
 
-.rd-cluster-actions {
+.de-cluster-actions {
   display: flex;
   gap: 0.5rem;
   margin: 0.5rem 0;
 }
 
-.rd-cluster-table {
+.de-cluster-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
 
-.rd-cluster-table th,
-.rd-cluster-table td {
+.de-cluster-table th,
+.de-cluster-table td {
   padding: 0.3rem 0.6rem;
   text-align: left;
   border-bottom: 1px solid var(--bs-border-color, #dee2e6);
 }
 
-.rd-cluster-table tr.rd-cluster-row {
+.de-cluster-table tr.de-cluster-row {
   cursor: pointer;
 }
 
-.rd-cluster-table tr.rd-cluster-row:hover {
+.de-cluster-table tr.de-cluster-row:hover {
   background: var(--bs-secondary-bg, #f2f2f2);
 }
 
-.rd-cluster-table tr.rd-cluster-selected {
+.de-cluster-table tr.de-cluster-selected {
   background: color-mix(in srgb, #d97706 18%, transparent);
 }
 
-.rd-cluster-table tr.rd-cluster-selected:hover {
+.de-cluster-table tr.de-cluster-selected:hover {
   background: color-mix(in srgb, #d97706 28%, transparent);
 }
 
-.rd-matrix-blurb {
+.de-matrix-blurb {
   max-width: 70rem;
   margin: 0.25rem 0 0.75rem;
   font-size: 0.85rem;
   color: var(--bs-secondary-color, #555);
 }
 
-.rd-matrix-scroll {
+.de-matrix-scroll {
   overflow-x: auto;
 }
 
-.rd-matrix-table th {
+.de-matrix-table th {
   white-space: nowrap;
 }
 
-.rd-matrix-table td {
+.de-matrix-table td {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.rd-heatmap-wrap {
+.de-heatmap-wrap {
   overflow: auto;
   height: 68vh;
 }
 
-.rd-heatmap-wrap img {
+.de-heatmap-wrap img {
   /* Fit the full figure in the pane initially; heatmap-zoom.js lifts
      these caps while zoomed. */
   max-width: 100%;
@@ -899,13 +899,13 @@ html.rd-fullscreen .rd-plot-area .tab-content > .tab-pane.active {
 }
 
 /* Pan/zoom on the heatmap image (www/heatmap-zoom.js). */
-.rd-heatmap-wrap {
+.de-heatmap-wrap {
   position: relative;
   user-select: none;
   cursor: crosshair;
 }
 
-.rd-hm-selbox {
+.de-hm-selbox {
   position: absolute;
   border: 1px dashed var(--bs-primary, #2a7d6f);
   background: color-mix(in srgb, var(--bs-primary, #2a7d6f) 12%, transparent);

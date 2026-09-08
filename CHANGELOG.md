@@ -11,13 +11,13 @@ and this project adheres to
 ### Added — library
 
 - Similarity, clustering and trees (new optional `cluster` extra —
-  `pip install "rusty-dot[cluster]"` for sourmash + scipy):
-  - `rusty_dot.tree`: dependency-free newick / IQ-TREE `.treefile` parser
+  `pip install "dot-explorer[cluster]"` for sourmash + scipy):
+  - `dot_explorer.tree`: dependency-free newick / IQ-TREE `.treefile` parser
     (`Tree.from_newick`/`Tree.read`, quoted labels, support values,
     comments), `Tree.from_linkage` for scipy linkage matrices, bidirectional
     tip-vs-sequence-name validation, and `draw_tree` (rectangular
     dendrogram with cutoff line and scale bar).
-  - `rusty_dot.similarity`: sourmash FracMinHash sketching
+  - `dot_explorer.similarity`: sourmash FracMinHash sketching
     (`compute_sketches`, `SketchParams` — k=21, scaled=1000, abundance on
     by default) and all-vs-all `pairwise_similarity` with `jaccard`,
     abundance-weighted `angular`, `ani` (with 95% confidence bounds),
@@ -52,7 +52,7 @@ and this project adheres to
   similarity Heatmap tab with a selectable palette; and CSV downloads of
   the matrix and assignments. sourmash + scipy stay out of the first-load
   bundle — under Pyodide they micropip-install (~25 MB, one-time) when
-  clustering is first enabled; natively install `rusty-dot[cluster]`.
+  clustering is first enabled; natively install `dot-explorer[cluster]`.
 - Clustering refinements: an **Apply changes** button gates every Trees &
   clustering setting (nothing recomputes or redraws until clicked); a
   **Matrix** tab shows the pairwise matrix with row/column names, a
@@ -118,7 +118,7 @@ and this project adheres to
 
 - Fully client-side assembly comparison (`app/`) built with Shiny for Python
   and deployed as a static Shinylive/Pyodide site alongside the docs. Upload
-  FASTA/FASTA.gz assemblies, align with rusty-dot's k-mer engine or in-browser
+  FASTA/FASTA.gz assemblies, align with dot-explorer's k-mer engine or in-browser
   biowasm aligners (minimap2 2.22, nucmer/MUMmer4), reconfigure the dotplot
   without recomputing, and download SVG/PDF plots, PAF, and a reordered query
   FASTA. Includes a loading splash with staged progress, background aligner
@@ -195,7 +195,7 @@ and this project adheres to
   instead of resident Python strings — previews, copies and the k-mer index
   build fetch only the windows/contigs they need. Falls back to in-memory
   parsing when pyfaidx cannot index the input. New `pip install
-  "rusty-dot[app]"` extra (shiny + pyfaidx) for running the app locally or
+  "dot-explorer[app]"` extra (shiny + pyfaidx) for running the app locally or
   on an HPC (`shiny run --launch-browser app/app.py`).
 - Releases publish real binary wheels: maturin builds for Linux
   (x86_64/aarch64), macOS (arm64/x86_64) and Windows (x64) across CPython
@@ -206,7 +206,7 @@ and this project adheres to
   `emscripten_3_1_58_wasm32` build (Pyodide 0.27.7).
 - App identity: restyled around a CSS custom-property theme layer (teal
   accent, light/dark parity) with a bundled display font, a
-  "rusty·dot — live assembly comparison" wordmark, a dot-grid page
+  "dot·explorer — live assembly comparison" wordmark, a dot-grid page
   background, a translucent sidebar, and a matching loading splash. The
   progress popup, title-bar pulse and corner "Processing…" pill were
   replaced by the single header task status plus spinner.
@@ -293,6 +293,3 @@ and this project adheres to
   matching, strand-aware run merging, PAF output, `CrossIndex` cross-assembly
   comparisons, collinearity contig ordering with reordered/reoriented FASTA
   export, and matplotlib dotplot visualisation via `DotPlotter`.
-
-[Unreleased]: https://github.com/Adamtaranto/rusty-dot/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Adamtaranto/rusty-dot/releases/tag/v0.1.0

@@ -10,7 +10,7 @@ build identifies the commit it came from without this file — or
 Cargo.toml — changing on every commit.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 try:  # pragma: no cover - only present in development builds
     from dot_explorer._version_local import __version__  # noqa: F401,F811

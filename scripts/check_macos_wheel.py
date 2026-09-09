@@ -46,7 +46,9 @@ def dependencies(binary: Path) -> list[str]:
         ['otool', '-L', str(binary)], capture_output=True, text=True, check=True
     ).stdout
     # First line is the file name; each following line is "<path> (compat ...)".
-    return [line.split(' (')[0].strip() for line in out.splitlines()[1:] if line.strip()]
+    return [
+        line.split(' (')[0].strip() for line in out.splitlines()[1:] if line.strip()
+    ]
 
 
 def unsafe_dependencies(binary: Path) -> list[str]:

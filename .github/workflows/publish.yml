@@ -228,6 +228,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [sdist, linux, macos, windows, pyemscripten]
     if: ${{ github.event_name == 'release' || inputs.publish }}
+    # DOT_EXPLORER_PYPI_TOKEN lives in this environment, not in repository
+    # secrets: without this key the token resolves to an empty string and
+    # the upload fails.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dot-explorer
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v8

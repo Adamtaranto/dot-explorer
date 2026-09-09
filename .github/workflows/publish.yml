@@ -241,3 +241,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.DOT_EXPLORER_PYPI_TOKEN }}
+          # A file already on PyPI can never be replaced, and a wheel may
+          # have been uploaded by hand (the macOS arm64 build in particular
+          # is reproducible locally). Skip those instead of failing the whole
+          # upload and leaving the rest of the matrix unpublished.
+          skip-existing: true

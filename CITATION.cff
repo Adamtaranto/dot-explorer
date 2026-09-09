@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "Dot-explorer: A Python library for making dot-plot comparisons of DNA sequences powered by a fast Rust FM-Index."
-version: 0.1.0
+version: 0.2.0
 date-released: 2026-09-09
 authors:
   - family-names: Taranto

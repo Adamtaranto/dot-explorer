@@ -21,6 +21,43 @@ ORDER_CHOICES: dict[str, str] = {
 #: Ordering modes that derive orientation info (reversed contigs).
 COLINEARITY_MODES: frozenset[str] = frozenset({'colinearity', 'colinearity_ref'})
 
+#: Match line-cap choices exposed in the UI (matplotlib names), mapped to
+#: display labels.  Square is the default: with flat caps a match shorter than
+#: the line width draws wider across its diagonal than along it, so it reads as
+#: a mark rotated 90 degrees.
+CAP_STYLE_CHOICES: dict[str, str] = {
+    'projecting': 'Square',
+    'round': 'Round',
+    'butt': 'Flat',
+}
+
+#: matplotlib cap name -> SVG ``stroke-linecap`` value.
+_SVG_LINECAPS: dict[str, str] = {
+    'butt': 'butt',
+    'round': 'round',
+    'projecting': 'square',
+}
+
+
+def svg_linecap(cap_style: str) -> str:
+    """Map a matplotlib cap style to its SVG ``stroke-linecap`` value.
+
+    The embedded report applies the cap as a CSS override, which speaks SVG's
+    vocabulary: matplotlib's ``'projecting'`` is SVG's ``'square'``.
+
+    Parameters
+    ----------
+    cap_style : str
+        A key of :data:`CAP_STYLE_CHOICES`.
+
+    Returns
+    -------
+    str
+        The corresponding ``stroke-linecap`` value; unknown input falls back
+        to ``'square'`` (the default cap).
+    """
+    return _SVG_LINECAPS.get(cap_style, 'square')
+
 
 @dataclass
 class PlotConfig:
@@ -41,6 +78,9 @@ class PlotConfig:
         plot.
     dot_size : float
         Line width for match segments.
+    cap_style : str
+        Line cap for match segments — a key of :data:`CAP_STYLE_CHOICES`
+        (matplotlib names: ``'butt'``, ``'round'`` or ``'projecting'``).
     min_length : int
         Minimum match length (bp) to draw.
     title : str or None
@@ -57,6 +97,7 @@ class PlotConfig:
     auto_reverse: bool = False
     hide_internal_axes: bool = False
     dot_size: float = 0.5
+    cap_style: str = 'projecting'
     min_length: int = 0
     title: str | None = field(default=None)
     color_by_identity: bool = False
@@ -87,6 +128,7 @@ class PlotConfig:
             'auto_reverse': self.auto_reverse,
             'hide_internal_axes': self.hide_internal_axes,
             'dot_size': self.dot_size,
+            'cap_style': self.cap_style,
             'min_length': self.min_length,
             'title': self.title,
             'color_by_identity': self.color_by_identity,

@@ -2262,3 +2262,79 @@ class TestClusterBorders:
         )
         plt.close(fig)
         assert 'de-cluster-border-c1' in out.read_text()
+
+
+# ---------------------------------------------------------------------------
+# Match-segment line caps
+# ---------------------------------------------------------------------------
+
+
+def _match_caps(fig):
+    """Return the cap style of every match LineCollection in ``fig``."""
+    from matplotlib.collections import LineCollection
+
+    caps = []
+    for ax in fig.axes:
+        caps += [
+            c.get_capstyle() for c in ax.collections if isinstance(c, LineCollection)
+        ]
+    return caps
+
+
+def test_match_segments_default_to_projecting_caps(dotplot_index):
+    """Short matches must not read as rotated: square caps are the default.
+
+    With butt caps a match shorter than the line width draws wider across
+    its diagonal than along it, so it appears rotated 90 degrees.
+    """
+    fig = DotPlotter(dotplot_index).plot()
+    caps = _match_caps(fig)
+    plt.close(fig)
+    assert caps, 'expected at least one match LineCollection'
+    assert set(caps) == {'projecting'}
+
+
+@pytest.mark.parametrize('cap_style', ['butt', 'round', 'projecting'])
+def test_cap_style_applies_to_stranded_layers(dotplot_index, cap_style):
+    """cap_style reaches both the forward and reverse match collections."""
+    fig = DotPlotter(dotplot_index).plot(cap_style=cap_style)
+    caps = _match_caps(fig)
+    plt.close(fig)
+    assert caps
+    assert set(caps) == {cap_style}
+
+
+@pytest.mark.parametrize('cap_style', ['butt', 'round', 'projecting'])
+def test_cap_style_applies_to_identity_layer(dotplot_index, cap_style):
+    """The identity layer is a separate draw path and honours cap_style too."""
+    paf = _make_paf_alignment(query_name='seq1', target_name='seq2')
+    plotter = DotPlotter(dotplot_index, paf_alignment=paf)
+    fig = plotter.plot_single(
+        'seq1', 'seq2', color_by_identity=True, cap_style=cap_style
+    )
+    caps = _match_caps(fig)
+    plt.close(fig)
+    assert caps
+    assert set(caps) == {cap_style}
+
+
+def test_plot_single_defaults_to_projecting_caps(dotplot_index):
+    """plot_single forwards through its own _plot_panel call site."""
+    fig = DotPlotter(dotplot_index).plot_single('seq1', 'seq2')
+    caps = _match_caps(fig)
+    plt.close(fig)
+    assert caps
+    assert set(caps) == {'projecting'}
+
+
+@pytest.mark.parametrize('method', ['plot', 'plot_single'])
+def test_invalid_cap_style_raises_before_building_a_figure(dotplot_index, method):
+    """Validation happens up front, so no half-built figure is left behind."""
+    plotter = DotPlotter(dotplot_index)
+    before = set(plt.get_fignums())
+    with pytest.raises(ValueError, match='cap_style must be one of'):
+        if method == 'plot':
+            plotter.plot(cap_style='square')
+        else:
+            plotter.plot_single('seq1', 'seq2', cap_style='square')
+    assert set(plt.get_fignums()) == before

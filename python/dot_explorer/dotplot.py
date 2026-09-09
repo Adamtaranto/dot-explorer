@@ -71,6 +71,36 @@ def _resolve_rasterized(
     raise ValueError(f"rasterized must be True, False, or 'auto', got {rasterized!r}")
 
 
+#: Valid line caps for match segments (matplotlib names; ``'projecting'`` is
+#: SVG's ``square``).  The default is ``'projecting'`` because butt caps make a
+#: match shorter than the line width draw wider across its diagonal than along
+#: it, so it reads as a mark rotated 90 degrees.
+CAP_STYLES = ('butt', 'round', 'projecting')
+
+
+def _resolve_cap_style(cap_style: str) -> str:
+    """Validate a match-segment line cap.
+
+    Parameters
+    ----------
+    cap_style : str
+        Requested cap, one of :data:`CAP_STYLES`.
+
+    Returns
+    -------
+    str
+        *cap_style* unchanged, ready to hand to ``LineCollection``.
+
+    Raises
+    ------
+    ValueError
+        If *cap_style* is not one of :data:`CAP_STYLES`.
+    """
+    if cap_style in CAP_STYLES:
+        return cap_style
+    raise ValueError(f'cap_style must be one of {CAP_STYLES}, got {cap_style!r}')
+
+
 # Extra axis-label padding (points) past a side annotation track, leaving
 # room for the tick labels drawn on the track's outer edge so position
 # (length) tick text cannot touch the contig-name label.
@@ -644,6 +674,7 @@ class DotPlotter:
         output_path: Optional[Union[str, Path]] = None,
         figsize_per_panel: float = 4.0,
         dot_size: float = 0.5,
+        cap_style: str = 'projecting',
         dot_color: str = 'blue',
         rc_color: str = 'red',
         merge: bool = True,
@@ -727,6 +758,12 @@ class DotPlotter:
             other axes are scaled proportionally.  Default is ``4.0``.
         dot_size : float, optional
             Size of each dot in the scatter plot. Default is ``0.5``.
+        cap_style : {'butt', 'round', 'projecting'}, optional
+            Line cap for match segments.  ``'projecting'`` (the default) and
+            ``'round'`` extend the stroke past each endpoint by half the line
+            width, so a match shorter than *dot_size* still reads as a mark on
+            its own diagonal; with ``'butt'`` such a match is drawn wider
+            across the diagonal than along it and appears rotated 90 degrees.
         dot_color : str, optional
             Colour for forward-strand (``+``) match lines. Default is ``"blue"``.
         rc_color : str, optional
@@ -941,6 +978,8 @@ class DotPlotter:
             query_group, target_group, query_names, target_names
         )
 
+        cap_style = _resolve_cap_style(cap_style)
+
         all_names = self.index.sequence_names()
         if not all_names:
             raise ValueError('No sequences in the index.')
@@ -1116,6 +1155,7 @@ class DotPlotter:
                     q_name,
                     t_name,
                     dot_size=dot_size,
+                    cap_style=cap_style,
                     dot_color=dot_color,
                     rc_color=rc_color,
                     merge=merge,
@@ -1826,6 +1866,7 @@ class DotPlotter:
         query_name: str,
         target_name: str,
         dot_size: float = 0.5,
+        cap_style: str = 'projecting',
         dot_color: str = 'blue',
         rc_color: str = 'red',
         merge: bool = True,
@@ -1855,6 +1896,8 @@ class DotPlotter:
             Name of the target sequence (x-axis).  Same note as *query_name*.
         dot_size : float, optional
             Marker size. Default is ``0.5``.
+        cap_style : {'butt', 'round', 'projecting'}, optional
+            Line cap for match segments. Default is ``'projecting'``.
         dot_color : str, optional
             Marker colour for forward-strand (``+``) matches. Default is ``"blue"``.
         rc_color : str, optional
@@ -1996,6 +2039,7 @@ class DotPlotter:
                 records,
                 identity_palette=identity_palette,
                 dot_size=dot_size,
+                cap_style=cap_style,
                 min_length=min_length,
                 rasterized=rasterized,
                 rasterization_threshold=rasterization_threshold,
@@ -2043,6 +2087,7 @@ class DotPlotter:
                 dot_color=dot_color,
                 rc_color=rc_color,
                 dot_size=dot_size,
+                cap_style=cap_style,
                 min_length=min_length,
                 rasterized=rasterized,
                 rasterization_threshold=rasterization_threshold,
@@ -2065,6 +2110,7 @@ class DotPlotter:
         dot_color: str,
         rc_color: str,
         dot_size: float,
+        cap_style: str,
         min_length: int,
         rasterized: Union[bool, str],
         rasterization_threshold: int,
@@ -2085,6 +2131,8 @@ class DotPlotter:
             Colours for forward and reverse-complement matches.
         dot_size : float
             Line width in points.
+        cap_style : str
+            Line cap for the segments, one of :data:`CAP_STYLES`.
         min_length : int
             Skip blocks whose query length is below this (``0`` = keep all).
         rasterized : bool or str
@@ -2134,6 +2182,7 @@ class DotPlotter:
                 fwd_seg,
                 colors=dot_color,
                 linewidths=dot_size,
+                capstyle=cap_style,
                 alpha=0.7,
                 rasterized=_resolve_rasterized(
                     len(fwd_seg), rasterized, rasterization_threshold
@@ -2155,6 +2204,7 @@ class DotPlotter:
                 rev_seg,
                 colors=rc_color,
                 linewidths=dot_size,
+                capstyle=cap_style,
                 alpha=0.7,
                 rasterized=_resolve_rasterized(
                     len(rev_seg), rasterized, rasterization_threshold
@@ -2170,6 +2220,7 @@ class DotPlotter:
         records: list,
         identity_palette: str,
         dot_size: float,
+        cap_style: str,
         min_length: int,
         rasterized: Union[bool, str],
         rasterization_threshold: int,
@@ -2190,6 +2241,8 @@ class DotPlotter:
             Matplotlib colormap name for identity colouring.
         dot_size : float
             Line width in points.
+        cap_style : str
+            Line cap for the segments, one of :data:`CAP_STYLES`.
         min_length : int
             Skip records whose query aligned length is below this.
         rasterized : bool or str
@@ -2239,6 +2292,7 @@ class DotPlotter:
                 segments,
                 colors=colors,
                 linewidths=dot_size,
+                capstyle=cap_style,
                 alpha=0.7,
                 rasterized=_resolve_rasterized(
                     len(segments), rasterized, rasterization_threshold
@@ -2419,6 +2473,7 @@ class DotPlotter:
         output_path: Optional[Union[str, Path]] = None,
         figsize: tuple[float, float] = (6.0, 6.0),
         dot_size: float = 0.5,
+        cap_style: str = 'projecting',
         dot_color: str = 'blue',
         rc_color: str = 'red',
         merge: bool = True,
@@ -2471,6 +2526,12 @@ class DotPlotter:
             be slightly larger.  Default is ``(6, 6)``.
         dot_size : float, optional
             Marker/line size for each match. Default is ``0.5``.
+        cap_style : {'butt', 'round', 'projecting'}, optional
+            Line cap for match segments.  ``'projecting'`` (the default) and
+            ``'round'`` extend the stroke past each endpoint by half the line
+            width, so a match shorter than *dot_size* still reads as a mark on
+            its own diagonal; with ``'butt'`` such a match is drawn wider
+            across the diagonal than along it and appears rotated 90 degrees.
         dot_color : str, optional
             Colour for forward-strand (``+``) matches. Default is ``"blue"``.
         rc_color : str, optional
@@ -2534,6 +2595,8 @@ class DotPlotter:
             If *query_group* / *target_group* are provided but *index* is
             not a ``CrossIndex``.
         """
+        cap_style = _resolve_cap_style(cap_style)
+
         # Single-panel figures do not support HTML capture (v1 covers the
         # grid plot() path only); clear any stale capture defensively.
         self._html_capture = None
@@ -2602,6 +2665,7 @@ class DotPlotter:
             query_name,
             target_name,
             dot_size=dot_size,
+            cap_style=cap_style,
             dot_color=dot_color,
             rc_color=rc_color,
             merge=merge,

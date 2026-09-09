@@ -54,6 +54,8 @@ from core.cluster import (
     alignment_coverage_matrix,
     cluster_deps_missing,
     cluster_table_rows,
+    coverage_align_params,
+    is_clean_minimap2,
     tree_layout_order,
 )
 from core.export import reordered_fasta_text
@@ -71,7 +73,7 @@ from core.seqs import (
     provider_from_fasta_input,
     provider_from_path,
 )
-from core.state import ORDER_CHOICES, PlotConfig
+from core.state import CAP_STYLE_CHOICES, ORDER_CHOICES, PlotConfig, svg_linecap
 from core.validate import validate_annotation_names, validate_query_names
 from core.wheels import pick_wasm_wheel, runtime_platform_tag
 import matplotlib  # noqa: F401  (ensures shinylive bundles the pyodide package)
@@ -706,6 +708,18 @@ app_ui = ui.page_sidebar(
             max=5,
             step=0.1,
         ),
+        ui.input_select(
+            'cap_style',
+            _lbl(
+                'Line cap',
+                'Shape of the match-segment ends. Square and round keep a '
+                'match shorter than the line width sitting on its own '
+                'diagonal; flat draws it square-on, so it looks rotated. '
+                'Applied instantly, without re-rendering.',
+            ),
+            choices=CAP_STYLE_CHOICES,
+            selected='projecting',
+        ),
         ui.hr(),
         # --- Trees & clustering ----------------------------------------------
         # Self-alignment only: one tree can only order one shared axis, so a
@@ -840,9 +854,12 @@ app_ui = ui.page_sidebar(
                             'k-mers (collapses when relatives differ by '
                             'scattered SNPs — at 98% identity only ~65% '
                             'of 21-mers survive). Alignment: fraction of '
-                            'the contig covered by this run’s alignment '
-                            'blocks (minimap2/nucmer/k-mer/PAF) — robust '
-                            'to SNPs.',
+                            'the contig covered by minimap2 alignment '
+                            'blocks — robust to SNPs. Always computed '
+                            'from a clean minimap2 run without -P (run '
+                            'in the background when the current result '
+                            'is nucmer, k-mer, an uploaded PAF, or '
+                            'minimap2 with -P).',
                         ),
                         choices={
                             'containment': 'sourmash containment',
@@ -1045,7 +1062,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     cache = SessionCache()
     ready = reactive.value(False)
     boot_error = reactive.value('')
-    # (kind, alignment-object, {'query': SequenceProvider|None, 'target': ...})
+    # (kind, alignment-object, {'query': SequenceProvider|None, 'target': ...,
+    #  'method': 'kmer'|'paf_upload'|'minimap2'|'nucmer', 'params': dict})
     result = reactive.value(None)
 
     @reactive.effect
@@ -1247,7 +1265,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         ):
                             ui.notification_show(warning, type='warning', duration=12)
                     progress.set(3, message=f'{len(alignment)} alignment(s) loaded')
-                    result.set(('paf', alignment, {'query': query, 'target': None}))
+                    result.set(
+                        (
+                            'paf',
+                            alignment,
+                            {
+                                'query': query,
+                                'target': None,
+                                'method': 'paf_upload',
+                                'params': {},
+                            },
+                        )
+                    )
                 return
             method = input.method()
             if method not in AVAILABLE_METHODS:
@@ -1276,7 +1305,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     min_block_len=int(input.kmer_min_block() or 0),
                 )
                 progress.set(3, message='Rendering dotplot…')
-                result.set(('kmer', index, {'query': query, 'target': target}))
+                result.set(
+                    (
+                        'kmer',
+                        index,
+                        {
+                            'query': query,
+                            'target': target,
+                            'method': 'kmer',
+                            'params': {},
+                        },
+                    )
+                )
                 progress.set(4, message='Done')
         except ValueError as exc:
             ui.notification_show(str(exc), type='error', duration=8)
@@ -1297,6 +1337,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     _TIMEOUT_EXTEND_MS = 300_000
     # In-flight request: {'request_id', 'method', 'params', 'query', 'target'}
     aligner_pending = reactive.value(None)
+    # Background minimap2 run feeding alignment-based coverage clustering.
+    # Coverage must come from a clean minimap2 run (no -P: secondary chains
+    # inflate covered span), so when the displayed result is anything else
+    # a dedicated run is dispatched. Separate from aligner_pending: it
+    # never touches `result` and is not cancelled by a user Run (the JS
+    # side serialises runs, so the two simply queue).
+    # In-flight: {'request_id', 'query'}
+    coverage_pending = reactive.value(None)
+    # Completed: (query digest, PafAlignment)
+    coverage_alignment = reactive.value(None)
+    # Query digest whose background run failed (fall back to containment
+    # instead of retrying in a loop).
+    coverage_failed = reactive.value(None)
+    _COV_NOTIF_ID = 'rd_coverage_progress'
     # Rolling log of completed tool runs: [{'tool', 'cmd', 'stderr', 'error'}]
     aligner_log = reactive.value([])
     _ALIGNER_LOG_MAX = 10
@@ -1305,6 +1359,42 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     # so re-runs and tool switches never re-copy whole genomes across the
     # Pyodide/JS boundary.
     sent_datasets: set[str] = set()
+
+    def _on_coverage_result(res: dict, cov_info: dict) -> None:
+        """Land the background minimap2 coverage run (never touches `result`)."""
+        coverage_pending.set(None)
+        ui.notification_remove(_COV_NOTIF_ID)
+        _log_run(
+            'minimap2',
+            res.get('cmd') or '',
+            res.get('stderr') or '',
+            res.get('error') or None,
+        )
+        digest = cov_info['query'].digest
+        if res.get('error'):
+            coverage_failed.set(digest)
+            ui.notification_show(
+                'Background minimap2 coverage run failed: '
+                f'{res["error"]} — clustering will use sourmash '
+                'containment for coverage instead.',
+                type='warning',
+                duration=12,
+            )
+            return
+        try:
+            alignment = alignment_from_tool_output('minimap2', res.get('output') or '')
+        except ValueError as exc:
+            coverage_failed.set(digest)
+            ui.notification_show(
+                f'Could not parse the minimap2 coverage run output: {exc} '
+                '— clustering will use sourmash containment for coverage '
+                'instead.',
+                type='warning',
+                duration=12,
+            )
+            return
+        cache.put_paf('minimap2', coverage_align_params(), alignment, digest, digest)
+        coverage_alignment.set((digest, alignment))
 
     def _log_run(tool: str, cmd: str, stderr: str, error: str | None) -> None:
         entries = list(aligner_log())
@@ -1403,7 +1493,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         cached = cache.get_paf(method, params, query.digest, target.digest)
         if cached is not None:
             logger.info('%s alignment cache hit', method)
-            result.set(('paf', cached, {'query': query, 'target': target}))
+            result.set(
+                (
+                    'paf',
+                    cached,
+                    {
+                        'query': query,
+                        'target': target,
+                        'method': method,
+                        'params': params,
+                    },
+                )
+            )
             return
         if query.total_length + target.total_length > _BIOWASM_SIZE_WARN:
             ui.notification_show(
@@ -1458,6 +1559,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         info = aligner_pending()
         if not res or res.get('cancelled'):
             return  # cancelled runs were already reported when cancelled
+        cov_info = coverage_pending()
+        if cov_info is not None and res.get('request_id') == cov_info['request_id']:
+            _on_coverage_result(res, cov_info)
+            return
         if not info or res.get('request_id') != info['request_id']:
             return  # stale or unsolicited result
         aligner_pending.set(None)
@@ -1501,7 +1606,16 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             duration=5,
         )
         result.set(
-            ('paf', alignment, {'query': info['query'], 'target': info['target']})
+            (
+                'paf',
+                alignment,
+                {
+                    'query': info['query'],
+                    'target': info['target'],
+                    'method': method,
+                    'params': info['params'],
+                },
+            )
         )
 
     @reactive.effect
@@ -2081,6 +2195,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             auto_reverse=input.auto_reverse(),
             hide_internal_axes=input.hide_internal_axes(),
             dot_size=dot_size_settled(),
+            cap_style=input.cap_style() or 'projecting',
             min_length=min_length_settled(),
             color_by_identity=bool(input.color_by_identity()),
             identity_palette=input.identity_palette() or 'viridis',
@@ -2090,13 +2205,13 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     def render_config() -> PlotConfig:
         """Structural plot options — the ones that genuinely need a re-render.
 
-        Display-only options (line width, min match length) are applied
-        client-side inside the embedded report via ``rd_display_opts``
+        Display-only options (line width, line cap, min match length) are
+        applied client-side inside the embedded report via ``rd_display_opts``
         messages, so they are deliberately absent here: the report HTML is
-        rendered with ``min_length=0`` and the default line width, and the
-        client owns both from then on.  The static plot and the SVG/PDF
-        downloads keep using the full :func:`config` (server-side
-        semantics unchanged there).
+        rendered with ``min_length=0``, the default line width and the default
+        (square) cap, and the client owns them from then on.  The static plot
+        and the SVG/PDF downloads keep using the full :func:`config`
+        (server-side semantics unchanged there).
         """
         return PlotConfig(
             contig_order=input.contig_order(),
@@ -2115,6 +2230,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             'rd_display_opts',
             {
                 'dot_size': float(dot_size_settled()),
+                # The wire carries the CSS value: the report applies the cap
+                # as a stroke-linecap override, not through matplotlib.
+                'cap_style': svg_linecap(input.cap_style() or 'projecting'),
                 'min_length': int(min_length_settled()),
             },
         )
@@ -2565,18 +2683,85 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         return name
 
     @reactive.calc
-    def alignment_coverage():
-        """Asymmetric coverage from the current result's alignment records."""
+    def coverage_records():
+        """Alignment records fit to drive coverage clustering, or None.
+
+        Only clean minimap2 output (no ``-P``) qualifies: the displayed
+        result when it is one, else a cached or background-computed
+        dedicated run (``_ensure_coverage_alignment`` dispatches it).
+        nucmer / k-mer / uploaded-PAF results never feed coverage.
+        """
         res = result()
         prov = query_provider()
         if res is None or prov is None:
             return None
-        kind, obj, _meta = res
-        records = (
-            obj.get_records_for_pair(QUERY_GROUP, TARGET_GROUP)
-            if kind == 'kmer'
-            else obj.records
+        kind, obj, meta = res
+        if kind == 'paf' and is_clean_minimap2(meta.get('method'), meta.get('params')):
+            return obj.records
+        cov = coverage_alignment()
+        if cov is not None and cov[0] == prov.digest:
+            return cov[1].records
+        cached = cache.get_paf(
+            'minimap2', coverage_align_params(), prov.digest, prov.digest
         )
+        if cached is not None:
+            return cached.records
+        return None
+
+    @reactive.effect
+    async def _ensure_coverage_alignment():
+        """Dispatch the background minimap2 run when coverage needs one."""
+        if not clustering_on():
+            return
+        settings = cluster_settings()
+        if (
+            settings['mode'] != 'identity_coverage'
+            or settings['coverage_source'] != 'alignment'
+        ):
+            return
+        if coverage_records() is not None:
+            return
+        prov = query_provider()
+        if prov is None or coverage_failed() == prov.digest:
+            return
+        pending = coverage_pending()
+        if pending is not None and pending['query'].digest == prov.digest:
+            return
+        request_id = uuid.uuid4().hex
+        coverage_pending.set({'request_id': request_id, 'query': prov})
+        ui.notification_show(
+            'Alignment coverage needs a clean minimap2 run (no -P) — '
+            'computing one in the background; the dot plot keeps showing '
+            'the current alignment.',
+            id=_COV_NOTIF_ID,
+            duration=None,
+        )
+        try:
+            await _send_dataset(prov)
+        except ValueError as exc:
+            coverage_pending.set(None)
+            coverage_failed.set(prov.digest)
+            ui.notification_remove(_COV_NOTIF_ID)
+            ui.notification_show(str(exc), type='error', duration=8)
+            return
+        await session.send_custom_message(
+            'rd_run_aligner',
+            {
+                'tool': 'minimap2',
+                'args': build_tool_args('minimap2', coverage_align_params()),
+                'query_id': prov.digest,
+                'target_id': prov.digest,
+                'request_id': request_id,
+            },
+        )
+
+    @reactive.calc
+    def alignment_coverage():
+        """Asymmetric coverage from clean minimap2 records, or None."""
+        prov = query_provider()
+        records = coverage_records()
+        if records is None or prov is None:
+            return None
         return alignment_coverage_matrix(
             records,
             list(prov.names),
@@ -2635,7 +2820,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         """(ANI, coverage) matrices for identity+coverage clustering.
 
         Coverage comes from the applied source: sourmash containment, or
-        the current alignment's block coverage (SNP-robust).
+        block coverage from a clean minimap2 alignment (SNP-robust). When
+        the background minimap2 run is still in flight this returns None
+        (clustering appears once it lands); when it failed, sourmash
+        containment stands in.
         """
         if not clustering_on():
             return None
@@ -2644,6 +2832,11 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return None
         if cluster_settings()['coverage_source'] == 'alignment':
             cov = alignment_coverage()
+            if cov is None:
+                prov = query_provider()
+                if prov is None or coverage_failed() != prov.digest:
+                    return None  # background minimap2 run pending
+                cov = containment_matrix()
         else:
             cov = containment_matrix()
         if cov is None:
@@ -3852,8 +4045,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         'aln_coverage': (
             'Alignment block coverage: the fraction of the ROW contig '
             'covered by the union of its alignment blocks against the '
-            'COLUMN contig, from this run’s aligner '
-            '(minimap2/nucmer/k-mer/PAF). Asymmetric; robust to SNPs.'
+            'COLUMN contig, from a clean minimap2 run (no -P; secondary '
+            'alignments excluded). Asymmetric; robust to SNPs.'
         ),
     }
 
@@ -3863,7 +4056,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         if matrix is None:
             return ui.div(
                 'No matrix for this view yet — alignment coverage needs a '
-                'completed run; containment needs clustering enabled.',
+                'completed clean minimap2 run (computed in the background '
+                'when coverage clustering is applied); containment needs '
+                'clustering enabled.',
                 class_='de-dl-note',
             )
         settings = cluster_settings() or {}

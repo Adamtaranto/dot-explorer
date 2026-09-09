@@ -519,6 +519,72 @@
   };
   // Segment identity of the current selection, echoed in copy requests.
   var currentSeg = null;
+  // Match metadata for the current detail bar (names, coords, strand,
+  // identity), kept regardless of which copy path is active so the FASTA
+  // header can always be composed from click-time state.
+  var currentMeta = null;
+  // "Copy with FASTA header" preference.  Persists across match popups;
+  // restored from localStorage where available (a sandboxed opaque-origin
+  // frame throws on access) and re-pushed by the embedding app on
+  // re-render via the 'de-set-copy-fasta' message.
+  var copyFastaCheckbox = document.getElementById('de-copy-fasta');
+  var copyFasta = false;
+  try {
+    copyFasta = window.localStorage.getItem('de-copy-fasta') === '1';
+  } catch (e) {
+    /* sandboxed frame: parent state is the only persistence */
+  }
+  if (copyFastaCheckbox) {
+    copyFastaCheckbox.checked = copyFasta;
+    copyFastaCheckbox.addEventListener('change', function () {
+      copyFasta = copyFastaCheckbox.checked;
+      try {
+        window.localStorage.setItem('de-copy-fasta', copyFasta ? '1' : '0');
+      } catch (e) {
+        /* ignore */
+      }
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'de-copy-fasta', on: copyFasta }, '*');
+      }
+    });
+  }
+
+  function setCopyFasta(on) {
+    copyFasta = !!on;
+    if (copyFastaCheckbox) copyFastaCheckbox.checked = copyFasta;
+  }
+
+  /* FASTA header for one side of the current match, e.g.
+   *   >chr1:100-200(-) target=chr2:300-400 len=100bp identity=98.7%
+   * Coordinates are the click-time display coordinates, so the header
+   * always matches the copied slice (minus-strand query slices arrive
+   * already reverse-complemented). */
+  function fastaHeader(side) {
+    var m = currentMeta;
+    if (!m) return null;
+    var header;
+    if (side === 'target') {
+      header =
+        '>' + m.t + ':' + m.ts + '-' + m.te + '(+)' +
+        ' query=' + m.q + ':' + m.qs + '-' + m.qe + '(' + m.strand + ')' +
+        ' len=' + (m.te - m.ts) + 'bp';
+    } else {
+      header =
+        '>' + m.q + ':' + m.qs + '-' + m.qe + '(' + m.strand + ')' +
+        ' target=' + m.t + ':' + m.ts + '-' + m.te +
+        ' len=' + (m.qe - m.qs) + 'bp';
+    }
+    if (typeof m.identity === 'number') {
+      header += ' identity=' + (m.identity * 100).toFixed(1) + '%';
+    }
+    return header;
+  }
+
+  function withHeader(side, seq) {
+    if (!copyFasta) return seq;
+    var header = fastaHeader(side);
+    return header ? header + '\n' + seq : seq;
+  }
 
   var SIDE_LABELS = { query: 'query seq', target: 'target seq' };
 
@@ -587,7 +653,7 @@
       var st = copyState[side];
       if (!st.avail || st.pending) return;
       if (st.seq) {
-        copyText(st.seq, btn, side);
+        copyText(withHeader(side, st.seq), btn, side);
         return;
       }
       if (!currentSeg || window.parent === window) return;
@@ -630,7 +696,7 @@
     // doesn't, the sequence is now cached and the next press copies
     // synchronously -- which is exactly what the 'Copy …' label promises.
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(msg.seq).then(
+      navigator.clipboard.writeText(withHeader(side, msg.seq)).then(
         function () {
           btn.textContent = 'Copied!';
           setTimeout(function () {
@@ -652,6 +718,7 @@
     detail.hidden = true;
     pendingSeqKey = null;
     currentSeg = null;
+    currentMeta = null;
     setCopyState(false, false, null, null);
   }
 
@@ -809,6 +876,16 @@
         : null;
     detailSeq.classList.remove('de-aligned');
     currentSeg = null;
+    currentMeta = {
+      q: panel.query,
+      t: panel.target,
+      qs: seg[0],
+      qe: seg[1],
+      ts: seg[2],
+      te: seg[3],
+      strand: strand,
+      identity: identity,
+    };
     setCopyState(false, false, null, null);
     if (seq) {
       detailSeq.textContent = seq;
@@ -903,6 +980,16 @@
       };
       el.addEventListener('click', onClick);
       // Invisible widened hit target stacked on top of the original.
+      // Stripping the inline style also drops matplotlib's stroke-linecap,
+      // which is deliberate: the hit stroke is 6px wide, so a square cap
+      // would extend it 3px past BOTH ends along the diagonal, turning the
+      // target for a sub-pixel match from a thin sliver into a ~6x6 block.
+      // Adjacent matches on the same diagonal would then overlap almost
+      // completely and the last one in document order would swallow every
+      // click aimed at its neighbours (measured: 859 of 869 matches
+      // unselectable on a 3%-divergent 120 kb self-comparison).  Butt caps
+      // keep each target confined to its own match; the 6px width already
+      // makes hairlines clickable across the diagonal.
       var hit = el.cloneNode(false);
       hit.removeAttribute('style');
       hit.removeAttribute('id');
@@ -1437,29 +1524,60 @@
   }
 
   // ---------------------------------------------------------------------
-  // 6. Embedded display options (line width, min match length)
+  // 6. Embedded display options (line width, line cap, min match length)
   // ---------------------------------------------------------------------
   //
   // When the report is embedded by the dot-explorer app it is rendered with
-  // min_length=0 and the default line width; the app then drives both
-  // options client-side via 'de-display-opts' messages, so a cosmetic
-  // change never re-renders matplotlib.  Line width is one injected CSS
-  // rule (!important beats the per-path inline styles); min length toggles
-  // a hiding class on each segment path and its .de-hit clone using the
-  // query-side spans registered above.  Standalone reports simply never
-  // receive these messages.
+  // min_length=0, the default line width and the default (square) cap; the
+  // app then drives all three options client-side via 'de-display-opts'
+  // messages, so a cosmetic change never re-renders matplotlib.  Line width
+  // and cap are injected CSS rules (!important beats the per-path inline
+  // styles matplotlib writes); min length toggles a hiding class on each
+  // segment path and its .de-hit clone using the query-side spans
+  // registered above.  Standalone reports simply never receive these
+  // messages and keep the cap matplotlib baked in.
+  //
+  // Both declarations are rebuilt together on every call, because a message
+  // carrying only one of them must not drop the other.  The rules apply to
+  // the visible strokes ONLY -- never to the .de-hit clones, whose caps must
+  // stay butt (see the clone site in section 5).
 
   var displayStyle = document.createElement('style');
   document.head.appendChild(displayStyle);
   var currentMinLength = 0;
+  var currentDotSize = null;
+  var currentCapStyle = null;
+
+  function rebuildDisplayStyle() {
+    var visible = '';
+    if (currentDotSize !== null) {
+      visible += 'stroke-width: ' + currentDotSize + 'px !important;';
+    }
+    if (currentCapStyle !== null) {
+      visible += 'stroke-linecap: ' + currentCapStyle + ' !important;';
+    }
+    // Visible strokes only.  The .de-hit clones are deliberately left with
+    // butt caps -- see the clone site above: a square cap on their 6px
+    // stroke makes adjacent short matches swallow each other's clicks.
+    displayStyle.textContent =
+      'g[id^="de-matches-"] > :not(.de-hit) {' + visible + '}';
+  }
 
   function applyDisplayOpts(opts) {
+    var dirty = false;
     if (typeof opts.dot_size === 'number' && opts.dot_size > 0) {
-      displayStyle.textContent =
-        'g[id^="de-matches-"] > path:not(.de-hit) { stroke-width: ' +
-        opts.dot_size +
-        'px !important; }';
+      currentDotSize = opts.dot_size;
+      dirty = true;
     }
+    if (
+      opts.cap_style === 'butt' ||
+      opts.cap_style === 'round' ||
+      opts.cap_style === 'square'
+    ) {
+      currentCapStyle = opts.cap_style;
+      dirty = true;
+    }
+    if (dirty) rebuildDisplayStyle();
     if (
       typeof opts.min_length === 'number' &&
       opts.min_length >= 0 &&
@@ -1595,6 +1713,12 @@
     }
     if (msg.type === 'de-copy-response') {
       handleCopyResponse(msg);
+      return;
+    }
+    if (msg.type === 'de-set-copy-fasta') {
+      // The embedding app re-pushes the persisted preference after every
+      // iframe re-render.
+      setCopyFasta(msg.on);
     }
   });
 

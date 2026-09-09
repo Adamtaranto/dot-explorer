@@ -44,6 +44,15 @@ and this project adheres to
   agree (they previously diverged on dev commits, since the wheel version comes
   from `Cargo.toml`, which never carried the suffix) and an ordinary commit no
   longer dirties the working tree.
+- Development builds identify the commit they came from: between release tags
+  the stamper writes an untracked `python/dot_explorer/_version_local.py`
+  holding a PEP 440 local version — `X.Y.Z+<short hash>`, with `.dirty`
+  appended when the working tree has uncommitted changes — and `_version.py`
+  imports it when present. `dot_explorer.__version__` therefore reads e.g.
+  `0.1.0+1a2b3c4` in a development build while the distribution metadata stays
+  `0.1.0`, which is exactly what a PEP 440 local version means. The file is
+  gitignored and deleted at a release tag, so it can never reach a release
+  wheel; no tracked file changes between tags.
 - The Colab setup cells in the quickstart and minimap2 tutorials install
   `dot-explorer` from PyPI instead of building from the GitHub repository.
 

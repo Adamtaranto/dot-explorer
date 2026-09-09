@@ -55,6 +55,10 @@ docs/tutorials/*_files/
 coverage.xml
 target/
 
+# Development-build version override, written by scripts/stamp_version.py
+# between release tags and removed again at a tag.
+python/dot_explorer/_version_local.py
+
 # Shinylive export staging (scripts/build_shinylive.py): a copy of the app plus
 # the wasm wheel, assembled outside the package tree so no .whl ever lands
 # inside the built wheel.

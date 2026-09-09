@@ -86,6 +86,11 @@ module-name = "dot_explorer._dot_explorer"
 include = [
     { path = "python/dot_explorer/_html/**/*", format = ["sdist", "wheel"] },
     { path = "python/dot_explorer/app/**/*", format = ["sdist", "wheel"] },
+    # Development-build version override. Gitignored, so it is only ever
+    # present between release tags -- scripts/stamp_version.py deletes it at a
+    # tag, and CI stamps before every build, so it cannot reach a release
+    # wheel. Listed explicitly because maturin otherwise skips ignored files.
+    { path = "python/dot_explorer/_version_local.py", format = ["wheel"] },
 ]
 
 [tool.coverage.run]

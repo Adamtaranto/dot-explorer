@@ -140,7 +140,6 @@ jobs:
         run: |
           maturin build --release
           pip install target/wheels/*cp314t*.whl
-          - name: Build and install dot-explorer
       - name: Assert the extension does not re-enable the GIL
         # src/lib.rs declares #[pymodule(gil_used = false)].  If that is ever
         # dropped, importing the module flips the GIL back on and the cp314t

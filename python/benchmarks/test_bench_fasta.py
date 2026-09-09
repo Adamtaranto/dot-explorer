@@ -8,14 +8,18 @@ run can start on real multi-megabyte assemblies.
 from __future__ import annotations
 
 import gzip
-from pathlib import Path
 import sys
 
 from _synth import random_dna
 
-# The parser lives in the browser app package, which is not installed as a
-# distribution; import it straight from the repo layout.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'app'))
+from dot_explorer.launch import APP_DIR
+
+# The parser ships inside the wheel as package data rather than as an
+# importable subpackage: app.py and its siblings use flat `core.*` imports
+# that resolve once the app directory is on sys.path (what `shiny run` and
+# `shinylive export` both do).  Take the location from the package so this
+# keeps working whether the benchmarks run against a checkout or an install.
+sys.path.insert(0, str(APP_DIR))
 
 from core.fasta import parse_fasta_bytes  # noqa: E402
 

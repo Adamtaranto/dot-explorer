@@ -4,7 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "dot-explorer"
-version = "0.1.0"
+# Version comes from Cargo.toml (maturin's dynamic-version mode), which is
+# stamped from the latest v* git tag by scripts/stamp_version.py.
+dynamic = ["version"]
 description = "Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index"
 readme = "README.md"
 license = { file = "LICENSE" }

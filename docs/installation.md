@@ -44,7 +44,7 @@ zensical serve
 
 ```python
 import dot_explorer
-print(dot_explorer.__version__)  # 0.1.0
+print(dot_explorer.__version__)  # e.g. 0.1.0
 
 from dot_explorer import SequenceIndex
 idx = SequenceIndex(k=10)

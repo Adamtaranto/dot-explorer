@@ -6,10 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-09-09
+
+First published release.
 
 ### Added — library
 
+- Core engine: rolling-hash ntHash k-mer indexing, both-strand k-mer
+  matching, strand-aware run merging, PAF output, `CrossIndex`
+  cross-assembly comparisons, collinearity contig ordering with
+  reordered/reoriented FASTA export, and matplotlib dotplot visualisation
+  via `DotPlotter`.
 - Similarity, clustering and trees (new optional `cluster` extra —
   `pip install "dot-explorer[cluster]"` for sourmash + scipy):
   - `dot_explorer.tree`: dependency-free newick / IQ-TREE `.treefile` parser
@@ -322,12 +329,3 @@ and this project adheres to
 
 - LASTZ as an in-browser alignment method (its wasm build was impractically
   slow at assembly scale); precomputed LASTZ alignments still import as PAF.
-
-## [0.1.0] - 2026-02-25
-
-### Added
-
-- Initial release: rolling-hash ntHash k-mer indexing, both-strand k-mer
-  matching, strand-aware run merging, PAF output, `CrossIndex` cross-assembly
-  comparisons, collinearity contig ordering with reordered/reoriented FASTA
-  export, and matplotlib dotplot visualisation via `DotPlotter`.

@@ -44,11 +44,27 @@ def test_parse_describe_after_tag_keeps_the_released_version():
     assert stamp.parse_describe('v1.2.3-5-gabc1234') == ('1.2.3', False)
 
 
-def test_parse_describe_no_tags_falls_back():
+def test_parse_describe_without_a_tag_returns_none():
+    """No tag means no known version — never a guessed default.
+
+    Shallow CI checkouts fetch no tags; guessing there would stamp the
+    committed manifest backwards to whatever the default happened to be.
+    """
     stamp = _load_stamp_module()
-    version, exact = stamp.parse_describe(None)
-    assert version == stamp.FALLBACK_VERSION
-    assert exact is False
+    assert stamp.parse_describe(None) == (None, False)
+    assert stamp.parse_describe('not-a-tag') == (None, False)
+
+
+def test_compute_updates_is_a_noop_without_tags(monkeypatch):
+    stamp = _load_stamp_module()
+    monkeypatch.setattr(stamp, 'git_describe', lambda repo=None: None)
+    assert stamp.compute_updates() == {}
+
+
+def test_refresh_local_version_is_a_noop_without_tags(tmp_path, monkeypatch):
+    stamp = _load_stamp_module()
+    monkeypatch.setattr(stamp, 'git_describe', lambda repo=None: None)
+    assert stamp.refresh_local_version(tmp_path) is None
 
 
 def test_version_files_untouched_between_tags(tmp_path, monkeypatch):

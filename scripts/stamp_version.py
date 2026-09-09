@@ -42,10 +42,6 @@ import sys
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Used when the repository has no v* tags yet (fresh clone of an untagged
-# repo). Matches the last manually released version.
-FALLBACK_VERSION = '0.1.0'
-
 DESCRIBE_RE = re.compile(
     r'^v(?P<base>[0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.\-]*?)'
     r'(?:-(?P<distance>[0-9]+)-g(?P<hash>[0-9a-f]+))?$'
@@ -94,15 +90,21 @@ def parse_describe(text: str | None) -> tuple[str, bool]:
 
     Returns
     -------
-    tuple of (str, bool)
-        ``(version, exact)`` — the plain tag version, and whether HEAD sits
-        exactly on that tag.
+    tuple of (str or None, bool)
+        ``(version, exact)`` — the plain tag version and whether HEAD sits
+        exactly on it, or ``(None, False)`` when no tag is discoverable.
+
+    Notes
+    -----
+    A missing tag yields None rather than a hardcoded default. Shallow CI
+    checkouts fetch no tags, and guessing there would rewrite the committed
+    manifest *backwards* to whatever the default happened to be.
     """
     if not text:
-        return FALLBACK_VERSION, False
+        return None, False
     m = DESCRIBE_RE.match(text)
     if not m:
-        return FALLBACK_VERSION, False
+        return None, False
     base = m.group('base')
     distance = m.group('distance')
     return base, distance is None or int(distance) == 0
@@ -370,6 +372,11 @@ def compute_updates(repo: Path = REPO_ROOT) -> dict[Path, str]:
     """
     version, exact = parse_describe(git_describe(repo))
     updates: dict[Path, str] = {}
+    if version is None:
+        # No tag reachable (a shallow CI checkout fetches none, and an sdist
+        # has no repository at all). The committed files already carry the
+        # right version; stamping a guess over them would be destructive.
+        return updates
 
     cargo_toml = repo / 'Cargo.toml'
     updates[cargo_toml] = stamp_cargo_toml(cargo_toml.read_text(), version, cargo_toml)
@@ -408,6 +415,8 @@ def refresh_local_version(repo: Path = REPO_ROOT) -> str | None:
     """
     path = repo / 'python' / 'dot_explorer' / '_version_local.py'
     version, exact = parse_describe(git_describe(repo))
+    if version is None:
+        return None
     if exact:
         # At a tag the released version is the truth; never let a stale dev
         # override ride along into a release wheel.

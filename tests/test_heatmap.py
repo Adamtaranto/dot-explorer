@@ -85,6 +85,24 @@ class TestHeatmap:
         finally:
             plt.close(fig)
 
+    def test_custom_tree_reorders_rows_and_columns(self, sim):
+        # A user tree whose tip order differs from the matrix (and any
+        # linkage) order must drive both axes and the plotted values.
+        shuffled = Tree.from_newick('((D:0.1,A:0.1):0.6,(C:0.15,B:0.15):0.55);')
+        fig = plot_similarity_heatmap(sim, tree=shuffled, colorbar=False)
+        try:
+            hm_ax = next(a for a in fig.axes if a.get_images())
+            tips = shuffled.leaf_names()
+            assert tips == ['D', 'A', 'C', 'B']
+            assert [t.get_text() for t in hm_ax.get_yticklabels()] == tips
+            assert [t.get_text() for t in hm_ax.get_xticklabels()] == tips
+            perm = [sim.names.index(n) for n in tips]
+            expected = sim.values[np.ix_(perm, perm)]
+            shown = np.asarray(hm_ax.get_images()[0].get_array())
+            np.testing.assert_allclose(shown, expected)
+        finally:
+            plt.close(fig)
+
     def test_cluster_outline_gids_in_svg(self, sim, tree, clusters):
         fig = plot_similarity_heatmap(sim, tree=tree, clusters=clusters, cutoff=0.5)
         try:

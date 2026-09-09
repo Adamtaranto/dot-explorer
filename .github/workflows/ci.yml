@@ -37,6 +37,19 @@ jobs:
       - name: Run cargo check
         run: cargo check
 
+  version-check:
+    name: Version Stamp Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history + tags: scripts/stamp_version.py derives the
+          # version from `git describe`.
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Check stamped versions match the latest tag
+        run: python scripts/stamp_version.py --check
+
   python-lint:
     name: Python Lint and Format
     if: ${{ github.actor != 'dependabot[bot]' }}

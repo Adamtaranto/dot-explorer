@@ -175,6 +175,20 @@ g[id^='de-matches-'] * { pointer-events: stroke; cursor: pointer; }
   background: rgba(255, 255, 255, 0.22);
 }
 
+#de-copy-fasta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+#de-copy-fasta-label input {
+  cursor: pointer;
+  margin: 0;
+}
+
 /* Gapped query/match/target blocks: keep columns aligned (no soft wrap)
    and scroll instead. */
 #de-detail-seq.de-aligned {

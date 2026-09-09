@@ -179,3 +179,41 @@ class TestAlignmentCoverageMatrix:
         assert sim[('a', 'b')] == pytest.approx(0.5)
         assert sim[('a', 'c')] == 0.0
         assert sim[('c', 'a')] == 0.0
+
+    def test_secondary_alignments_excluded(self):
+        from core.cluster import alignment_coverage_matrix
+
+        primary = self._record('a', 0, 50, 'b', 0, 50)
+        primary.tags['tp'] = 'P'
+        secondary = self._record('a', 50, 100, 'b', 50, 100)
+        secondary.tags['tp'] = 'S'
+        sim = alignment_coverage_matrix(
+            [primary, secondary], ['a', 'b'], {'a': 100, 'b': 100}
+        )
+        assert sim[('a', 'b')] == pytest.approx(0.5)
+        assert sim[('b', 'a')] == pytest.approx(0.5)
+
+
+class TestCleanMinimap2:
+    def test_truth_table(self):
+        from core.cluster import is_clean_minimap2
+
+        assert is_clean_minimap2('minimap2', {'P': False})
+        assert is_clean_minimap2('minimap2', {})
+        assert is_clean_minimap2('minimap2', None)
+        assert not is_clean_minimap2('minimap2', {'P': True})
+        assert not is_clean_minimap2('nucmer', {})
+        assert not is_clean_minimap2('kmer', {})
+        assert not is_clean_minimap2('paf_upload', {})
+        assert not is_clean_minimap2(None, None)
+
+    def test_coverage_params_are_clean_and_deterministic(self):
+        from core.align import build_tool_args
+        from core.cluster import coverage_align_params, is_clean_minimap2
+
+        params = coverage_align_params()
+        assert params == coverage_align_params()
+        assert params['P'] is False
+        assert is_clean_minimap2('minimap2', params)
+        args = build_tool_args('minimap2', params)
+        assert '-P' not in args

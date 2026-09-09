@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover - wasm-only branch
     # Everything else works; in-browser callers parse FASTA in Python and use
     # add_sequence() instead.
     py_read_fasta = None  # type: ignore[assignment]
+from dot_explorer._version import __version__  # noqa: F401
 from dot_explorer.annotation import GffAnnotation, GffFeature  # noqa: F401
 from dot_explorer.dotplot import DotPlotter  # noqa: F401
 from dot_explorer.heatmap import plot_similarity_heatmap  # noqa: F401
@@ -61,7 +62,6 @@ from dot_explorer.similarity import (  # noqa: F401
 from dot_explorer.style import NATURE_RC, nature_style, use_nature_style  # noqa: F401
 from dot_explorer.tree import Tree, TreeNode, draw_tree  # noqa: F401
 
-__version__ = '0.1.0'
 __all__ = [
     'SequenceIndex',
     'DotPlotter',

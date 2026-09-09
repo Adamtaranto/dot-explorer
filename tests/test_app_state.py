@@ -304,6 +304,26 @@ def test_plot_config_identity_kwargs():
     assert kwargs.plot_kwargs()['identity_palette'] == 'plasma'
 
 
+def test_plot_config_cap_style_defaults_to_projecting():
+    from core.state import PlotConfig
+
+    assert PlotConfig().plot_kwargs()['cap_style'] == 'projecting'
+    assert PlotConfig(cap_style='round').plot_kwargs()['cap_style'] == 'round'
+
+
+def test_svg_linecap_maps_matplotlib_names_to_css():
+    from core.state import CAP_STYLE_CHOICES, svg_linecap
+
+    assert svg_linecap('projecting') == 'square'
+    assert svg_linecap('round') == 'round'
+    assert svg_linecap('butt') == 'butt'
+    # Unknown input falls back to the default cap rather than emitting an
+    # invalid stroke-linecap value into the report's CSS.
+    assert svg_linecap('bogus') == 'square'
+    # Every UI choice maps to a valid CSS value.
+    assert {svg_linecap(k) for k in CAP_STYLE_CHOICES} == {'square', 'round', 'butt'}
+
+
 def test_identity_colored_plot_from_mixed_identity_records():
     """color_by_identity renders per-record identity colours for PAF results."""
     import matplotlib.pyplot as plt

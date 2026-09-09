@@ -1,5 +1,20 @@
 repos:
   # ---------------------------------------------------------------------------
+  # Version stamping (must run first so check-toml etc. validate the result)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: stamp-version
+        name: stamp version from git tag
+        description: >-
+          Stamp the latest v* tag version into Cargo.toml, Cargo.lock,
+          python/dot_explorer/_version.py and (at a release tag) CITATION.cff.
+        entry: python scripts/stamp_version.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  # ---------------------------------------------------------------------------
   # Basic pre-commit checks
   # ---------------------------------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -15,7 +30,6 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: debug-statements
-      - id: end-of-file-fixer
       - id: end-of-file-fixer
       - id: trailing-whitespace
 

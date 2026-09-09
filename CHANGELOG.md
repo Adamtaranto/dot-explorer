@@ -36,6 +36,17 @@ and this project adheres to
     blocks under a `clusters` key.
   - Docs: a "Similarity & Clustering" metric-selection guide, a
     "Clustering & Trees" tutorial notebook, and API reference pages.
+- `DotPlotter.plot` / `plot_single` gained `cap_style`
+  (`'butt'`/`'round'`/`'projecting'`, default `'projecting'`), setting the
+  line cap on every match layer. Butt caps draw a match shorter than
+  *dot_size* wider across its diagonal than along it, so it reads as a mark
+  rotated 90°; square and round caps extend the stroke half a line width
+  past each endpoint and keep it on its own diagonal.
+- HTML report: a **FASTA header** toggle in the match detail bar prepends a
+  header carrying the match's names, coordinates, strand, length and (on the
+  identity layer) percent identity to copied query/target sequences. The
+  setting persists across match popups — via `localStorage` in standalone
+  reports, and via the embedding app across plot re-renders.
 
 ### Added — app
 
@@ -113,6 +124,10 @@ and this project adheres to
   one native call (GIL released) with a `min_block_len` filter;
   `CrossIndex.compute_matches` gains the same option and computes the whole
   grid in one batched call.
+- A **Line cap** selector beside the line-width control (Square / Round /
+  Flat), applied client-side inside the embedded report like the other
+  display-only options — switching caps never re-renders matplotlib — and
+  carried into the SVG/PDF downloads.
 
 ### Added — browser app
 
@@ -178,6 +193,29 @@ and this project adheres to
 
 ### Changed
 
+- Match segments are drawn with projecting (square) line caps by default,
+  matching the dendrogram branches. Segments longer than the line width are
+  visually unchanged (each end grows by half a line width — 0.25 pt at the
+  default `dot_size`); sub-linewidth matches stop reading as marks rotated
+  90°. Pass `cap_style='butt'` to restore the previous rendering.
+- Alignment-based coverage for identity+coverage clustering is now always
+  computed from a minimap2 run **without** `-P`, instead of from whichever
+  alignment is on screen. Retaining every chain re-covers repeat features
+  and inflates the covered span, and nucmer / k-mer / imported-PAF records
+  are no longer used for coverage at all. When the displayed result is not
+  a clean minimap2 run, the app computes one in the background (cached by
+  input digest) while the plot keeps showing the user's chosen alignment;
+  if that run cannot complete, clustering falls back to sourmash
+  containment and says so. Records tagged as secondary (`tp:A:S`) are
+  excluded from the coverage union.
+- Versioning is now derived from the latest `v*` git tag, replacing four
+  hand-maintained version strings. `scripts/stamp_version.py` (run by a
+  `stamp-version` pre-commit hook and by CI before every build) stamps
+  `Cargo.toml`, `Cargo.lock` and the new `python/dot_explorer/_version.py`,
+  and — only at an exact release tag — `CITATION.cff`; `pyproject.toml`
+  declares `dynamic = ["version"]`, which maturin resolves from
+  `Cargo.toml`. Wheel-building jobs check out full history with tags, and
+  CI fails on drift (`stamp_version.py --check`).
 - HTML reports no longer embed match sequences by default: `to_html()` /
   `plot()` gained `embed_sequences` (default `False`), keeping exported
   files small with large alignment sets. Pass `embed_sequences=True` to

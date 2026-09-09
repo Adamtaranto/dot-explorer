@@ -30,6 +30,13 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
+        with:
+          # Full history + tags: scripts/stamp_version.py derives the
+          # version from `git describe`.
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Stamp version from git tag
+        run: python scripts/stamp_version.py
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -51,6 +58,11 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Stamp version from git tag
+        run: python scripts/stamp_version.py
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -86,11 +98,16 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Python
         id: py
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
+      - name: Stamp version from git tag
+        run: python scripts/stamp_version.py
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -118,12 +135,17 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Python
         id: py
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
+      - name: Stamp version from git tag
+        run: python scripts/stamp_version.py
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -151,6 +173,9 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -168,6 +193,8 @@ jobs:
         # build` installs and patches its own emsdk, and a stock emcc cannot
         # link a Rust side module ("invalid export name: _ZN...").
         run: echo "rust=$(scripts/setup_wasm_toolchain.sh 314.0.6 auto | tail -1)" >> "$GITHUB_OUTPUT"
+      - name: Stamp version from git tag
+        run: python scripts/stamp_version.py
       - name: Build wasm wheel
         env:
           RUSTUP_TOOLCHAIN: ${{ steps.toolchain.outputs.rust }}

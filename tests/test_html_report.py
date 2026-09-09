@@ -137,6 +137,24 @@ def test_copy_buttons_start_in_fetch_state(html_index, tmp_path):
     assert 'Press again to copy' not in html
 
 
+def test_copy_fasta_header_toggle_present(html_index, tmp_path):
+    """The detail bar carries a persistent 'FASTA header' copy toggle."""
+    out = tmp_path / 'report.html'
+    plt.close(DotPlotter(html_index).to_html(out))
+    html = out.read_text()
+
+    # The checkbox lives inside the detail-bar actions row.
+    actions = re.search(
+        r'<div id="de-detail-actions"[^>]*>(.*?)</div>', html, re.S
+    ).group(1)
+    assert 'id="de-copy-fasta"' in actions
+    # The JS composes headers at copy time and persists the preference.
+    assert 'function fastaHeader(' in html
+    assert 'function withHeader(' in html
+    assert "'de-copy-fasta'" in html
+    assert "'de-set-copy-fasta'" in html
+
+
 def test_plot_html_suffix_dispatch(html_index, tmp_path):
     """plot(output_path='x.html') routes to the HTML renderer."""
     out = tmp_path / 'grid.html'
@@ -235,6 +253,69 @@ def test_payload_svg_path_counts_match_segments(html_index, tmp_path):
             assert i != -1
             group = html[i : html.find('</g>', i)]
             assert group.count('<path') + group.count('<use') == n_segs
+
+
+def _match_group(html, payload):
+    """Return the SVG markup of the first non-empty match group."""
+    for gid, panel in payload['panels'].items():
+        row, col = gid.rsplit('-', 2)[1:]
+        for layer in ('fwd', 'rev', 'identity'):
+            if not panel['segments'][layer]:
+                continue
+            i = html.find(f'id="de-matches-{row}-{col}-{layer}"')
+            if i != -1:
+                return html[i : html.find('</g>', i)]
+    raise AssertionError('no non-empty match group found')
+
+
+def test_report_svg_bakes_square_cap_into_match_paths(html_index, tmp_path):
+    """Standalone reports carry the cap inline — no messages ever arrive."""
+    out = tmp_path / 'report.html'
+    plt.close(DotPlotter(html_index).to_html(out))
+    html = out.read_text()
+    assert 'stroke-linecap: square' in _match_group(html, _read_payload(out))
+
+
+def test_report_svg_honours_explicit_cap_style(html_index, tmp_path):
+    """A non-default cap reaches the report SVG through to_html's kwargs."""
+    out = tmp_path / 'report.html'
+    plt.close(DotPlotter(html_index).to_html(out, cap_style='round'))
+    html = out.read_text()
+    assert 'stroke-linecap: round' in _match_group(html, _read_payload(out))
+
+
+def test_butt_cap_is_emitted_by_absence(html_index, tmp_path):
+    """matplotlib writes butt only in its global rule, never per path.
+
+    Pinned deliberately: a naive ``'stroke-linecap: butt' in svg`` check
+    passes for *every* figure, so butt can only be asserted by absence.
+    """
+    out = tmp_path / 'report.html'
+    plt.close(DotPlotter(html_index).to_html(out, cap_style='butt'))
+    html = out.read_text()
+    assert 'stroke-linecap' not in _match_group(html, _read_payload(out))
+
+
+def test_display_opts_sets_linecap_on_visible_paths_only(html_index, tmp_path):
+    """The live cap override must never reach the .de-hit clones.
+
+    The hit clones carry a 6px stroke, so a square cap extends them 3px past
+    both ends along the diagonal. Adjacent sub-pixel matches would then
+    overlap almost completely and the last one in document order would
+    swallow every click aimed at its neighbours (measured: 859 of 869
+    matches unselectable on a 3%-divergent 120 kb self-comparison). Butt
+    caps keep each hit target confined to its own match.
+    """
+    out = tmp_path / 'report.html'
+    plt.close(DotPlotter(html_index).to_html(out))
+    html = out.read_text()
+
+    assert "'stroke-linecap: ' + currentCapStyle" in html
+    # The injected rule is scoped to non-hit children only.
+    assert 'g[id^="de-matches-"] > :not(.de-hit) {' in html
+    assert '.de-hit { stroke-linecap: ' not in html
+    # The clone must not carry the source path's cap across either.
+    assert 'hit.style.strokeLinecap' not in html
 
 
 def test_reverse_strand_segments_serialized(tmp_path):

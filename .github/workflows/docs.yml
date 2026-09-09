@@ -7,7 +7,8 @@ on:
       - "docs/**"
       - "zensical.toml"
       - "scripts/notebooks_to_md.py"
-      - "app/**"
+      - "python/dot_explorer/app/**"
+      - "scripts/build_shinylive.py"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -48,7 +49,7 @@ jobs:
         # The cargo cache restores target/ including wheels from earlier
         # runs (potentially built against other Emscripten versions), so
         # clear target/wheels first and upload only the matching tag —
-        # a stale wheel in app/wheels/ has shipped a broken site before.
+        # a stale wheel in the staging copy has shipped a broken site before.
         run: >
           rm -rf target/wheels &&
           maturin build --release
@@ -79,11 +80,13 @@ jobs:
           python-version: "3.12"
       - name: Install docs dependencies
         run: pip install ".[docs]" shinylive
-      - name: Download wasm wheel into the app
+      - name: Download wasm wheel
+        # build_shinylive.py picks it up from here and stages it beside a copy
+        # of the app, outside the package tree.
         uses: actions/download-artifact@v8
         with:
           name: app-wasm-wheel
-          path: app/wheels
+          path: target/wheels
       - name: Render tutorial notebooks to Markdown
         # Zensical has no notebook support; the .ipynb files stay the source
         # of truth and are converted (not executed) before the build.
@@ -93,9 +96,10 @@ jobs:
         # installed by `pip install ".[docs]"` above.
         run: zensical build --clean --strict
       - name: Export browser app into the site
-        # The wheel in app/wheels/ is bundled into the exported app.json and
+        # Stages python/dot_explorer/app/ + the wasm wheel into build/shinylive
+        # and exports that; the wheel is bundled into the exported app.json and
         # installed from the Pyodide virtual filesystem at app startup.
-        run: shinylive export app site/app
+        run: python scripts/build_shinylive.py --out site/app
       - name: Add loading splash to the exported app
         run: python scripts/add_loading_splash.py site/app/index.html
       - name: Deploy site to gh-pages

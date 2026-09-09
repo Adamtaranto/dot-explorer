@@ -15,7 +15,7 @@ import pytest
 
 matplotlib.use('Agg')
 
-APP_DIR = Path(__file__).resolve().parent.parent / 'app'
+APP_DIR = Path(__file__).resolve().parent.parent / 'python' / 'dot_explorer' / 'app'
 sys.path.insert(0, str(APP_DIR))
 
 from core.align import paf_alignment_from_text  # noqa: E402
@@ -244,6 +244,7 @@ def test_generated_report_contains_bridge_and_panels(kmer_setup, tmp_path):
     """End-to-end: to_html + injection yields panels and a valid bridge."""
     pytest.importorskip('shiny')  # app.py imports shiny at module level
     import app as app_module
+
     from dot_explorer import DotPlotter
     from dot_explorer.paf_io import PafAlignment
 
@@ -439,6 +440,12 @@ def test_min_contig_len_keeps_the_export_complete():
     CrossIndex.write_fasta writes exactly the names it is handed, so the
     download path has to append what the filter removed.
     """
-    app_py = (Path(__file__).resolve().parent.parent / 'app' / 'app.py').read_text()
+    app_py = (
+        Path(__file__).resolve().parent.parent
+        / 'python'
+        / 'dot_explorer'
+        / 'app'
+        / 'app.py'
+    ).read_text()
     dl = app_py.split('def dl_fasta')[1].split('@')[0]
     assert "lay['query_names'] + lay['excluded_query']" in dl

@@ -7,7 +7,7 @@ name = "dot-explorer"
 # Version comes from Cargo.toml (maturin's dynamic-version mode), which is
 # stamped from the latest v* git tag by scripts/stamp_version.py.
 dynamic = ["version"]
-description = "Fast dot plot comparisons of DNA sequences using a canonical ntHash k-mer index"
+description = "A Python library for making fast dot-plot comparisons of DNA sequences powered by Rust."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.15"
@@ -22,7 +22,10 @@ classifiers = [
     "Programming Language :: Python :: Free Threading :: 3 - Stable",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-dependencies = ["matplotlib>=3.5", "numpy>=1.21"]
+# pyfaidx is a core dependency rather than an app extra: it is pure Python
+# (~0.2 MB, free-threading safe) and backs the lazy sequence provider the
+# library and app share.
+dependencies = ["matplotlib>=3.5", "numpy>=1.21", "pyfaidx"]
 
 [project.optional-dependencies]
 test = [
@@ -41,11 +44,12 @@ dev = [
     "ruff",
 ]
 
-# Local Shiny front end: `pip install "dot-explorer[app]"` (or `.[app]` from a
-# checkout), then `shiny run --launch-browser app/app.py` from the repo root.
+# Local Shiny front end: `pip install "dot-explorer[app]"`, then run
+# `dot-explorer-app`.  Deliberately optional rather than a core dependency:
+# shiny pulls orjson, which has no free-threaded wheel, so requiring it would
+# make the package uninstallable on the 3.14t interpreter we publish for.
 app = [
     "shiny",
-    "pyfaidx",
 ]
 
 # Similarity/clustering features: sourmash sketches + scipy linkage.
@@ -64,6 +68,9 @@ docs = [
     "nbconvert>=7.0",
 ]
 
+[project.scripts]
+dot-explorer-app = "dot_explorer.launch:main"
+
 [project.urls]
 documentation = "https://adamtaranto.github.io/dot-explorer/"
 homepage = "https://github.com/adamtaranto/dot-explorer"
@@ -73,8 +80,24 @@ repository = "https://github.com/adamtaranto/dot-explorer"
 features = ["pyo3/extension-module"]
 python-source = "python"
 module-name = "dot_explorer._dot_explorer"
-# Bundle the HTML report assets (template/CSS/JS) into wheels and sdists.
-include = [{ path = "python/dot_explorer/_html/**/*", format = ["sdist", "wheel"] }]
+# Bundle the HTML report assets (template/CSS/JS) and the Shiny app (app.py,
+# core/, www/) into wheels and sdists.  The app ships as package data, not as
+# an importable subpackage -- see dot_explorer/launch.py.
+include = [
+    { path = "python/dot_explorer/_html/**/*", format = ["sdist", "wheel"] },
+    { path = "python/dot_explorer/app/**/*", format = ["sdist", "wheel"] },
+    # Development-build version override. Gitignored, so it is only ever
+    # present between release tags -- scripts/stamp_version.py deletes it at a
+    # tag, and CI stamps before every build, so it cannot reach a release
+    # wheel. Listed explicitly because maturin otherwise skips ignored files.
+    { path = "python/dot_explorer/_version_local.py", format = ["wheel"] },
+]
+
+[tool.coverage.run]
+# The app now lives inside the package, so --cov=dot_explorer reaches it.
+# app/core/ is unit-tested and should count; app.py is UI wiring driven only
+# through a live Shiny session, so it would otherwise swamp the report.
+omit = ["*/dot_explorer/app/app.py"]
 
 [tool.pytest.ini_options]
 addopts = "-v --cov=dot_explorer --cov-branch --cov-report=xml --cov-report=term"
@@ -114,7 +137,7 @@ unfixable = ["D"]
 "tests/*" = ["D"] # Ignore all pydocstyle rules in tests
 # The Shiny app is UI wiring: dozens of tiny reactive closures where
 # per-function docstrings add noise.  app/core/ (the logic) keeps full D rules.
-"app/app.py" = ["D103"]
+"python/dot_explorer/app/app.py" = ["D103"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

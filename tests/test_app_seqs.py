@@ -6,7 +6,9 @@ import sys
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'app'))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1] / 'python' / 'dot_explorer' / 'app')
+)
 
 from core.fasta import content_digest, parse_fasta_bytes  # noqa: E402
 from core.seqs import (  # noqa: E402

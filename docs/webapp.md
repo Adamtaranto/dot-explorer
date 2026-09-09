@@ -68,41 +68,73 @@ from the docs site.
 ## Run it locally
 
 The app is a standard Shiny for Python app: the hosted version above is a
-Shinylive/WebAssembly export of the same `app/app.py`, which also runs
-natively on a workstation or HPC node with the installed dot-explorer instead
-of the wasm wheel.
+Shinylive/WebAssembly export of the same app, which also runs natively on a
+workstation or HPC node with the installed dot-explorer instead of the wasm
+wheel.
 
 ### Install and run
 
-From a repository checkout:
+The app ships inside the wheel, so no checkout is needed:
 
 ```bash
-git clone https://github.com/Adamtaranto/dot-explorer.git
-cd dot-explorer
-pip install ".[app]"                    # dot-explorer + shiny + pyfaidx
-shiny run --launch-browser app/app.py
+pip install "dot-explorer[app]"
+dot-explorer-app
 ```
 
-Run `shiny run` from the repo root (or from `app/`): the app uses
-path-relative `core.*` imports that resolve when Shiny puts `app/` on
-`sys.path`. Developers building the Rust extension from source use
-`maturin develop --release` plus `pip install shiny pyfaidx` instead — see
-[`app/README.md`](https://github.com/Adamtaranto/dot-explorer/blob/main/app/README.md)
-for the development and Shinylive-export recipes, or `environment.yml` for
-the conda route.
+That serves the app on <http://127.0.0.1:8000> and opens a browser.
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `--host` | `127.0.0.1` | Interface to bind |
+| `--port` | `8000` | Port to listen on |
+| `--no-browser` | off | Do not open a browser window |
+
+Developers building the Rust extension from source use `maturin develop
+--release` plus `pip install ".[app]"` from a checkout, and can also run
+`shiny run --launch-browser python/dot_explorer/app/app.py` directly — see the
+[app README](https://github.com/Adamtaranto/dot-explorer/blob/main/python/dot_explorer/app/README.md)
+for the development and Shinylive-export recipes, or `environment.yml` for the
+conda route.
 
 ### On a remote server / HPC
 
 The same command works headless — bind a port and tunnel to it:
 
 ```bash
-shiny run --host 127.0.0.1 --port 8000 app/app.py   # on the server
-ssh -L 8000:localhost:8000 user@server              # from your laptop
+dot-explorer-app --host 127.0.0.1 --port 8000 --no-browser   # on the server
+ssh -L 8000:localhost:8000 user@server                       # from your laptop
 # then open http://localhost:8000
 ```
 
 Prefer `--host 127.0.0.1` plus the SSH tunnel on shared systems so the app
 is not exposed to other users on the network.
+
+### Where the app writes files
+
+Nothing is written next to the installed package, and nothing is written to the
+directory you launch from. Every file the app creates goes to the system
+temporary directory:
+
+- **Uploads** land in a per-session directory Shiny creates with
+  `tempfile.mkdtemp(prefix="fileupload-")`, and are removed when the session
+  ends.
+- **The `.fai` index**, the decompressed copy of a `.gz` upload, and the FASTA
+  reconstructed from a GenBank upload are all written beside the upload, in
+  that same directory.
+- **HTML reports and figure exports** use `tempfile.TemporaryDirectory()`.
+
+The k-mer index itself is held in memory (the Rust heap), not on disk. The
+largest on-disk artefacts are therefore an uncompressed copy of your assembly
+plus its index.
+
+On a cluster where `/tmp` is small or per-node, point the temporary directory
+somewhere with room before launching:
+
+```bash
+export TMPDIR=/scratch/$USER/tmp      # Windows: set TEMP=...
+mkdir -p "$TMPDIR"
+dot-explorer-app --no-browser
+```
 
 ### Local vs. in-browser differences
 
@@ -115,6 +147,7 @@ is not exposed to other users on the network.
 | minimap2 / nucmer | in the browser tab via the biowasm CDN | same — still browser-side, still needs network access to biowasm.com |
 | Sequence access | pyfaidx over the browser's in-memory filesystem | pyfaidx over the uploaded temp file on disk |
 | Clustering (sourmash + scipy) | downloaded from the Pyodide channel (~25 MB) on first use | `pip install "dot-explorer[cluster]"` once |
+| Temp files | browser-only in-memory filesystem | system temp dir (`$TMPDIR`), never the install or launch directory |
 
 The k-mer method and PAF import work fully offline locally; only the
 minimap2/nucmer buttons need a network connection (they fetch the tool

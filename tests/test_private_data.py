@@ -24,7 +24,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _ASM_DIR = _REPO / '.plans' / 'data' / 'asm'
 _ASSEMBLIES = sorted(_ASM_DIR.glob('*.fasta')) if _ASM_DIR.is_dir() else []
 
-sys.path.insert(0, str(_REPO / 'app'))
+sys.path.insert(0, str(_REPO / 'python' / 'dot_explorer' / 'app'))
 
 pytestmark = [
     pytest.mark.private_data,

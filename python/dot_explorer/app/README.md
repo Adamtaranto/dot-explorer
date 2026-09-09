@@ -8,27 +8,35 @@ static Shinylive/Pyodide site). Uploads never leave the browser.
 - `app.py` — UI + server wiring (thin; logic lives in `core/`)
 - `core/` — pure-Python logic, unit-tested natively (`tests/test_app_*.py`)
 - `www/` — custom CSS/JS
-- `wheels/` — **not in git**; the dot-explorer wasm wheel is dropped here at
-  export time (CI artifact from the `wasm-build` job) and installed from the
-  Pyodide virtual filesystem at app startup
 - `requirements.txt` — packages micropip-installs at startup (Pyodide builds)
+
+This directory ships inside the wheel as package data, so a `pip install
+"dot-explorer[app]"` can run it (see `dot_explorer/launch.py`). It is **not**
+an importable subpackage: `app.py` uses flat `core.*` imports that resolve once
+its own directory is on `sys.path`, which is what both `shiny run` and
+`shinylive export` do. There is deliberately no `wheels/` directory here — a
+`.whl` inside the package tree would end up nested inside the built wheel, so
+`scripts/build_shinylive.py` stages a copy of this directory outside the
+package and drops the wasm wheel in there instead.
 
 ## Run natively (development)
 
 The fastest edit/reload loop: Python runs on your machine against a natively
 built dot-explorer, so there is no wasm wheel and no export step. Use the
 native dev environment (`environment.yml`, see
-[docs/development.md](../docs/development.md)), not the wasm environment
+[docs/development.md](../../../docs/development.md)), not the wasm environment
 below.
 
 ```bash
-pip install ".[app]"         # shiny + pyfaidx; plus a native dot-explorer:
+pip install ".[app]"         # shiny; plus a native dot-explorer:
 maturin develop --release    # from the repo root
-shiny run --launch-browser app/app.py
+dot-explorer-app             # or: shiny run --launch-browser python/dot_explorer/app/app.py
 ```
 
-Run `shiny run` from the repo root (or the `app/` directory): `app.py` uses
-path-relative `core.*` imports that resolve when Shiny puts `app/` on
+`dot-explorer-app` is the console script installed with the package; it puts
+this directory on `sys.path` and hands the `App` object to `shiny.run_app`.
+Running `shiny run` against `app.py` directly works too — `app.py` uses
+path-relative `core.*` imports that resolve once Shiny puts this directory on
 `sys.path`.
 
 Everything works except the k-mer method's provenance: it uses your local
@@ -43,7 +51,7 @@ RAM instead.
 The same command works headless — bind a port and tunnel to it:
 
 ```bash
-shiny run --host 0.0.0.0 --port 8000 app/app.py   # on the server
+dot-explorer-app --host 0.0.0.0 --port 8000 --no-browser   # on the server
 ssh -L 8000:localhost:8000 user@server            # from your laptop
 # then open http://localhost:8000
 ```
@@ -123,7 +131,7 @@ common cause of a wheel that builds but will not install.
 ### 2. Build the wasm wheel
 
 ```bash
-rm -rf target/wheels     # never let a stale wheel reach app/wheels/
+rm -rf target/wheels     # never let a stale wheel reach the staging copy
 RUSTUP_TOOLCHAIN=nightly-2025-05-01 maturin build --release \
   --target wasm32-unknown-emscripten \
   --no-default-features \
@@ -154,7 +162,7 @@ ls target/wheels/*cp312-cp312-emscripten_3_1_58_wasm32.whl   # tag check
   | built by | `ci.yml` / `docs.yml`, plain `maturin build` | `publish.yml`, via `pyodide build` |
   | on PyPI | rejected — the tag is not allowed | yes |
 
-  Never copy a `pyemscripten_*` wheel into `app/wheels/`: the app will fail to
+  Never let a `pyemscripten_*` wheel reach the staging copy: the app will fail to
   install it at startup.
 
 Optional, mirrors CI (needs node — `environment-wasm.yml` installs it):
@@ -170,24 +178,25 @@ it catches a mis-tagged or mis-linked wheel in ~30s, before a full export.
 ### 3. Run the app from the wheel
 
 ```bash
-mkdir -p app/wheels && rm -f app/wheels/*.whl
-cp target/wheels/*cp312-cp312-emscripten_3_1_58_wasm32.whl app/wheels/
-shinylive export app site/app
+python scripts/build_shinylive.py --out site/app
 python scripts/add_loading_splash.py site/app/index.html   # optional, matches deploy
 python -m http.server --directory site 8741
 # open http://127.0.0.1:8741/app/
 ```
 
-`rm -f app/wheels/*.whl` first is not optional: `shinylive export` bundles
-**everything** under `app/`, so a leftover wheel from an earlier build ships
-alongside the new one. `pick_wasm_wheel()` in `core/wheels.py` selects by
-platform tag rather than sort order for exactly this reason, but two wheels
-with the same tag and different versions is still ambiguous.
+`build_shinylive.py` copies this directory to `build/shinylive/`, drops the one
+matching wheel from `target/wheels/` into `build/shinylive/wheels/`, and
+exports that staging copy. It refuses to run if `target/wheels/` holds no
+matching wheel or more than one: `shinylive export` bundles **everything**
+under the directory it is given, so a leftover wheel from an earlier build
+would ship alongside the new one. `pick_wasm_wheel()` in `core/wheels.py`
+selects by platform tag rather than sort order for exactly this reason, but two
+wheels with the same tag and different versions is still ambiguous.
 
-The export bundles everything under `app/` — including the wheel in
-`app/wheels/` — into the static site; `ensure_dot_explorer()` in `app.py`
-installs it from the Pyodide virtual filesystem at startup. The site must be
-served over http (the shinylive service worker does not run from `file://`).
+The export bundles the staging copy — including the wheel in its `wheels/`
+directory — into the static site; `ensure_dot_explorer()` in `app.py` installs
+it from the Pyodide virtual filesystem at startup. The site must be served over
+http (the shinylive service worker does not run from `file://`).
 
 A successful start looks like: loading splash → "Loading Python" → the
 sidebar renders. If it hangs on the splash, open the browser console: a
@@ -203,7 +212,7 @@ In DevTools → Application, unregister service workers and clear storage for
 
 To run the app without a local Rust/Emscripten setup, download the
 `wasm-wheel` artifact from a recent run of the "Wasm (Pyodide) Wheel Build"
-job in [ci.yml](../.github/workflows/ci.yml), drop it into `app/wheels/`, and
+job in [ci.yml](../../../.github/workflows/ci.yml), drop it into `target/wheels/`, and
 start at step 3. The same wheel is built by `docs.yml` for the deployed site.
 
 ### Troubleshooting
@@ -212,7 +221,7 @@ start at step 3. The same wheel is built by `docs.yml` for the deployed site.
 |---|---|
 | `the option 'Z' is only accepted on the nightly compiler` | missing `RUSTUP_TOOLCHAIN=nightly-2025-05-01` |
 | wheel tag is not `…emscripten_3_1_58_wasm32` | wrong `emcc` on PATH (check `emcc --version`, and that the conda env is activated) |
-| app hangs on the loading splash; micropip error in the console | wheel tag mismatch, or a stale wheel left in `app/wheels/` |
+| app hangs on the loading splash; micropip error in the console | wheel tag mismatch, or a stale wheel left in `target/wheels/` |
 | edits do not appear after re-export | stale service worker / browser cache (see above) |
 | `maturin` picks the wrong interpreter | an unrelated env is activated; `CONDA_PREFIX` should point at `dot-explorer-wasm` |
 | `use of unstable library feature 'unsigned_is_multiple_of'` while compiling `bio` | toolchain older than rustc 1.87 |

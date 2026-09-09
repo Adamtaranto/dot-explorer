@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-APP_DIR = Path(__file__).resolve().parent.parent / 'app'
+APP_DIR = Path(__file__).resolve().parent.parent / 'python' / 'dot_explorer' / 'app'
 sys.path.insert(0, str(APP_DIR))
 
 from core.align import (  # noqa: E402

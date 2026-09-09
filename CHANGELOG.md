@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- The browser app now ships inside the wheel, so `pip install
+  "dot-explorer[app]"` gives you a runnable app with no repository clone and no
+  Rust toolchain. Launch it with the new **`dot-explorer-app`** console script
+  (`--host`, `--port`, `--no-browser`); it serves on
+  <http://127.0.0.1:8000> by default. Previously the `app` extra installed the
+  app's dependencies but not the app itself.
+
+### Changed
+
+- `pyfaidx` moved from the `app` extra into the core dependencies — it is pure
+  Python (~0.2 MB), free-threading safe, and backs the lazy sequence provider.
+  `shiny` and the `cluster` extra stay optional: `shiny` pulls `orjson`, which
+  has no free-threaded wheel, so requiring it would make the package
+  uninstallable on the 3.14t interpreter we publish wheels for.
+- **Contributor-facing move:** the app source now lives at
+  `python/dot_explorer/app/` instead of `app/` at the repository root. It ships
+  as package data rather than an importable subpackage, so `app.py` keeps its
+  flat `core.*` imports (which is what `shinylive export` requires). Run it
+  with `dot-explorer-app`, or `shiny run python/dot_explorer/app/app.py`.
+- The Shinylive export runs through the new `scripts/build_shinylive.py`, which
+  stages the app plus the wasm wheel under `build/` and exports that — keeping
+  `.whl` files out of the package tree, where they would be nested inside the
+  built wheel. It also fails loudly on a missing or ambiguous wasm wheel.
+- Documented where the app writes temporary files (the system temp directory,
+  never the install or launch directory) and how to redirect it with `TMPDIR`
+  on clusters with a small `/tmp`.
+
 ## [0.1.0] - 2026-09-09
 
 First published release.

@@ -18,7 +18,7 @@ Run from the repo root with the compiled extension importable::
     python scripts/mem_profile_index.py --min-block-len 50
 
 Bytes-per-bp from the table extrapolate to the browser app's wasm-heap
-budget (see ``_KMER_HARD_LIMIT`` in app/app.py).
+budget (see ``_KMER_HARD_LIMIT`` in python/dot_explorer/app/app.py).
 """
 
 from __future__ import annotations

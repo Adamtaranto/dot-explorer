@@ -28,7 +28,7 @@
 - [ ] `ruff format`/`ruff check` clean and `pytest tests/ -v` passes
 - [ ] Tests added or updated for the change
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]`
-- [ ] Docs updated (`docs/`, module docstrings, or `app/README.md`) if behaviour changed
+- [ ] Docs updated (`docs/`, module docstrings, or the app README) if behaviour changed
 
 ## Project-specific checks
 
@@ -60,15 +60,16 @@
       --codspeed`, and/or `python scripts/mem_profile_index.py`) — memory counts
       as much as speed, since the browser app runs in a ~4 GB wasm heap
 
-**Touched `app/`**
+**Touched the browser app (`python/dot_explorer/app/`)**
 
-- [ ] Logic went in `app/core/` (with tests in `tests/test_app_*.py`), not
-      `app/app.py`
-- [ ] Verified natively (`shiny run app/app.py`)
+- [ ] Logic went in `python/dot_explorer/app/core/` (with tests in
+      `tests/test_app_*.py`), not
+      `python/dot_explorer/app/app.py`
+- [ ] Verified natively (`dot-explorer-app`)
 - [ ] Verified in a Shinylive export, if the change could behave differently
       under Pyodide (no threads, no native FASTA reader, sourmash 4.8 APIs only)
 - [ ] Pinned wasm toolchain versions unchanged, or the change is explained in
-      the PR body (see `app/README.md`)
+      the PR body (see `python/dot_explorer/app/README.md`)
 
 **Touched clustering / similarity**
 

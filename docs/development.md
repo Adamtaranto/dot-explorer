@@ -37,7 +37,7 @@ conda activate dot-explorer
     wasm wheel needs a separate environment (`environment-wasm.yml`) because
     the wasm build cannot use the `python-freethreading` build pinned here,
     and it needs a pinned Emscripten toolchain. See
-    [`app/README.md`](https://github.com/Adamtaranto/dot-explorer/blob/main/app/README.md).
+    [the app README](https://github.com/Adamtaranto/dot-explorer/blob/main/python/dot_explorer/app/README.md).
 
 !!! note "Released wheels"
     Releases publish binary wheels for CPython **3.12**, **3.13**, **3.14**

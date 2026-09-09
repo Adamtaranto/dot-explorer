@@ -55,8 +55,10 @@ docs/tutorials/*_files/
 coverage.xml
 target/
 
-# dot-explorer browser app: wasm wheel dropped in at export time, never committed
-app/wheels/
+# Shinylive export staging (scripts/build_shinylive.py): a copy of the app plus
+# the wasm wheel, assembled outside the package tree so no .whl ever lands
+# inside the built wheel.
+build/
 
 # Node deps pulled in by scripts/wasm_smoke_test.mjs (pyodide npm package)
 node_modules/

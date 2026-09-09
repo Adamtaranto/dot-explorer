@@ -11,6 +11,6 @@ dependencies:
       - maturin
       - matplotlib
       - numpy
-      # Local Shiny front end (`shiny run --launch-browser app/app.py`).
+      # Local Shiny front end (run `dot-explorer-app`).
       - shiny
       - pyfaidx

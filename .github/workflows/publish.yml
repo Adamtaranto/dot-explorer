@@ -169,7 +169,7 @@ jobs:
     # environment-wasm.yml.  This job builds the PEP 783
     # pyemscripten_<year>_<patch>_wasm32 wheel for PyPI consumers on a modern
     # Pyodide.  The two are not interchangeable -- never copy this one into
-    # app/wheels/.
+    # the Shinylive staging copy (scripts/build_shinylive.py).
     steps:
       - name: Check out the code
         uses: actions/checkout@v7

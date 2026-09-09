@@ -43,7 +43,7 @@ Re-run `maturin develop` after **any** change to `src/*.rs`. Pure-Python
 changes under `python/dot_explorer/` take effect immediately.
 
 Work on the browser app has its own, separately pinned toolchain — see
-[`app/README.md`](app/README.md) before touching anything wasm-related.
+[the app README](python/dot_explorer/app/README.md) before touching anything wasm-related.
 
 ## Where code goes
 
@@ -52,8 +52,8 @@ Work on the browser app has its own, separately pinned toolchain — see
 | Rust core (k-mer index, matching, PAF, gravity ordering) | `src/` | Must stay buildable for `wasm32-unknown-emscripten` with `--no-default-features` |
 | Python API (plotting, PAF I/O, annotation, clustering, HTML report) | `python/dot_explorer/` | |
 | Type stubs for the Rust extension | `python/dot_explorer/_dot_explorer.pyi` | Update alongside any pyclass/pyfunction signature change |
-| Browser app logic | `app/core/` | Pure Python, unit-tested natively via `tests/test_app_*.py` |
-| Browser app UI wiring | `app/app.py` | Keep thin — logic belongs in `core/` |
+| Browser app logic | `python/dot_explorer/app/core/` | Pure Python, unit-tested natively via `tests/test_app_*.py` |
+| Browser app UI wiring | `python/dot_explorer/app/app.py` | Keep thin — logic belongs in `core/` |
 | Tests | `tests/` | |
 | Benchmarks | `benches/` (Rust), `python/benchmarks/` (Python) | |
 
@@ -112,7 +112,7 @@ wasm wheel, and builds the docs site.
   deterministic seeded synthetic DNA; anything needing private local data goes
   behind the `private_data` marker (opt in with `DOT_EXPLORER_PRIVATE_DATA=1`)
   and the data is never committed.
-- Optional dependencies (`sourmash`, `scipy`, `shiny`, `pyfaidx`) should be
+- Optional dependencies (`sourmash`, `scipy`, `shiny`) should be
   `importorskip`-ed so the suite still runs without them.
 
 ### Style
@@ -121,7 +121,7 @@ Formatting and linting are automated, so mostly just run the tools:
 
 - **Python** — ruff (`pyproject.toml`): single quotes, 88-column lines,
   numpy-convention docstrings. Docstrings are required on library code and
-  `app/core/`, not on tests.
+  `python/dot_explorer/app/core/`, not on tests.
 - **Rust** — `cargo fmt`, and Clippy warnings are errors.
 - Comments are most useful where they explain *why* a non-obvious choice was
   made (there is a lot of that in this codebase — pinned toolchains, memory

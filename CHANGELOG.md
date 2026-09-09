@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-09-09
+
+### Fixed
+
+- macOS wheels no longer link Homebrew's liblzma. The `compression` feature
+  pulls in `lzma-sys`, which links the system liblzma dynamically; GitHub's
+  macOS runners ship Homebrew, so published wheels recorded an absolute
+  `/opt/homebrew/opt/xz/lib/liblzma.5.dylib` and failed on import with
+  `Library not loaded` on any Mac without that exact path:
+
+  ```
+  ImportError: dlopen(..._dot_explorer...so): Library not loaded:
+    /opt/homebrew/opt/xz/lib/liblzma.5.dylib
+  ```
+
+  Affected every macOS wheel in 0.2.0, and all but one in 0.1.0 (the
+  `cp314-cp314-macosx_11_0_arm64` wheel there was built by hand off a machine
+  without Homebrew xz, which masked the bug). Linux and Windows wheels were
+  never affected — `auditwheel` bundles dependencies into manylinux wheels.
+
+  The macOS build now sets `LZMA_API_STATIC=1` so liblzma is linked
+  statically, and `scripts/check_macos_wheel.py` fails the build if any
+  Mach-O object in a wheel depends on a path outside `/usr/lib`, `/System`
+  or the wheel itself — so a build-machine-only library cannot be published
+  again.
+
 ## [0.2.0] - 2026-09-09
 
 ### Added

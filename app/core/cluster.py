@@ -145,6 +145,59 @@ def tree_layout_order(
     return ordered
 
 
+def is_clean_minimap2(method: str | None, params: Mapping | None) -> bool:
+    """Whether an alignment result can feed coverage clustering directly.
+
+    Coverage must come from minimap2 run *without* ``-P``: retaining all
+    chains keeps secondary alignments over repeat features, which inflate
+    the covered span. Every other source (nucmer, the k-mer engine, an
+    uploaded PAF of unknown provenance) fails this check and triggers a
+    dedicated background minimap2 run instead.
+
+    Parameters
+    ----------
+    method : str or None
+        Alignment method recorded in the result meta (``'minimap2'``,
+        ``'nucmer'``, ``'kmer'``, ``'paf_upload'``, or None for legacy
+        results).
+    params : mapping or None
+        The method's parameters as passed to ``build_tool_args``.
+
+    Returns
+    -------
+    bool
+        True only for a minimap2 run with ``P`` falsy.
+    """
+    return method == 'minimap2' and not (params or {}).get('P')
+
+
+def coverage_align_params() -> dict:
+    """Canonical minimap2 parameters for the background coverage run.
+
+    Fixed rather than derived from the UI state: deterministic params keep
+    the PAF cache key stable across sessions of slider-tweaking, and the
+    run's only consumer is :func:`alignment_coverage_matrix`, which reads
+    block intervals — so base-level alignment (``-c``) is skipped and
+    ``-P`` is always off. ``-D`` drops same-name self hits, which coverage
+    ignores anyway (the matrix diagonal is fixed at 1).
+
+    Returns
+    -------
+    dict
+        Parameters in the shape ``build_tool_args('minimap2', ...)``
+        expects.
+    """
+    return {
+        'preset': 'asm20',
+        'k': 0,
+        'w': 0,
+        'm': 0,
+        'c': False,
+        'P': False,
+        'D': True,
+    }
+
+
 def merge_intervals(intervals: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
     """Union possibly-overlapping half-open ``(start, end)`` intervals.
 
@@ -181,19 +234,22 @@ def alignment_coverage_matrix(
     """Pairwise coverage from alignment records (an ANI-robust containment).
 
     ``values[i, j]`` is the fraction of contig *i* covered by the union of
-    its alignment blocks against contig *j* — from whichever aligner
-    produced the current result (minimap2, nucmer, the k-mer engine, or an
-    imported PAF). Unlike sourmash containment, block coverage does not
-    collapse when relatives differ by scattered SNPs. Asymmetric, like
-    containment: a nested fragment is fully covered by its parent, not
-    vice versa.
+    its alignment blocks against contig *j*. Unlike sourmash containment,
+    block coverage does not collapse when relatives differ by scattered
+    SNPs. Asymmetric, like containment: a nested fragment is fully covered
+    by its parent, not vice versa.
+
+    Records tagged as secondary alignments (``tp:A:S``) are skipped:
+    secondaries re-cover repeat features already spanned by the primary
+    chain and would inflate coverage.
 
     Parameters
     ----------
     records : iterable of PafRecord
         Alignment records for the self-comparison (both orientations of a
         pair contribute: the query side covers ``query_name``, the target
-        side ``target_name``).
+        side ``target_name``). Should come from a clean minimap2 run
+        (see :func:`is_clean_minimap2` / :func:`coverage_align_params`).
     names : list of str
         Display contig names, in matrix order.
     lengths : mapping of str to int
@@ -214,6 +270,8 @@ def alignment_coverage_matrix(
     norm = normalize or (lambda name: name)
     per_pair: dict[tuple[str, str], list[tuple[int, int]]] = {}
     for rec in records:
+        if (getattr(rec, 'tags', None) or {}).get('tp') == 'S':
+            continue  # secondary alignment
         q, t = norm(rec.query_name), norm(rec.target_name)
         per_pair.setdefault((q, t), []).append((rec.query_start, rec.query_end))
         per_pair.setdefault((t, q), []).append((rec.target_start, rec.target_end))

@@ -36,6 +36,16 @@ and this project adheres to
 - Documented where the app writes temporary files (the system temp directory,
   never the install or launch directory) and how to redirect it with `TMPDIR`
   on clusters with a small `/tmp`.
+- `scripts/stamp_version.py` now writes `python/dot_explorer/_version.py` only
+  when HEAD sits exactly on a release tag, as it already did for
+  `CITATION.cff`, and no longer emits a `.postN` development suffix. Between
+  tags every source keeps the last released version, so
+  `dot_explorer.__version__` and `importlib.metadata.version('dot-explorer')`
+  agree (they previously diverged on dev commits, since the wheel version comes
+  from `Cargo.toml`, which never carried the suffix) and an ordinary commit no
+  longer dirties the working tree.
+- The Colab setup cells in the quickstart and minimap2 tutorials install
+  `dot-explorer` from PyPI instead of building from the GitHub repository.
 
 ## [0.1.0] - 2026-09-09
 

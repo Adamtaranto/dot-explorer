@@ -10,9 +10,14 @@ using this module.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import dataclasses
 import io
-from typing import Iterable, Sequence
+import re
+from typing import TYPE_CHECKING, Iterable, Sequence
 import zipfile
+
+if TYPE_CHECKING:  # pragma: no cover - only for type checkers
+    from dot_explorer.paf_io import PafRecord
 
 #: One sequence region to export: ``(contig, start, end, strand, side)`` with
 #: 0-based half-open coordinates.  ``side`` is a free label (``'query'`` /
@@ -196,3 +201,73 @@ def _cluster_sort_key(name: str) -> tuple[int, int | str]:
 def _safe_member(name: str) -> str:
     """Make a cluster name safe as a zip member name."""
     return ''.join(c if c.isalnum() or c in '-_.' else '_' for c in name) or 'cluster'
+
+
+_CIGAR_OP = re.compile(r'(\d+)([MIDNSHP=X])')
+
+
+def _reverse_cigar(cigar: str) -> str:
+    """Reverse the operation order of a CIGAR string (``10M2I5M`` → ``5M2I10M``)."""
+    ops = _CIGAR_OP.findall(cigar)
+    if ''.join(n + op for n, op in ops) != cigar:
+        return cigar  # not a plain CIGAR: leave it untouched
+    return ''.join(n + op for n, op in reversed(ops))
+
+
+def reoriented_paf_records(
+    records: Iterable['PafRecord'],
+    reverse_query: set[str],
+    reverse_target: set[str] = frozenset(),
+) -> list['PafRecord']:
+    """Rewrite PAF records against reverse-complemented contigs.
+
+    The reordered-FASTA export writes contigs in *reverse_query* (and, for
+    a self-comparison, *reverse_target*) reverse-complemented; a PAF
+    exported alongside must describe the same sequences.  For each
+    mirrored axis the coordinates become ``len - end, len - start`` and
+    the strand flips once, so a record whose query and target are both
+    flipped keeps its strand.  A CIGAR walks the alignment from the
+    query's start, so its operations reverse when exactly one axis flips
+    (two flips restore the original order).  Everything else — names,
+    lengths, match counts, tags — is unchanged, and records on unflipped
+    contigs are returned as-is.
+
+    Parameters
+    ----------
+    records : Iterable[PafRecord]
+        Genomic-orientation records (as parsed or computed).
+    reverse_query : set[str]
+        Query contig names exported reverse-complemented.
+    reverse_target : set[str], optional
+        Target contig names exported reverse-complemented (self mode).
+
+    Returns
+    -------
+    list[PafRecord]
+        New records; the inputs are not modified.
+    """
+    out = []
+    for rec in records:
+        rq = rec.query_name in reverse_query
+        rt = rec.target_name in reverse_target
+        if not (rq or rt):
+            out.append(rec)
+            continue
+        changes: dict = {}
+        if rq:
+            changes['query_start'] = rec.query_len - rec.query_end
+            changes['query_end'] = rec.query_len - rec.query_start
+        if rt:
+            changes['target_start'] = rec.target_len - rec.target_end
+            changes['target_end'] = rec.target_len - rec.target_start
+        if rq != rt:
+            changes['strand'] = '-' if rec.strand == '+' else '+'
+            if rec.cigar:
+                flipped = _reverse_cigar(rec.cigar)
+                changes['cigar'] = flipped
+                if 'cg' in rec.tags:
+                    tags = dict(rec.tags)
+                    tags['cg'] = flipped
+                    changes['tags'] = tags
+        out.append(dataclasses.replace(rec, **changes))
+    return out

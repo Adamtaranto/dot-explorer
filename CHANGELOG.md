@@ -31,6 +31,11 @@ and this project adheres to
   side-track feature to select the alignments in its shadow.
 - App: "Sequences by cluster (ZIP)" download — one multi-FASTA per cluster
   (plus `unassigned.fasta`), in display order and orientation.
+- App: the "Alignment (PAF)" download now follows the plotted orientation
+  (automatic reversals plus manual flips) so it agrees with the reordered
+  FASTA: records on a flipped contig have their coordinates mirrored, the
+  strand flipped once per flipped axis and the CIGAR reversed when exactly
+  one axis flips.
 - `DotPlotter.plot(reverse_targets=...)` mirrors target (column) contigs;
   the HTML payload carries `reverse_query` / `reverse_target` per panel.
 - `dot-explorer-app` logs the temporary directory it uses at startup and

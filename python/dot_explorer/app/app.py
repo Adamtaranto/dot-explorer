@@ -28,7 +28,6 @@ from core.align import (
     build_tool_args,
     fasta_text,
     paf_alignment_from_text,
-    paf_text_from_alignment,
 )
 from core.annotation_colors import (
     assign_shared_colors,
@@ -58,7 +57,12 @@ from core.cluster import (
     is_clean_minimap2,
     tree_layout_order,
 )
-from core.export import cluster_fasta_zip, reordered_fasta_text, selected_regions_fasta
+from core.export import (
+    cluster_fasta_zip,
+    reordered_fasta_text,
+    reoriented_paf_records,
+    selected_regions_fasta,
+)
 from core.fasta import content_digest
 from core.genbank import parse_genbank_bytes
 from core.panels import (
@@ -4202,14 +4206,23 @@ def server(input, output, session) -> None:  # noqa: A002, D103
 
     @render.download_button(filename='alignment.paf')
     def dl_paf():
+        # Exported against the same orientation as the reordered FASTA
+        # (automatic reversals plus manual flips), so the two files agree:
+        # a record on a flipped contig has its coordinates mirrored and its
+        # strand flipped once per flipped axis.
         res = result()
         req(res)
         kind, obj, _meta = res
-        if kind == 'kmer':
-            lines = obj.get_paf(group_pairs=[(QUERY_GROUP, TARGET_GROUP)], merge=True)
-            yield '\n'.join(lines) + '\n'
-        else:
-            yield paf_text_from_alignment(obj)
+        lay = layout()
+        records = (
+            obj.get_records_for_pair(QUERY_GROUP, TARGET_GROUP)
+            if kind == 'kmer'
+            else obj.records
+        )
+        records = reoriented_paf_records(
+            records, set(lay['reverse']), set(lay.get('reverse_targets', ()))
+        )
+        yield '\n'.join(rec.to_line() for rec in records) + '\n'
 
     @render.ui
     def cluster_table():

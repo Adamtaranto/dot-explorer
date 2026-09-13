@@ -11,8 +11,11 @@ sys.path.insert(0, str(APP_DIR))
 from core.export import (  # noqa: E402
     cluster_fasta_zip,
     reordered_fasta_text,
+    reoriented_paf_records,
     selected_regions_fasta,
 )
+
+from dot_explorer.paf_io import PafRecord  # noqa: E402
 
 SEQS = {'c1': 'ACGTACGTAA', 'c2': 'GGGGCCCCTT', 'c3': 'TTTTAAAACC'}
 
@@ -83,3 +86,53 @@ def test_cluster_zip_unassigned_bucket_last():
         assert zf.namelist() == ['cluster_1.fasta', 'unassigned.fasta']
         assert 'c2' in zf.read('unassigned.fasta').decode()
         assert 'c3' in zf.read('unassigned.fasta').decode()
+
+
+def _rec(line):
+    return PafRecord.from_line(line)
+
+
+def test_reoriented_paf_untouched_without_flips():
+    rec = _rec('q\t100\t10\t30\t+\tt\t200\t40\t70\t20\t30\t60\tcg:Z:10M2I8M')
+    out = reoriented_paf_records([rec], set())
+    assert out == [rec]
+    assert out[0] is rec
+
+
+def test_reoriented_paf_query_flip_mirrors_coords_strand_and_cigar():
+    rec = _rec('q\t100\t10\t30\t+\tt\t200\t40\t70\t20\t30\t60\tcg:Z:10M2I8M')
+    (out,) = reoriented_paf_records([rec], {'q'})
+    assert (out.query_start, out.query_end) == (70, 90)
+    assert (out.target_start, out.target_end) == (40, 70)
+    assert out.strand == '-'
+    assert out.cigar == '8M2I10M'
+    assert out.to_line().endswith('cg:Z:8M2I10M')
+    # Lengths, counts and names survive; the input is untouched.
+    assert (out.query_len, out.residue_matches, out.mapping_quality) == (100, 20, 60)
+    assert rec.strand == '+' and rec.cigar == '10M2I8M'
+
+
+def test_reoriented_paf_target_flip_and_double_flip():
+    rec = _rec('q\t100\t10\t30\t-\tt\t200\t40\t70\t20\t30\t60\tcg:Z:10M2I8M')
+    (t_only,) = reoriented_paf_records([rec], set(), {'t'})
+    assert (t_only.target_start, t_only.target_end) == (130, 160)
+    assert (t_only.query_start, t_only.query_end) == (10, 30)
+    assert t_only.strand == '+'
+    assert t_only.cigar == '8M2I10M'
+    # Self mode: the same contig flipped on both axes keeps strand and CIGAR.
+    both = _rec('c\t100\t10\t30\t-\tc\t100\t40\t70\t20\t30\t60\tcg:Z:10M2I8M')
+    (b,) = reoriented_paf_records([both], {'c'}, {'c'})
+    assert (b.query_start, b.query_end, b.target_start, b.target_end) == (
+        70,
+        90,
+        30,
+        60,
+    )
+    assert b.strand == '-'
+    assert b.cigar == '10M2I8M'
+
+
+def test_reoriented_paf_is_an_involution():
+    rec = _rec('q\t100\t10\t30\t+\tt\t200\t40\t70\t20\t30\t60\tcg:Z:10M2I8M')
+    twice = reoriented_paf_records(reoriented_paf_records([rec], {'q'}), {'q'})
+    assert twice[0].to_line() == rec.to_line()

@@ -1866,11 +1866,13 @@
         },
       });
     }
+    // The flip belongs to the plot area itself: right-clicking a match or
+    // a feature offers only the actions for that element.
     var panelEl = closestPanel(evt.target);
     var panelGid = panelEl ? panelEl.id : null;
     if (!panelGid && panelGroups.length === 1) panelGid = panelGroups[0].id;
     var panel = panelGid ? payload.panels[panelGid] : null;
-    if (embedded && panel) {
+    if (embedded && panel && !entry && !annot && !track) {
       var flipped = !!panel.reverse_query;
       items.push({
         label:

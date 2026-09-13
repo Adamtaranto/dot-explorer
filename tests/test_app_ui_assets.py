@@ -117,6 +117,15 @@ def test_layout_mirrors_targets_only_in_self_mode_and_applies_flips():
     figure = APP_PY.split('def make_figure(')[1].split('\n    def ')[0]
     assert "kwargs['reverse_targets']" in figure
     # Every sequence export reads the same orientation as the plot.
-    for fn in ('def dl_fasta(', 'def dl_cluster_fasta('):
+    for fn in ('def dl_fasta(', 'def dl_cluster_fasta(', 'def dl_paf('):
         export = APP_PY.split(fn)[1].split('\n    @')[0]
         assert "lay['reverse']" in export
+    assert (
+        'reoriented_paf_records(' in APP_PY.split('def dl_paf(')[1].split('\n    @')[0]
+    )
+
+
+def test_flip_item_only_on_plot_area_right_click():
+    """A match or feature right-click offers its own actions, not the flip."""
+    menu = REPORT_JS.split("svg.addEventListener('contextmenu'")[1].split('openCtx(')[0]
+    assert 'if (embedded && panel && !entry && !annot && !track) {' in menu

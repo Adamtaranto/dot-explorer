@@ -53,6 +53,7 @@ def normalise_cap_style(value: str | None) -> str:
     """
     return value if value in CAP_STYLE_CHOICES else DEFAULT_CAP_STYLE
 
+
 #: matplotlib cap name -> SVG ``stroke-linecap`` value.
 _SVG_LINECAPS: dict[str, str] = {
     'butt': 'butt',

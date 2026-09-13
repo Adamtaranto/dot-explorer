@@ -318,6 +318,27 @@ def test_diagonal_squares_mirror_on_reversed_contig():
     plt.close(fig)
 
 
+def test_diagonal_squares_mirror_x_on_reversed_target():
+    pl = _plotter()
+    ann = GffAnnotation.from_text('c1\tt\tgene\t101\t300\t.\t+\t.\tID=a')
+    seq_len = pl.index.get_sequence_length('c1')
+
+    def square(**kwargs):
+        fig = pl.plot(query_names=['c1'], target_names=['c1'], annotation=ann, **kwargs)
+        ax = fig.axes[0]
+        rect = [c for c in ax.collections if c.get_zorder() == 0.5][0].get_paths()[0]
+        xs, ys = rect.vertices[:, 0], rect.vertices[:, 1]
+        plt.close(fig)
+        return (xs.min(), xs.max()), (ys.min(), ys.max())
+
+    xr, yr = square(reverse_targets={'c1'})
+    assert xr == (seq_len - 300, seq_len - 100)
+    assert yr == (100, 300)
+    # A contig flipped on both axes keeps its square on the diagonal.
+    xr, yr = square(reverse_contigs={'c1'}, reverse_targets={'c1'})
+    assert xr == yr == (seq_len - 300, seq_len - 100)
+
+
 # ------------------------------------------------------------ HTML report
 
 
@@ -473,6 +494,41 @@ def test_focused_y_track_mirrors_on_reversed_query():
     assert fwd_ys.min() == 100 and fwd_ys.max() == 800
     # The target (x) track is untouched by a reversed *query* contig.
     assert [p.tolist() for p in rev_x] == [p.tolist() for p in fwd_x]
+
+
+def test_focused_x_track_mirrors_on_reversed_target():
+    """reverse_targets mirrors the x-track features; the y-track stays put."""
+    pl = _plotter()
+    ann = GffAnnotation.from_text(GFF)
+    c1_len = pl.index.get_sequence_length('c1')
+
+    def track_polys(**kwargs):
+        fig = pl.plot(
+            query_names=['c2'],
+            target_names=['c1'],
+            annotation_query=ann,
+            annotation_target=ann,
+            annotation_tracks=True,
+            **kwargs,
+        )
+        _main, y_track, x_track = fig.axes
+        y_polys = [p.get_xy() for p in y_track.patches if isinstance(p, Polygon)]
+        x_polys = [p.get_xy() for p in x_track.patches if isinstance(p, Polygon)]
+        plt.close(fig)
+        return y_polys, x_polys
+
+    fwd_y, fwd_x = track_polys()
+    rev_y, rev_x = track_polys(reverse_targets={'c1'})
+
+    # c1's first gene (0-based 50..600) mirrors to [c1_len-600, c1_len-50]
+    # on the x (along-sequence) coordinate of the x track.
+    xs = rev_x[0][:, 0]
+    assert xs.min() == c1_len - 600
+    assert xs.max() == c1_len - 50
+    fwd_xs = fwd_x[0][:, 0]
+    assert fwd_xs.min() == 50 and fwd_xs.max() == 600
+    # The query (y) track is untouched by a reversed *target* contig.
+    assert [p.tolist() for p in rev_y] == [p.tolist() for p in fwd_y]
 
 
 def test_auto_reverse_mirrors_diagonal_squares():

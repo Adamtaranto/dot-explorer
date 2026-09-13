@@ -189,6 +189,11 @@ def _apply_bp_units(axis, span_bp: float) -> str:
     return unit
 
 
+def _flip_strand(strand: str) -> str:
+    """Return the opposite strand flag (``'+'`` ⇄ ``'-'``)."""
+    return '-' if strand == '+' else '+'
+
+
 def _chain_blocks(
     blocks: list[tuple[int, int, int, int, str]],
     chain_gap: int,
@@ -695,6 +700,7 @@ class DotPlotter:
         rasterized: Union[bool, str] = 'auto',
         rasterization_threshold: int = 50_000,
         reverse_contigs: Optional[set[str]] = None,
+        reverse_targets: Optional[set[str]] = None,
         contig_order: Optional[str] = None,
         auto_reverse: bool = False,
         hide_internal_axes: bool = False,
@@ -806,8 +812,8 @@ class DotPlotter:
         annotation : GffAnnotation, optional
             Feature annotations to overlay on self-vs-self diagonal panels.
             Each feature is drawn as a transparent coloured square at its
-            genomic position, behind the alignment segments (mirrored on the
-            query axis for reverse-displayed contigs).  Sequence names in
+            genomic position, behind the alignment segments (mirrored along
+            whichever axes display the contig reverse-complemented).  Sequence names in
             *annotation* that are absent from the index emit a warning.
             Also used as the fallback source for side tracks when
             *annotation_query* / *annotation_target* are not given.
@@ -862,6 +868,15 @@ class DotPlotter:
             :attr:`~dot_explorer.paf_io.PafAlignment.reversed_contigs` for a
             ``PafAlignment`` (both populated by a prior ``reorder`` call).  Pass
             an explicit set (including ``set()`` to disable) to override.
+        reverse_targets : set[str] or None, optional
+            Un-prefixed target (column) contig names to render
+            reverse-complemented on the x axis: target coordinates are
+            mirrored (``t → t_len - t``) and the strand flag flipped.  Never
+            pulled from the index — ``None`` (default) and ``set()`` both mean
+            no target mirroring.  A panel whose query *and* target are both
+            mirrored (a self-comparison of a flipped contig) flips the
+            strand twice, so colours are unchanged and only coordinates
+            move: the contig's self-diagonal stays a forward diagonal.
         contig_order : str or None, optional
             Contig ordering applied before plotting.  ``'length'`` sorts
             contigs by descending sequence length
@@ -1020,6 +1035,9 @@ class DotPlotter:
             reverse_set = set(self.index.reversed_contigs)
         else:
             reverse_set = set()
+        reverse_target_set: set[str] = (
+            set(reverse_targets) if reverse_targets else set()
+        )
 
         # Warn about annotation sequences missing from the index (compare by
         # display name — annotation files use raw contig names, while a
@@ -1173,6 +1191,8 @@ class DotPlotter:
                     rasterized=rasterized,
                     rasterization_threshold=rasterization_threshold,
                     reverse_query=self._strip_group_prefix(q_name) in reverse_set,
+                    reverse_target=self._strip_group_prefix(t_name)
+                    in reverse_target_set,
                 )
 
                 # Row label rotation: a vertical (90 deg) contig name is as
@@ -1230,6 +1250,7 @@ class DotPlotter:
                         q_name=q_name,
                         t_name=t_name,
                         reverse_set=reverse_set,
+                        reverse_target_set=reverse_target_set,
                     )
 
                 # Annotation squares on self-vs-self (diagonal) panels,
@@ -1246,13 +1267,19 @@ class DotPlotter:
                 )
                 if annotation is not None and is_self_panel:
                     reverse = self._strip_group_prefix(q_name) in reverse_set
+                    reverse_x = self._strip_group_prefix(t_name) in reverse_target_set
                     annot_gid = (
                         f'de-annot-{row_idx}-{col_idx}'
                         if self._html_capture is not None
                         else None
                     )
                     drawn = self._draw_annotation_squares(
-                        ax, q_name, annotation, reverse=reverse, gid=annot_gid
+                        ax,
+                        q_name,
+                        annotation,
+                        reverse=reverse,
+                        reverse_x=reverse_x,
+                        gid=annot_gid,
                     )
                     if self._html_capture is not None and drawn:
                         panel = self._html_capture['panels'][
@@ -1315,7 +1342,7 @@ class DotPlotter:
                     self._strip_group_prefix(t_name),
                     self.index.get_sequence_length(t_name),
                     orientation='x',
-                    reverse=False,  # the target (x) axis always runs forward
+                    reverse=self._strip_group_prefix(t_name) in reverse_target_set,
                     gid_prefix='de-xtrack' if capturing else None,
                     record_into=track_records['x'] if capturing else None,
                 )
@@ -1762,6 +1789,7 @@ class DotPlotter:
         q_name: str,
         t_name: str,
         reverse_set: set,
+        reverse_target_set: Optional[set] = None,
     ) -> None:
         """Shade the panel columns/rows named by *regions*.
 
@@ -1780,8 +1808,11 @@ class DotPlotter:
         q_name, t_name : str
             Internal (possibly group-prefixed) names for this panel.
         reverse_set : set
-            Display names shown reverse-complemented.
+            Query display names shown reverse-complemented.
+        reverse_target_set : set, optional
+            Target display names shown reverse-complemented.
         """
+        reverse_target_set = reverse_target_set or set()
         q_display = self._strip_group_prefix(q_name)
         t_display = self._strip_group_prefix(t_name)
         for region in regions:
@@ -1794,10 +1825,13 @@ class DotPlotter:
                 continue
             color = region.get('color') or '#888888'
             if axis == 'x' and seqname == t_display:
-                # The target axis always runs forward.
+                lo, hi = start, end
+                if t_display in reverse_target_set:
+                    seq_len = self.index.get_sequence_length(t_name)
+                    lo, hi = seq_len - end, seq_len - start
                 ax.axvspan(
-                    start,
-                    end,
+                    lo,
+                    hi,
                     facecolor=color,
                     edgecolor='none',
                     alpha=_HIGHLIGHT_ALPHA,
@@ -1880,6 +1914,7 @@ class DotPlotter:
         rasterized: Union[bool, str] = 'auto',
         rasterization_threshold: int = 50_000,
         reverse_query: bool = False,
+        reverse_target: bool = False,
     ) -> None:
         """Render a single comparison panel onto the given Axes.
 
@@ -1947,9 +1982,17 @@ class DotPlotter:
             its strand colour flipped, so a reverse-oriented contig reads along
             the main diagonal.  The underlying records are not modified.
             Default is ``False``.
+        reverse_target : bool, optional
+            Same for the target (column) contig: target coordinates are
+            mirrored (``t → t_len - t``) and the strand flipped.  With
+            *reverse_query* also set the two flips cancel, so a flipped
+            contig's self-panel keeps its forward diagonal and colours.
+            Default is ``False``.
         """
         q_len = self.index.get_sequence_length(query_name)
         t_len = self.index.get_sequence_length(target_name)
+        # Strand flips once per mirrored axis; two mirrors cancel.
+        flip_strand = reverse_query != reverse_target
 
         # Display names: strip 'group:' prefix for CrossIndex internal names.
         display_q = self._strip_group_prefix(query_name)
@@ -1986,6 +2029,7 @@ class DotPlotter:
                 # the mirrored coordinates and reverse-complemented (the
                 # stored sequence is always forward orientation).
                 'reverse_query': reverse_query,
+                'reverse_target': reverse_target,
                 'segments': {'fwd': [], 'rev': [], 'identity': []},
             }
 
@@ -2022,15 +2066,26 @@ class DotPlotter:
             # per-segment colour.  Chaining is not applied here because each
             # record carries its own identity value.
             records = self._records_for_pair(effective_paf, display_q, display_t)
-            if reverse_query:
-                # Mirror the query coordinates and flip the strand so the
-                # contig renders reverse-complemented (originals untouched).
+            if reverse_query or reverse_target:
+                # Mirror the coordinates of every reversed axis and flip the
+                # strand once per mirror so the contig(s) render
+                # reverse-complemented (originals untouched).
                 records = [
                     dataclasses.replace(
                         rec,
-                        query_start=q_len - rec.query_end,
-                        query_end=q_len - rec.query_start,
-                        strand='-' if rec.strand == '+' else '+',
+                        query_start=q_len - rec.query_end
+                        if reverse_query
+                        else rec.query_start,
+                        query_end=q_len - rec.query_start
+                        if reverse_query
+                        else rec.query_end,
+                        target_start=t_len - rec.target_end
+                        if reverse_target
+                        else rec.target_start,
+                        target_end=t_len - rec.target_start
+                        if reverse_target
+                        else rec.target_end,
+                        strand=_flip_strand(rec.strand) if flip_strand else rec.strand,
                     )
                     for rec in records
                 ]
@@ -2066,16 +2121,17 @@ class DotPlotter:
                         query_name, target_name, merge
                     )
                 ]
-            if reverse_query:
-                # Mirror the query coordinates and flip the strand so the
-                # contig renders reverse-complemented (originals untouched).
+            if reverse_query or reverse_target:
+                # Mirror the coordinates of every reversed axis and flip the
+                # strand once per mirror (a co-linear run stays co-linear on
+                # the other diagonal, so chaining below is unaffected).
                 blocks = [
                     (
-                        q_len - qe,
-                        q_len - qs,
-                        ts,
-                        te,
-                        '-' if strand == '+' else '+',
+                        q_len - qe if reverse_query else qs,
+                        q_len - qs if reverse_query else qe,
+                        t_len - te if reverse_target else ts,
+                        t_len - ts if reverse_target else te,
+                        _flip_strand(strand) if flip_strand else strand,
                     )
                     for qs, qe, ts, te, strand in blocks
                 ]
@@ -2345,6 +2401,7 @@ class DotPlotter:
         seq_name: str,
         annotation: 'GffAnnotation',
         reverse: bool = False,
+        reverse_x: bool = False,
         gid: Optional[str] = None,
     ) -> list['GffFeature']:
         """Overlay annotation feature squares on a self-vs-self panel.
@@ -2367,6 +2424,8 @@ class DotPlotter:
             Mirror feature coordinates on the query (y) axis when the contig
             is displayed reverse-complemented, matching the alignment
             mirroring.  Default ``False``.
+        reverse_x : bool, optional
+            Likewise for the target (x) axis.  Default ``False``.
         gid : str, optional
             SVG group id assigned to the patch collection (used by the HTML
             report to make features clickable).  Default ``None``.
@@ -2386,9 +2445,9 @@ class DotPlotter:
         facecolors = []
         for feat in features:
             width = feat.end - feat.start
-            x = feat.start
-            # Only the query (y) axis mirrors for reverse-displayed contigs;
-            # the target (x) axis always runs forward.
+            # Each axis mirrors independently: a self panel of a contig
+            # flipped on both axes keeps its squares on the diagonal.
+            x = (seq_len - feat.end) if reverse_x else feat.start
             y = (seq_len - feat.end) if reverse else feat.start
             rects.append(mpatches.Rectangle((x, y), width, width))
             facecolors.append(feat.color or annotation.get_color(feat.feature_type))

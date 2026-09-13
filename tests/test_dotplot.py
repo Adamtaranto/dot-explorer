@@ -1323,6 +1323,120 @@ def test_reverse_contigs_empty_leaves_unchanged():
     assert segs_a == segs_b
 
 
+def _seg_colors(ax):
+    """Return the set of segment colours drawn on ``ax`` (one per collection)."""
+    from matplotlib.collections import LineCollection
+    from matplotlib.colors import to_hex
+
+    out = set()
+    for coll in ax.collections:
+        if isinstance(coll, LineCollection) and len(coll.get_segments()):
+            out.update(to_hex(c) for c in coll.get_colors())
+    return out
+
+
+def test_reverse_targets_mirrors_target_axis():
+    """reverse_targets mirrors the target coordinates (t → t_len - t)."""
+    aln = _forward_paf_alignment()
+    plotter = DotPlotter(aln)
+
+    fig_fwd = plotter.plot(query_names=['q'], target_names=['t'])
+    fwd_segs = _panel_segments(fig_fwd.axes[0])
+    fwd_colors = _seg_colors(fig_fwd.axes[0])
+    plt.close(fig_fwd)
+
+    fig_rev = plotter.plot(query_names=['q'], target_names=['t'], reverse_targets={'t'})
+    rev_segs = _panel_segments(fig_rev.axes[0])
+    rev_colors = _seg_colors(fig_rev.axes[0])
+    plt.close(fig_rev)
+
+    assert fwd_segs and rev_segs
+    # Forward match occupies target 0-50; mirrored it lands on 50-100.
+    assert max(max(s[0], s[2]) for s in fwd_segs) == 50
+    assert max(max(s[0], s[2]) for s in rev_segs) == 100
+    # The query axis is untouched.
+    assert max(max(s[1], s[3]) for s in rev_segs) == 50
+    # A single mirror flips the strand: forward diagonal -> anti-diagonal,
+    # drawn in the reverse-strand colour.
+    x0, y0, x1, y1 = rev_segs[0]
+    assert (x0 > x1) == (y0 < y1)
+    assert rev_colors != fwd_colors
+
+
+def test_reverse_query_and_target_double_flip_keeps_strand():
+    """Mirroring both axes moves the block but leaves the strand alone."""
+    aln = _forward_paf_alignment()
+    plotter = DotPlotter(aln)
+
+    fig_fwd = plotter.plot(query_names=['q'], target_names=['t'])
+    fwd_colors = _seg_colors(fig_fwd.axes[0])
+    plt.close(fig_fwd)
+
+    fig = plotter.plot(
+        query_names=['q'],
+        target_names=['t'],
+        reverse_contigs={'q'},
+        reverse_targets={'t'},
+    )
+    segs = _panel_segments(fig.axes[0])
+    colors = _seg_colors(fig.axes[0])
+    plt.close(fig)
+
+    assert segs
+    x0, y0, x1, y1 = segs[0]
+    # Forward diagonal in the mirrored quadrant [50,100] x [50,100].
+    assert min(x0, x1) == 50 and max(x0, x1) == 100
+    assert min(y0, y1) == 50 and max(y0, y1) == 100
+    assert (x0 < x1) == (y0 < y1)
+    assert colors == fwd_colors
+
+
+def test_reverse_targets_empty_or_none_unchanged():
+    aln = _forward_paf_alignment()
+    plotter = DotPlotter(aln)
+    fig_a = plotter.plot(query_names=['q'], target_names=['t'])
+    segs_a = _panel_segments(fig_a.axes[0])
+    plt.close(fig_a)
+    fig_b = plotter.plot(query_names=['q'], target_names=['t'], reverse_targets=set())
+    segs_b = _panel_segments(fig_b.axes[0])
+    plt.close(fig_b)
+    assert segs_a == segs_b
+
+
+def test_reverse_targets_identity_layer():
+    """Identity-coloured records go through the same mirroring."""
+    aln = _forward_paf_alignment()
+    plotter = DotPlotter(aln)
+    fig = plotter.plot(
+        query_names=['q'],
+        target_names=['t'],
+        reverse_targets={'t'},
+        color_by_identity=True,
+    )
+    segs = _panel_segments(fig.axes[0])
+    plt.close(fig)
+    assert segs
+    assert max(max(s[0], s[2]) for s in segs) == 100
+    assert min(min(s[0], s[2]) for s in segs) == 50
+
+
+def test_chain_blocks_after_target_mirror():
+    """A co-linear run mirrored onto the other diagonal still chains."""
+    from dot_explorer.dotplot import _chain_blocks
+
+    q_len = t_len = 100
+    blocks = [(0, 10, 0, 10, '+'), (12, 22, 12, 22, '+')]
+    # Target-only mirror: forward run becomes an anti-diagonal run.
+    mirrored = [(qs, qe, t_len - te, t_len - ts, '-') for qs, qe, ts, te, _ in blocks]
+    assert _chain_blocks(mirrored, 5) == [(0, 22, 78, 100, '-')]
+    # Both axes mirrored: forward again, in the far quadrant.
+    both = [
+        (q_len - qe, q_len - qs, t_len - te, t_len - ts, '+')
+        for qs, qe, ts, te, _ in blocks
+    ]
+    assert _chain_blocks(both, 5) == [(78, 100, 78, 100, '+')]
+
+
 def test_reverse_contigs_auto_from_pafalignment():
     """When reverse_contigs is None the set is pulled from the PafAlignment."""
     from dot_explorer.paf_io import PafAlignment, PafRecord
@@ -2127,6 +2241,24 @@ def test_highlight_regions_mirror_for_reversed_contigs():
     )
     # 4000 bp contig displayed reversed: [0, 1000) shows at [3000, 4000).
     assert ('y', 3000, 4000) in _spans(fig.axes[0])
+    plt.close(fig)
+
+
+def test_highlight_regions_mirror_for_reversed_targets():
+    """x bands follow a mirrored target contig; y bands are untouched."""
+    pl = _band_plotter()
+    fig = pl.plot(
+        query_names=['qA'],
+        target_names=['tA'],
+        reverse_targets={'tA'},
+        highlight_regions=[
+            {'axis': 'x', 'seqname': 'tA', 'start': 0, 'end': 1000},
+            {'axis': 'y', 'seqname': 'qA', 'start': 0, 'end': 1000},
+        ],
+    )
+    spans = _spans(fig.axes[0])
+    assert ('x', 3000, 4000) in spans
+    assert ('y', 0, 1000) in spans
     plt.close(fig)
 
 

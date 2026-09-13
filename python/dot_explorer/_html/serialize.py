@@ -16,6 +16,8 @@ Payload contract (consumed by ``report.js``)
           "target": <display target name>,
           "qlen":   <query length>,
           "tlen":   <target length>,
+          "reverse_query":  true|false,   # row contig drawn reverse-complemented
+          "reverse_target": true|false,   # column contig drawn reverse-complemented
           "segments": {
             "fwd":      [[qs, qe, ts, te], ...],
             "rev":      [[qs, qe, ts, te], ...],
@@ -34,6 +36,10 @@ Payload contract (consumed by ``report.js``)
         "y": [...]
       }
     }
+
+Segment coordinates are display coordinates: on a mirrored axis the genomic
+position is ``len - display`` and the strand flag has been flipped once per
+mirrored axis (so a panel mirrored on both axes keeps its genomic strand).
 
 ``tracks`` entries are in draw order and carry their own SVG gid, so the
 report addresses them directly rather than by index.  ``group`` is shared
@@ -214,6 +220,10 @@ def build_panel_payload(
             'target': panel['target'],
             'qlen': int(panel['qlen']),
             'tlen': int(panel['tlen']),
+            # Segment coordinates are *display* coordinates: on a mirrored
+            # axis the genomic value is ``len - display``.
+            'reverse_query': bool(panel.get('reverse_query', False)),
+            'reverse_target': bool(panel.get('reverse_target', False)),
             'segments': {
                 layer: [list(seg) for seg in panel['segments'][layer]]
                 for layer in _LAYERS

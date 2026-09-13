@@ -790,6 +790,7 @@
       matches.push({
         q: e.q, t: e.t, layer: e.layer,
         qs: e.qs, qe: e.qe, ts: e.ts, te: e.te,
+        strand: e.strand || (e.layer === 'rev' ? '-' : '+'),
       });
     });
     window.parent.postMessage(
@@ -867,6 +868,14 @@
       ' &middot; ' + (seg[1] - seg[0]).toLocaleString() + ' bp';
     if (identity !== null) {
       html += ' &middot; identity ' + (identity * 100).toFixed(1) + '%';
+    }
+    if (panel.reverse_query || panel.reverse_target) {
+      // Display coordinates: a mirrored axis reads genomic = len - shown.
+      html +=
+        ' &middot; mirrored: ' +
+        [panel.reverse_query ? 'query' : null, panel.reverse_target ? 'target' : null]
+          .filter(Boolean)
+          .join(' + ');
     }
     detailCoords.innerHTML = html;
 
@@ -950,6 +959,9 @@
    * filter by minimum match length client-side (behaviour 6). */
   var segmentRegistry = []; // {el, hit, qlen, row, col, layer, idx, key, bbox}
   var registryByKey = {};
+  // Element (visible path or its .de-hit clone) -> registry entry, so the
+  // context menu can resolve a right-clicked match without a scan.
+  var entryByEl = new Map();
   var matchGroups = Array.prototype.slice.call(
     svg.querySelectorAll('g[id^="de-matches-"]')
   );
@@ -1032,6 +1044,8 @@
         };
         segmentRegistry.push(entry);
         registryByKey[entry.key] = entry;
+        entryByEl.set(el, entry);
+        entryByEl.set(hit, entry);
       }
     });
   });
@@ -1183,7 +1197,8 @@
   /* Wire up every diagonal-annotation group: the n-th drawable child of
    * 'de-annot-<row>-<col>' corresponds to panels[gid].annotations[n]
    * (serialisation contract — patch draw order equals SVG child order). */
-  var annotRegistry = []; // {el, feat} — for re-applying a restored selection
+  var annotRegistry = []; // {el, feat, row, col} — restored selections + shadows
+  var annotByEl = new Map();
   var annotGroups = Array.prototype.slice.call(
     svg.querySelectorAll('g[id^="de-annot-"]')
   );
@@ -1198,7 +1213,16 @@
     );
     children.forEach(function (el, idx) {
       el.classList.add('de-annot');
-      if (feats[idx]) annotRegistry.push({ el: el, feat: feats[idx] });
+      if (feats[idx]) {
+        var rec = {
+          el: el,
+          feat: feats[idx],
+          row: parseInt(m[1], 10),
+          col: parseInt(m[2], 10),
+        };
+        annotRegistry.push(rec);
+        annotByEl.set(el, rec);
+      }
       el.addEventListener('click', function (evt) {
         if (consumeDragClick()) {
           evt.stopPropagation();
@@ -1228,6 +1252,7 @@
   // Python-side computation would have had to predict.
 
   var trackData = payload.tracks || null;
+  var trackByGid = {}; // gid -> {entry, axis}, for the context menu
   var activeBands = {}; // gid -> <rect>
   var bandEntries = {}; // gid -> {axis, payload entry}
   var bandLayer = null;
@@ -1502,6 +1527,7 @@
       entries.forEach(function (entry) {
         var el = document.getElementById(entry.gid);
         if (!el) return;
+        trackByGid[entry.gid] = { entry: entry, axis: axis };
         el.classList.add('de-track-feature');
         el.addEventListener('click', function (evt) {
           if (consumeDragClick()) {
@@ -1656,6 +1682,217 @@
     return null;
   }
 
+  // ---------------------------------------------------------------------
+  // 7. Context menu: shadow selection, bulk download, contig flips
+  // ---------------------------------------------------------------------
+  //
+  // A selected match paints its query range through its grid row and its
+  // target range through its grid column (section 4's bands); every other
+  // match overlapping those bands is said to lie in its *shadow*.  The
+  // overlap test runs in data space, not pixels: rows share the query axis
+  // and columns the target axis, and mirroring is per contig, so the
+  // payload's display coordinates are directly comparable along a row or
+  // column.  Selected ranges are merged per row/column and each registry
+  // entry is tested with one binary search per axis -- O(N log M) for N
+  // segments and M merged ranges, which is as good as an interval tree
+  // gets for two independent 1-D axes, without building one.
+  //
+  // Right-clicking a selected match offers the shadow selection and (when
+  // embedded) a FASTA download of everything selected; right-clicking an
+  // annotation square or side-track feature offers the same shadow
+  // selection over the feature's extent; right-clicking a panel offers a
+  // reverse-complement flip of its query contig (handled by the app).
+
+  var ctxMenu = document.getElementById('de-ctx');
+
+  function closeCtx() {
+    if (!ctxMenu) return;
+    ctxMenu.hidden = true;
+    ctxMenu.innerHTML = '';
+  }
+
+  function openCtx(evt, items) {
+    if (!ctxMenu || !items.length) return;
+    ctxMenu.innerHTML = '';
+    items.forEach(function (item) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = item.label;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeCtx();
+        item.action();
+      });
+      ctxMenu.appendChild(btn);
+    });
+    ctxMenu.hidden = false;
+    // Measure, then keep the menu inside the viewport.
+    ctxMenu.style.left = '0px';
+    ctxMenu.style.top = '0px';
+    var box = ctxMenu.getBoundingClientRect();
+    var x = Math.max(0, Math.min(evt.clientX, window.innerWidth - box.width - 4));
+    var y = Math.max(0, Math.min(evt.clientY, window.innerHeight - box.height - 4));
+    ctxMenu.style.left = x + 'px';
+    ctxMenu.style.top = y + 'px';
+  }
+
+  document.addEventListener(
+    'mousedown',
+    function (evt) {
+      if (ctxMenu && !ctxMenu.hidden && !ctxMenu.contains(evt.target)) closeCtx();
+    },
+    true
+  );
+  document.addEventListener('keydown', function (evt) {
+    if (evt.key === 'Escape') closeCtx();
+  });
+  window.addEventListener('blur', closeCtx);
+  svg.addEventListener('wheel', closeCtx, { passive: true });
+
+  /* True when [a, b) overlaps any of the merged, sorted *ranges*. */
+  function inRanges(ranges, a, b) {
+    var lo = 0;
+    var hi = ranges.length;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (ranges[mid].b <= a) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo < ranges.length && ranges[lo].a < b;
+  }
+
+  /* Select every visible segment whose query span overlaps a range of its
+   * grid row, or whose target span overlaps a range of its grid column.
+   * rowRanges: row -> [{a, b}] in query display coords; colRanges likewise
+   * on the target axis.  Replaces the current match selection. */
+  function selectShadow(rowRanges, colRanges) {
+    Object.keys(rowRanges).forEach(function (r) {
+      rowRanges[r] = mergeRanges(rowRanges[r]);
+    });
+    Object.keys(colRanges).forEach(function (c) {
+      colRanges[c] = mergeRanges(colRanges[c]);
+    });
+    var hits = segmentRegistry.filter(function (e) {
+      if (e.el.classList.contains('de-len-hidden')) return false;
+      var rr = rowRanges[e.row];
+      var cr = colRanges[e.col];
+      return (
+        (rr !== undefined && inRanges(rr, e.qs, e.qe)) ||
+        (cr !== undefined && inRanges(cr, e.ts, e.te))
+      );
+    });
+    setMatchSelection(hits);
+  }
+
+  /* Everything in the shadow of the current selection (which stays selected). */
+  function selectSelectionShadow() {
+    var rowRanges = {};
+    var colRanges = {};
+    Object.keys(selectedSegs).forEach(function (k) {
+      var e = selectedSegs[k];
+      if (e.qs === undefined) return;
+      (rowRanges[e.row] = rowRanges[e.row] || []).push({ a: e.qs, b: e.qe });
+      (colRanges[e.col] = colRanges[e.col] || []).push({ a: e.ts, b: e.te });
+    });
+    selectShadow(rowRanges, colRanges);
+  }
+
+  /* Everything overlapping a feature's extent on the given axes ('x',
+   * 'y' or 'xy') of panel (row, col).  Feature coordinates are genomic;
+   * a mirrored axis shows them at len - coord. */
+  function selectFeatureShadow(feat, axes, row, col) {
+    var panel = payload.panels['de-panel-' + row + '-' + col];
+    if (!panel || !feat) return;
+    var rowRanges = {};
+    var colRanges = {};
+    if (axes.indexOf('y') >= 0) {
+      rowRanges[row] = [
+        panel.reverse_query
+          ? { a: panel.qlen - feat.end, b: panel.qlen - feat.start }
+          : { a: feat.start, b: feat.end },
+      ];
+    }
+    if (axes.indexOf('x') >= 0) {
+      colRanges[col] = [
+        panel.reverse_target
+          ? { a: panel.tlen - feat.end, b: panel.tlen - feat.start }
+          : { a: feat.start, b: feat.end },
+      ];
+    }
+    selectShadow(rowRanges, colRanges);
+  }
+
+  function trackHitFor(target) {
+    var node = target;
+    while (node && node.nodeType === 1 && node !== svg) {
+      if (node.id && trackByGid[node.id]) return trackByGid[node.id];
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  svg.addEventListener('contextmenu', function (evt) {
+    var embedded = !!(window.parent && window.parent !== window);
+    var items = [];
+    var entry = entryByEl.get(evt.target);
+    if (entry && selectedSegs[entry.key]) {
+      items.push({
+        label: 'Select all alignments in shadow of selection',
+        action: selectSelectionShadow,
+      });
+      if (embedded) {
+        items.push({
+          label: 'Download selected alignments (FASTA)',
+          action: function () {
+            window.parent.postMessage({ type: 'de-download-selected' }, '*');
+          },
+        });
+      }
+    }
+    var annot = annotByEl.get(evt.target);
+    var track = annot ? null : trackHitFor(evt.target);
+    if (annot) {
+      items.push({
+        label: 'Select alignments in shadow of feature',
+        action: function () {
+          selectFeatureShadow(annot.feat, 'xy', annot.row, annot.col);
+        },
+      });
+    } else if (track) {
+      items.push({
+        label: 'Select alignments in shadow of feature',
+        action: function () {
+          // Side tracks exist on single-pair layouts only: panel 0-0.
+          selectFeatureShadow(track.entry, track.axis, 0, 0);
+        },
+      });
+    }
+    var panelEl = closestPanel(evt.target);
+    var panelGid = panelEl ? panelEl.id : null;
+    if (!panelGid && panelGroups.length === 1) panelGid = panelGroups[0].id;
+    var panel = panelGid ? payload.panels[panelGid] : null;
+    if (embedded && panel) {
+      var flipped = !!panel.reverse_query;
+      items.push({
+        label:
+          (flipped ? 'Unflip ' : 'Flip ') +
+          (window.RD_SELF_MODE ? 'contig ' : 'query ') +
+          panel.query +
+          ' (reverse complement)',
+        action: function () {
+          window.parent.postMessage(
+            { type: 'de-flip-query', name: panel.query },
+            '*'
+          );
+        },
+      });
+    }
+    if (!items.length) return; // nothing to offer: leave the native menu
+    evt.preventDefault();
+    evt.stopPropagation();
+    openCtx(evt, items);
+  });
+
   window.addEventListener('message', function (ev) {
     var msg = ev && ev.data;
     if (!msg) return;
@@ -1703,8 +1940,12 @@
         detailSeq.classList.toggle('de-aligned', !!msg.aligned);
         detailSeq.hidden = false;
         // Sequences exist server-side; they are fetched (and cached) on
-        // the first copy press rather than shipped with the preview.
-        setCopyState(!!msg.copy, !!msg.copy, null, null);
+        // the first copy press rather than shipped with the preview.  A
+        // PAF run may carry only one assembly, so the flags are per side
+        // (the older single 'copy' flag means both).
+        var copyQ = msg.copy_query !== undefined ? !!msg.copy_query : !!msg.copy;
+        var copyT = msg.copy_target !== undefined ? !!msg.copy_target : !!msg.copy;
+        setCopyState(copyQ, copyT, null, null);
       } else {
         detailSeq.textContent = '';
         detailSeq.hidden = true;

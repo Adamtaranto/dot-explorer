@@ -918,3 +918,18 @@ html.de-fullscreen .de-plot-area .tab-content > .tab-pane.active {
   pointer-events: none;
   z-index: 5;
 }
+
+/* Manual contig flips (report context menu): note + reset under the
+   auto-flip checkbox in the sidebar. */
+.de-flip-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin: -0.25rem 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.de-flip-note {
+  color: var(--bs-secondary-color, #6c757d);
+}

@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- App: pre-computed PAF input now takes optional query and/or target
+  sequence files (FASTA or GenBank) used purely to fetch and export match
+  sequences. Every name the PAF uses for a role must be present in that
+  role's file (a missing sequence aborts the run with an error); the
+  match detail bar offers "Fetch sequence" only for the sides that were
+  uploaded, and never falls back across roles (two assemblies can share a
+  contig name).
+- App: right-click a panel in the interactive plot to flip its query contig
+  (reverse complement). Flips are draw-time coordinate mirrors — no
+  alignment or k-mer index is recomputed — and carry into every export
+  (reordered FASTA, cluster ZIP, selected alignments). In self-alignment
+  mode the flipped contig is mirrored on both axes so its self-panel keeps
+  a forward diagonal. A sidebar note lists manual flips with a reset.
+- App: right-click a selected match for "select all alignments in shadow"
+  (every match overlapping its query row band or target column band across
+  the whole grid) and "download selected alignments (FASTA)" — query and
+  target slices, de-duplicated on contig/coordinates/strand, minus-strand
+  slices reverse-complemented. Right-click an annotation square or
+  side-track feature to select the alignments in its shadow.
+- App: "Sequences by cluster (ZIP)" download — one multi-FASTA per cluster
+  (plus `unassigned.fasta`), in display order and orientation.
+- `DotPlotter.plot(reverse_targets=...)` mirrors target (column) contigs;
+  the HTML payload carries `reverse_query` / `reverse_target` per panel.
+- `dot-explorer-app` logs the temporary directory it uses at startup and
+  mentions the `TMPDIR` override in `--help`.
+
+### Changed
+
+- App: the "Flat" (butt) line cap is no longer offered — it draws short
+  matches wider across the diagonal than along it, so they look rotated.
+
+### Fixed
+
+- App: ticking "Align assembly to itself" after a minimap2 / nucmer run
+  against a target still aligned query vs target. The aligner worker mounts
+  both inputs under fixed names and Aioli keeps files already present, so
+  the stale `target.fa` won; both inputs are now unlinked before every
+  remount.
+- App: the k-mer memory guard under-counted self-alignment runs by half.
+- App: the aligner log no longer paints over the Clusters / Matrix /
+  Heatmap tables — it renders only on the Plot pane.
+- App: entering fullscreen from the Heatmap (or any non-Plot) tab no longer
+  snaps back to the Plot tab; the tab strip stays visible in fullscreen.
+
 ## [0.2.1] - 2026-09-09
 
 ### Fixed

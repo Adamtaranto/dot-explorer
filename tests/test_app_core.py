@@ -300,8 +300,8 @@ def test_validate_query_names_none_match():
 
     warnings = validate_query_names(['a', 'b'], ['q1'], ['t1'])
     assert len(warnings) == 1
-    assert 'None of the uploaded assembly contig names' in warnings[0]
-    assert 'target column' not in warnings[0]
+    assert 'None of the uploaded query assembly contig names' in warnings[0]
+    assert 'DO match' not in warnings[0]
 
 
 def test_validate_query_names_swapped_inputs_hint():
@@ -318,7 +318,9 @@ def test_validate_query_names_partial_overlap_both_directions():
     warnings = validate_query_names(['q1', 'extra'], ['q1', 'ghost'], ['t1'])
     assert len(warnings) == 2
     assert any('no alignments in the PAF' in w and 'extra' in w for w in warnings)
-    assert any('not in the uploaded assembly' in w and 'ghost' in w for w in warnings)
+    assert any(
+        'not in the uploaded query assembly' in w and 'ghost' in w for w in warnings
+    )
 
 
 def test_validate_query_names_ambiguous_duplicates():
@@ -335,7 +337,7 @@ def test_validate_query_names_preview_truncates():
     missing = [f'c{i}' for i in range(10)]
     warnings = validate_query_names(['q1', *missing], ['q1'], ['t1'])
     assert len(warnings) == 1
-    assert '10 assembly contig(s)' in warnings[0]
+    assert '10 query assembly contig(s)' in warnings[0]
     assert '…' in warnings[0]
 
 
@@ -1266,3 +1268,20 @@ def test_aligner_log_hidden_outside_the_plot_tab():
     # Every tab pane carries an explicit value so the check is title-proof.
     for key in ('plot', 'clusters', 'matrix', 'heatmap', 'annotations'):
         assert f"value='{key}'" in src
+
+
+def test_validate_paf_names_splits_errors_from_warnings():
+    """Missing sequences are errors (the run aborts); the rest are warnings."""
+    from core.validate import validate_paf_names
+
+    errors, warnings = validate_paf_names(['q1', 'extra'], ['q1', 'ghost'], ['t1'])
+    assert len(errors) == 1 and 'ghost' in errors[0]
+    assert len(warnings) == 1 and 'extra' in warnings[0]
+
+    errors, warnings = validate_paf_names(['t1', 't2'], ['t1', 't2'], ['q1'], 'target')
+    assert errors == [] and warnings == []
+
+    # Target role: swapped-inputs hint names the query column.
+    errors, _ = validate_paf_names(['q1'], ['t1'], ['q1'], 'target')
+    assert len(errors) == 1
+    assert 'PAF query column' in errors[0]

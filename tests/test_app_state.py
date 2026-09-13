@@ -463,3 +463,49 @@ def test_min_contig_len_keeps_the_export_complete():
     ).read_text()
     dl = app_py.split('def dl_fasta')[1].split('@')[0]
     assert "lay['query_names'] + lay['excluded_query']" in dl
+
+
+def test_apply_manual_flips_is_a_toggle():
+    from core.panels import apply_manual_flips
+
+    assert apply_manual_flips({'a'}, set()) == {'a'}
+    assert apply_manual_flips({'a'}, {'b'}) == {'a', 'b'}
+    # Flipping an auto-reversed contig puts it back forward.
+    assert apply_manual_flips({'a'}, {'a'}) == set()
+    # And the input set is not mutated.
+    auto = {'a'}
+    apply_manual_flips(auto, {'a'})
+    assert auto == {'a'}
+
+
+def test_genomic_coords_unmirrors_each_axis():
+    from core.panels import genomic_coords
+
+    kw = {'qlen': 100, 'tlen': 100}
+    assert genomic_coords(0, 50, 0, 50, '+', **kw) == (0, 50, 0, 50, '+')
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_q=True, **kw) == (
+        50,
+        100,
+        0,
+        50,
+        '-',
+    )
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_t=True, **kw) == (
+        0,
+        50,
+        50,
+        100,
+        '-',
+    )
+    # Both axes mirrored: coordinates move, strand is kept.
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_q=True, reverse_t=True, **kw) == (
+        50,
+        100,
+        50,
+        100,
+        '+',
+    )
+    # Involution: mapping the display of a genomic segment back recovers it.
+    g = (10, 30, 40, 70, '-')
+    disp = (100 - 30, 100 - 10, 100 - 70, 100 - 40, '-')
+    assert genomic_coords(*disp, reverse_q=True, reverse_t=True, **kw) == g

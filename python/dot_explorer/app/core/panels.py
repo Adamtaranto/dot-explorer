@@ -192,6 +192,7 @@ def nav_tips(focused: bool, multi_panel: bool) -> list[tuple[str, str]]:
         tips.append(('click panel', 'focus'))
     tips.append(('click match', 'details'))
     tips.append(('Cmd/Ctrl+click match', 'multi-select'))
+    tips.append(('right-click', 'flip / shadow-select / export'))
     tips.append(('Esc', 'reset'))
     if not focused:
         # Double-click drill-down works even on a single-panel overview.
@@ -236,3 +237,75 @@ def filter_by_min_length(
     for name in names:
         (kept if lengths.get(name, 0) >= min_length else excluded).append(name)
     return kept, excluded
+
+
+def apply_manual_flips(reverse: set[str], flips: Iterable[str]) -> set[str]:
+    """Combine automatic reversals with the user's manual flips.
+
+    A manual flip toggles a contig's orientation relative to whatever the
+    ordering mode decided: flipping an auto-reversed contig puts it back
+    forward, flipping a forward one reverses it.  That is a symmetric
+    difference, which also makes a second flip of the same contig undo the
+    first.
+
+    Parameters
+    ----------
+    reverse : set[str]
+        Contigs the ordering mode (or nothing) displays reverse-complemented.
+    flips : Iterable[str]
+        Contigs the user has flipped by hand.
+
+    Returns
+    -------
+    set[str]
+        Contigs to display reverse-complemented.
+    """
+    return set(reverse) ^ set(flips)
+
+
+def genomic_coords(
+    qs: int,
+    qe: int,
+    ts: int,
+    te: int,
+    strand: str,
+    *,
+    qlen: int,
+    tlen: int,
+    reverse_q: bool = False,
+    reverse_t: bool = False,
+) -> tuple[int, int, int, int, str]:
+    """Map a plotted segment's display coordinates back to genomic ones.
+
+    The report draws a reverse-displayed contig mirrored (``shown = len -
+    genomic``) with its strand flag flipped once per mirrored axis, so
+    undoing it mirrors each reversed axis back and flips the strand once
+    per axis again — a panel mirrored on both axes keeps the strand it
+    shows.
+
+    Parameters
+    ----------
+    qs, qe, ts, te : int
+        Display coordinates (0-based, half-open) of the segment.
+    strand : str
+        Displayed strand flag, ``'+'`` or ``'-'``.
+    qlen, tlen : int
+        Query and target contig lengths.
+    reverse_q, reverse_t : bool, optional
+        Whether the query (row) / target (column) contig is displayed
+        reverse-complemented.  Default ``False``.
+
+    Returns
+    -------
+    tuple[int, int, int, int, str]
+        ``(q_start, q_end, t_start, t_end, strand)`` in genomic terms.
+    """
+    if strand not in ('+', '-'):
+        strand = '+'
+    if reverse_q:
+        qs, qe = qlen - qe, qlen - qs
+        strand = '-' if strand == '+' else '+'
+    if reverse_t:
+        ts, te = tlen - te, tlen - ts
+        strand = '-' if strand == '+' else '+'
+    return qs, qe, ts, te, strand

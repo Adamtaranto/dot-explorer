@@ -263,3 +263,36 @@ body.de-fs #de-figure svg {
   stroke: #d97706 !important;
   stroke-width: 4 !important;
 }
+
+/* Right-click context menu (shadow selection, bulk download, flips). */
+#de-ctx {
+  position: fixed;
+  z-index: 20;
+  min-width: 14rem;
+  padding: 0.25rem;
+  background: var(--de-bar-bg);
+  color: var(--de-bar-fg);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+}
+
+#de-ctx button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#de-ctx button:hover,
+#de-ctx button:focus {
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
+}

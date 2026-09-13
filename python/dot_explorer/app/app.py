@@ -21,6 +21,7 @@ import uuid
 from core.align import (
     AVAILABLE_METHODS,
     BIOWASM_TOOLS,
+    DEFAULT_METHOD,
     METHOD_LABELS,
     MINIMAP2_PRESET_DEFAULTS,
     MINIMAP2_PRESETS,
@@ -452,6 +453,7 @@ app_ui = ui.page_sidebar(
                     'from the biowasm CDN at runtime).',
                 ),
                 choices=_method_choices(),
+                selected=DEFAULT_METHOD,
             ),
             ui.panel_conditional(
                 "input.method === 'kmer'",

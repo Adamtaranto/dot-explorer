@@ -43,6 +43,8 @@ and this project adheres to
 
 ### Changed
 
+- App: the alignment method selector now starts on minimap2 rather than
+  k-mer matching.
 - App: the "Flat" (butt) line cap is no longer offered — it draws short
   matches wider across the diagonal than along it, so they look rotated.
 

@@ -1285,3 +1285,12 @@ def test_validate_paf_names_splits_errors_from_warnings():
     errors, _ = validate_paf_names(['q1'], ['t1'], ['q1'], 'target')
     assert len(errors) == 1
     assert 'PAF query column' in errors[0]
+
+
+def test_minimap2_is_the_default_method():
+    from core.align import AVAILABLE_METHODS, BIOWASM_TOOLS, DEFAULT_METHOD
+
+    assert DEFAULT_METHOD == 'minimap2'
+    assert DEFAULT_METHOD in AVAILABLE_METHODS and DEFAULT_METHOD in BIOWASM_TOOLS
+    src = (APP_DIR / 'app.py').read_text()
+    assert 'selected=DEFAULT_METHOD,' in src

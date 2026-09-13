@@ -1746,7 +1746,6 @@
   document.addEventListener('keydown', function (evt) {
     if (evt.key === 'Escape') closeCtx();
   });
-  window.addEventListener('blur', closeCtx);
   svg.addEventListener('wheel', closeCtx, { passive: true });
 
   /* True when [a, b) overlaps any of the merged, sorted *ranges*. */

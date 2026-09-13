@@ -73,7 +73,13 @@ from core.seqs import (
     provider_from_fasta_input,
     provider_from_path,
 )
-from core.state import CAP_STYLE_CHOICES, ORDER_CHOICES, PlotConfig, svg_linecap
+from core.state import (
+    CAP_STYLE_CHOICES,
+    ORDER_CHOICES,
+    PlotConfig,
+    normalise_cap_style,
+    svg_linecap,
+)
 from core.validate import validate_annotation_names, validate_query_names
 from core.wheels import pick_wasm_wheel, runtime_platform_tag
 import matplotlib  # noqa: F401  (ensures shinylive bundles the pyodide package)
@@ -712,10 +718,9 @@ app_ui = ui.page_sidebar(
             'cap_style',
             _lbl(
                 'Line cap',
-                'Shape of the match-segment ends. Square and round keep a '
-                'match shorter than the line width sitting on its own '
-                'diagonal; flat draws it square-on, so it looks rotated. '
-                'Applied instantly, without re-rendering.',
+                'Shape of the match-segment ends. Both keep a match shorter '
+                'than the line width sitting on its own diagonal. Applied '
+                'instantly, without re-rendering.',
             ),
             choices=CAP_STYLE_CHOICES,
             selected='projecting',
@@ -1134,7 +1139,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     def _check_kmer_memory(query: SequenceProvider, target: SequenceProvider) -> None:
         if sys.platform != 'emscripten':
             return  # native runs are bounded by system RAM, not the wasm heap
-        total = query.total_length + (0 if target is query else target.total_length)
+        # A self run still indexes every contig twice (once per group in
+        # SessionCache.kmer_index), so it costs the same as a pair of equals.
+        total = query.total_length + target.total_length
         if total > _KMER_HARD_LIMIT:
             raise ValueError(
                 f'Combined assemblies are {total / 1e6:.0f} Mb — the k-mer '
@@ -2195,7 +2202,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             auto_reverse=input.auto_reverse(),
             hide_internal_axes=input.hide_internal_axes(),
             dot_size=dot_size_settled(),
-            cap_style=input.cap_style() or 'projecting',
+            cap_style=normalise_cap_style(input.cap_style()),
             min_length=min_length_settled(),
             color_by_identity=bool(input.color_by_identity()),
             identity_palette=input.identity_palette() or 'viridis',
@@ -2232,7 +2239,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 'dot_size': float(dot_size_settled()),
                 # The wire carries the CSS value: the report applies the cap
                 # as a stroke-linecap override, not through matplotlib.
-                'cap_style': svg_linecap(input.cap_style() or 'projecting'),
+                'cap_style': svg_linecap(normalise_cap_style(input.cap_style())),
                 'min_length': int(min_length_settled()),
             },
         )
@@ -3025,10 +3032,34 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         req(pair)
         return _report_html(pair)
 
+    def _active_plot_tab() -> str | None:
+        """Return the active tab key of whichever navset is on screen.
+
+        ``None`` when the plot area has no tab strip.  A navset's id is a
+        Shiny input holding the active ``nav_panel`` value, but a removed
+        navset leaves its last value behind, so the server decides which
+        strip exists from the same state ``plot_area`` renders it from.
+        """
+        if result() is None:
+            return None
+        if focus() is None:
+            if cluster_result() is None or not input.overview_tabs.is_set():
+                return None
+            return input.overview_tabs()
+        if not feature_rows() or not input.drill_tabs.is_set():
+            return None
+        return input.drill_tabs()
+
     @render.ui
     def aligner_log_ui():
         entries = aligner_log()
         if not entries:
+            return None
+        # The log sits under the plot area in the page body, so on the
+        # Clusters / Matrix / Heatmap / Annotations panes it would paint
+        # over the tables.  Only the Plot pane shows it.
+        active = _active_plot_tab()
+        if active is not None and active != 'plot':
             return None
         blocks = []
         for e in entries:
@@ -3134,7 +3165,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return ui.div(
                 ui.div(*toolbar, class_='de-plot-toolbar'),
                 ui.navset_tab(
-                    ui.nav_panel('Plot', body, hint),
+                    ui.nav_panel('Plot', body, hint, value='plot'),
                     ui.nav_panel(
                         'Clusters',
                         ui.div(
@@ -3146,6 +3177,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             class_='de-cluster-actions',
                         ),
                         ui.output_ui('cluster_table'),
+                        value='clusters',
                     ),
                     ui.nav_panel(
                         'Matrix',
@@ -3163,6 +3195,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             class_='de-cluster-actions',
                         ),
                         ui.output_ui('matrix_table'),
+                        value='matrix',
                     ),
                     ui.nav_panel(
                         'Heatmap',
@@ -3184,6 +3217,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             ' = reset',
                             class_='de-nav-hint',
                         ),
+                        value='heatmap',
                     ),
                     id='overview_tabs',
                 ),
@@ -3200,7 +3234,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         return ui.div(
             ui.div(*toolbar, class_='de-plot-toolbar'),
             ui.navset_tab(
-                ui.nav_panel('Plot', body, hint),
+                ui.nav_panel('Plot', body, hint, value='plot'),
                 ui.nav_panel(
                     'Annotations',
                     ui.div(
@@ -3217,6 +3251,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         class_='de-ft-apply',
                     ),
                     ui.output_ui('annotation_table'),
+                    value='annotations',
                 ),
                 id='drill_tabs',
             ),

@@ -1252,3 +1252,17 @@ def test_count_pending_type_changes():
         count_pending_type_changes({'gene': (True, '#ffffff')}, {'gene': (True, '')})
         == 1
     )
+
+
+def test_aligner_log_hidden_outside_the_plot_tab():
+    """The log lives under the plot area, so other panes must not show it."""
+    src = (APP_DIR / 'app.py').read_text()
+    body = src.split('def aligner_log_ui(')[1].split('\n    @')[0]
+    assert '_active_plot_tab()' in body
+    assert "!= 'plot'" in body
+    helper = src.split('def _active_plot_tab(')[1].split('\n    @')[0]
+    assert 'input.overview_tabs' in helper
+    assert 'input.drill_tabs' in helper
+    # Every tab pane carries an explicit value so the check is title-proof.
+    for key in ('plot', 'clusters', 'matrix', 'heatmap', 'annotations'):
+        assert f"value='{key}'" in src

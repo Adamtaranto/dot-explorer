@@ -432,16 +432,22 @@ html.de-fullscreen body {
   overflow: hidden;
 }
 
-/* Fullscreen is the plot and its toolbar, nothing else: navigation
-   hints, the memory readout and the drill-down tab strip all disappear
-   (fullscreen.js activates the Plot tab on entry so the hidden strip can
-   never strand the user on the Annotations pane).  The back-to-overview
-   button stays: it swaps the view while fullscreen persists, since the
-   state lives as a class on <html>. */
+/* Fullscreen is the plot area and its toolbar: navigation hints and the
+   memory readout disappear.  The tab strip stays, so the pane that was
+   active on entry (Heatmap, Matrix, Annotations, ...) is the one shown and
+   the user can still switch.  The back-to-overview button stays too: it
+   swaps the view while fullscreen persists, since the state lives as a
+   class on <html>. */
 html.de-fullscreen .de-nav-hint,
-html.de-fullscreen .de-mem-fixed,
-html.de-fullscreen .de-plot-area .nav-tabs {
+html.de-fullscreen .de-mem-fixed {
   display: none !important;
+}
+
+/* The heatmap pane fills the overlay the same way the report frame does. */
+html.de-fullscreen .de-plot-area .de-heatmap-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* The drill-down wraps the report in Bootstrap tab panes, which navset_tab

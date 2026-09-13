@@ -322,7 +322,21 @@ def test_svg_linecap_maps_matplotlib_names_to_css():
     # invalid stroke-linecap value into the report's CSS.
     assert svg_linecap('bogus') == 'square'
     # Every UI choice maps to a valid CSS value.
-    assert {svg_linecap(k) for k in CAP_STYLE_CHOICES} == {'square', 'round', 'butt'}
+    assert {svg_linecap(k) for k in CAP_STYLE_CHOICES} == {'square', 'round'}
+
+
+def test_flat_cap_is_not_offered_and_stale_values_are_coerced():
+    """'butt' distorts short matches (they read as rotated), so the UI dropped it."""
+    from core.state import CAP_STYLE_CHOICES, DEFAULT_CAP_STYLE, normalise_cap_style
+
+    assert 'butt' not in CAP_STYLE_CHOICES
+    assert set(CAP_STYLE_CHOICES) == {'projecting', 'round'}
+    assert normalise_cap_style('round') == 'round'
+    assert normalise_cap_style('projecting') == 'projecting'
+    # A hidden select keeps its last value: an old session's 'butt' must
+    # not leak through to the plot.
+    assert normalise_cap_style('butt') == DEFAULT_CAP_STYLE
+    assert normalise_cap_style(None) == DEFAULT_CAP_STYLE
 
 
 def test_identity_colored_plot_from_mixed_identity_records():

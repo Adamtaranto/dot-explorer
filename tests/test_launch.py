@@ -67,3 +67,23 @@ def test_missing_app_file_reports_broken_install(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(launch, 'APP_DIR', Path(tmp_path) / 'absent')
     assert launch.main([]) == 1
     assert 'reinstalling' in capsys.readouterr().err
+
+
+def test_launch_logs_temp_dir_and_tmpdir_hint(monkeypatch, caplog):
+    """Users need to know where uploads land and how to move them."""
+    import logging
+    import tempfile
+
+    shiny = pytest.importorskip('shiny')
+    monkeypatch.setattr(shiny, 'run_app', lambda *a, **k: None)
+    with caplog.at_level(logging.INFO, logger='dot_explorer_app'):
+        assert launch.main(['--no-browser']) == 0
+    text = caplog.text
+    assert tempfile.gettempdir() in text
+    assert 'TMPDIR' in text
+
+
+def test_help_mentions_tmpdir(capsys):
+    with pytest.raises(SystemExit):
+        launch._parse_args(['--help'])
+    assert 'TMPDIR' in capsys.readouterr().out

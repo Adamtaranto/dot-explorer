@@ -322,7 +322,21 @@ def test_svg_linecap_maps_matplotlib_names_to_css():
     # invalid stroke-linecap value into the report's CSS.
     assert svg_linecap('bogus') == 'square'
     # Every UI choice maps to a valid CSS value.
-    assert {svg_linecap(k) for k in CAP_STYLE_CHOICES} == {'square', 'round', 'butt'}
+    assert {svg_linecap(k) for k in CAP_STYLE_CHOICES} == {'square', 'round'}
+
+
+def test_flat_cap_is_not_offered_and_stale_values_are_coerced():
+    """'butt' distorts short matches (they read as rotated), so the UI dropped it."""
+    from core.state import CAP_STYLE_CHOICES, DEFAULT_CAP_STYLE, normalise_cap_style
+
+    assert 'butt' not in CAP_STYLE_CHOICES
+    assert set(CAP_STYLE_CHOICES) == {'projecting', 'round'}
+    assert normalise_cap_style('round') == 'round'
+    assert normalise_cap_style('projecting') == 'projecting'
+    # A hidden select keeps its last value: an old session's 'butt' must
+    # not leak through to the plot.
+    assert normalise_cap_style('butt') == DEFAULT_CAP_STYLE
+    assert normalise_cap_style(None) == DEFAULT_CAP_STYLE
 
 
 def test_identity_colored_plot_from_mixed_identity_records():
@@ -449,3 +463,49 @@ def test_min_contig_len_keeps_the_export_complete():
     ).read_text()
     dl = app_py.split('def dl_fasta')[1].split('@')[0]
     assert "lay['query_names'] + lay['excluded_query']" in dl
+
+
+def test_apply_manual_flips_is_a_toggle():
+    from core.panels import apply_manual_flips
+
+    assert apply_manual_flips({'a'}, set()) == {'a'}
+    assert apply_manual_flips({'a'}, {'b'}) == {'a', 'b'}
+    # Flipping an auto-reversed contig puts it back forward.
+    assert apply_manual_flips({'a'}, {'a'}) == set()
+    # And the input set is not mutated.
+    auto = {'a'}
+    apply_manual_flips(auto, {'a'})
+    assert auto == {'a'}
+
+
+def test_genomic_coords_unmirrors_each_axis():
+    from core.panels import genomic_coords
+
+    kw = {'qlen': 100, 'tlen': 100}
+    assert genomic_coords(0, 50, 0, 50, '+', **kw) == (0, 50, 0, 50, '+')
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_q=True, **kw) == (
+        50,
+        100,
+        0,
+        50,
+        '-',
+    )
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_t=True, **kw) == (
+        0,
+        50,
+        50,
+        100,
+        '-',
+    )
+    # Both axes mirrored: coordinates move, strand is kept.
+    assert genomic_coords(0, 50, 0, 50, '+', reverse_q=True, reverse_t=True, **kw) == (
+        50,
+        100,
+        50,
+        100,
+        '+',
+    )
+    # Involution: mapping the display of a genomic segment back recovers it.
+    g = (10, 30, 40, 70, '-')
+    disp = (100 - 30, 100 - 10, 100 - 70, 100 - 40, '-')
+    assert genomic_coords(*disp, reverse_q=True, reverse_t=True, **kw) == g

@@ -21,6 +21,7 @@ import uuid
 from core.align import (
     AVAILABLE_METHODS,
     BIOWASM_TOOLS,
+    DEFAULT_METHOD,
     METHOD_LABELS,
     MINIMAP2_PRESET_DEFAULTS,
     MINIMAP2_PRESETS,
@@ -28,7 +29,6 @@ from core.align import (
     build_tool_args,
     fasta_text,
     paf_alignment_from_text,
-    paf_text_from_alignment,
 )
 from core.annotation_colors import (
     assign_shared_colors,
@@ -58,11 +58,18 @@ from core.cluster import (
     is_clean_minimap2,
     tree_layout_order,
 )
-from core.export import reordered_fasta_text
+from core.export import (
+    cluster_fasta_zip,
+    reordered_fasta_text,
+    reoriented_paf_records,
+    selected_regions_fasta,
+)
 from core.fasta import content_digest
 from core.genbank import parse_genbank_bytes
 from core.panels import (
+    apply_manual_flips,
     filter_by_min_length,
+    genomic_coords,
     has_self_pair,
     nav_tips,
     panel_pair,
@@ -73,8 +80,14 @@ from core.seqs import (
     provider_from_fasta_input,
     provider_from_path,
 )
-from core.state import CAP_STYLE_CHOICES, ORDER_CHOICES, PlotConfig, svg_linecap
-from core.validate import validate_annotation_names, validate_query_names
+from core.state import (
+    CAP_STYLE_CHOICES,
+    ORDER_CHOICES,
+    PlotConfig,
+    normalise_cap_style,
+    svg_linecap,
+)
+from core.validate import validate_annotation_names, validate_paf_names
 from core.wheels import pick_wasm_wheel, runtime_platform_tag
 import matplotlib  # noqa: F401  (ensures shinylive bundles the pyodide package)
 import numpy  # noqa: F401
@@ -220,13 +233,17 @@ _FEATURE_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def inject_panel_bridge(html: str) -> str:
+def inject_panel_bridge(html: str, self_mode: bool = False) -> str:
     """Insert the panel double-click bridge script into a report document.
 
     Parameters
     ----------
     html : str
         Full HTML report text produced by ``DotPlotter.to_html``.
+    self_mode : bool, optional
+        Whether the comparison is an assembly against itself; the report's
+        context menu then labels a flip as "contig" rather than "query",
+        since the flip applies to both axes.  Default ``False``.
 
     Returns
     -------
@@ -237,7 +254,13 @@ def inject_panel_bridge(html: str) -> str:
     idx = html.rfind('</body>')
     if idx == -1:
         return html + _PANEL_DBLCLICK_JS
-    return html[:idx] + _PANEL_DBLCLICK_JS + html[idx:]
+    script = _PANEL_DBLCLICK_JS
+    if self_mode:
+        script = script.replace(
+            'window.RD_DBLCLICK_DRILLDOWN = true;',
+            'window.RD_DBLCLICK_DRILLDOWN = true;\n  window.RD_SELF_MODE = true;',
+        )
+    return html[:idx] + script + html[idx:]
 
 
 def debounce(delay_secs: float):
@@ -430,6 +453,7 @@ app_ui = ui.page_sidebar(
                     'from the biowasm CDN at runtime).',
                 ),
                 choices=_method_choices(),
+                selected=DEFAULT_METHOD,
             ),
             ui.panel_conditional(
                 "input.method === 'kmer'",
@@ -600,10 +624,47 @@ app_ui = ui.page_sidebar(
         ui.panel_conditional(
             "input.input_mode === 'paf'",
             ui.input_file('paf_file', 'PAF file', accept=['.paf', '.txt']),
-            ui.input_file(
-                'paf_query_fasta',
-                'Query assembly (optional — enables the reordered-FASTA download)',
-                accept=['.fa', '.fasta', '.fna', '.gz'],
+            # Supplementary sequences: used only to fetch/export sequences
+            # for the plotted alignments (the PAF already holds the
+            # coordinates), so no alignment options appear in this mode.
+            ui.input_radio_buttons(
+                'paf_seq_format',
+                _lbl(
+                    'Sequence files (optional)',
+                    'Upload the assemblies the PAF was generated from to '
+                    'fetch match sequences and export a reordered FASTA. '
+                    'Either or both; every name in the PAF must be present '
+                    'in the matching file.',
+                ),
+                {'fasta': 'FASTA', 'genbank': 'GenBank'},
+                selected='fasta',
+                inline=True,
+            ),
+            ui.panel_conditional(
+                "input.paf_seq_format === 'fasta'",
+                ui.input_file(
+                    'paf_query_fasta',
+                    'Query assembly (FASTA / .gz)',
+                    accept=['.fa', '.fasta', '.fna', '.gz'],
+                ),
+                ui.input_file(
+                    'paf_target_fasta',
+                    'Target / reference assembly (FASTA / .gz)',
+                    accept=['.fa', '.fasta', '.fna', '.gz'],
+                ),
+            ),
+            ui.panel_conditional(
+                "input.paf_seq_format === 'genbank'",
+                ui.input_file(
+                    'paf_query_gbk',
+                    'Query assembly (GenBank / .gz)',
+                    accept=['.gb', '.gbk', '.gbff', '.genbank', '.gz'],
+                ),
+                ui.input_file(
+                    'paf_target_gbk',
+                    'Target / reference assembly (GenBank / .gz)',
+                    accept=['.gb', '.gbk', '.gbff', '.genbank', '.gz'],
+                ),
             ),
         ),
         ui.input_action_button('run', 'Run comparison', class_='btn-primary'),
@@ -651,6 +712,8 @@ app_ui = ui.page_sidebar(
             ),
             False,
         ),
+        # Manual flips (right-click a panel in the interactive plot).
+        ui.output_ui('flip_status'),
         ui.input_checkbox(
             'hide_internal_axes',
             _lbl(
@@ -712,10 +775,9 @@ app_ui = ui.page_sidebar(
             'cap_style',
             _lbl(
                 'Line cap',
-                'Shape of the match-segment ends. Square and round keep a '
-                'match shorter than the line width sitting on its own '
-                'diagonal; flat draws it square-on, so it looks rotated. '
-                'Applied instantly, without re-rendering.',
+                'Shape of the match-segment ends. Both keep a match shorter '
+                'than the line width sitting on its own diagonal. Applied '
+                'instantly, without re-rendering.',
             ),
             choices=CAP_STYLE_CHOICES,
             selected='projecting',
@@ -1081,18 +1143,34 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             raise ValueError(f'Please upload a {label} assembly.')
         return provider_from_path(Path(files[0]['datapath']))
 
-    def _parse_seq_upload(role: str) -> SequenceProvider:
+    def _parse_seq_upload(
+        role: str, fasta_input=None, gbk_input=None, genbank: bool | None = None
+    ) -> SequenceProvider:
         """Parse one assembly upload for the current input mode.
 
         GenBank carries its annotations in the same file, so parsing also
         registers them as an annotation source for *role* — merged with
         any GFF the user uploads separately.
+
+        Parameters
+        ----------
+        role : str
+            ``'query'`` or ``'target'``.
+        fasta_input, gbk_input : optional
+            The file inputs to read; default to the assembly-mode uploads
+            for *role*.  The PAF branch passes its own supplementary ones.
+        genbank : bool, optional
+            Whether the upload is GenBank; defaults to the input mode.
         """
-        if input.input_mode() != 'genbank':
+        if genbank is None:
+            genbank = input.input_mode() == 'genbank'
+        if fasta_input is None:
             fasta_input = input.query_fasta if role == 'query' else input.target_fasta
+        if gbk_input is None:
+            gbk_input = input.query_gbk if role == 'query' else input.target_gbk
+        if not genbank:
             return _parse_upload(fasta_input, role)
 
-        gbk_input = input.query_gbk if role == 'query' else input.target_gbk
         files = gbk_input()
         if not files:
             raise ValueError(f'Please upload a {role} assembly.')
@@ -1134,7 +1212,9 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     def _check_kmer_memory(query: SequenceProvider, target: SequenceProvider) -> None:
         if sys.platform != 'emscripten':
             return  # native runs are bounded by system RAM, not the wasm heap
-        total = query.total_length + (0 if target is query else target.total_length)
+        # A self run still indexes every contig twice (once per group in
+        # SessionCache.kmer_index), so it costs the same as a pair of equals.
+        total = query.total_length + target.total_length
         if total > _KMER_HARD_LIMIT:
             raise ValueError(
                 f'Combined assemblies are {total / 1e6:.0f} Mb — the k-mer '
@@ -1240,6 +1320,51 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 if paf_hint_shown():
                     paf_hint_shown.set(False)
 
+    def _parse_paf_sequences(alignment):
+        """Parse the optional supplementary sequence uploads for a PAF run.
+
+        Returns ``(query, target)`` providers, either of which may be
+        ``None``.  Every name the PAF uses for a role must be present in
+        that role's upload — a missing sequence is an error (the run is
+        aborted), a contig without alignments only a warning.  When just
+        one file is uploaded and the PAF is a self-alignment (identical
+        query and target name sets) it serves both roles.
+        """
+        genbank = input.paf_seq_format() == 'genbank'
+        inputs = {
+            'query': (input.paf_query_fasta, input.paf_query_gbk),
+            'target': (input.paf_target_fasta, input.paf_target_gbk),
+        }
+        paf_names = {
+            'query': set(alignment.query_names),
+            'target': set(alignment.target_names),
+        }
+        providers: dict[str, SequenceProvider | None] = {'query': None, 'target': None}
+        for role, (fasta_in, gbk_in) in inputs.items():
+            if not (gbk_in() if genbank else fasta_in()):
+                continue
+            providers[role] = _parse_seq_upload(
+                role, fasta_input=fasta_in, gbk_input=gbk_in, genbank=genbank
+            )
+        uploaded = [r for r, prov in providers.items() if prov is not None]
+        if len(uploaded) == 1 and paf_names['query'] == paf_names['target']:
+            # A self-alignment PAF: the one assembly is both roles.
+            only = uploaded[0]
+            other = 'target' if only == 'query' else 'query'
+            providers[other] = providers[only]
+        for role, prov in providers.items():
+            if prov is None:
+                continue
+            other = 'target' if role == 'query' else 'query'
+            errors, warnings = validate_paf_names(
+                prov.names, paf_names[role], paf_names[other], role
+            )
+            if errors:
+                raise ValueError(' '.join(errors))
+            for warning in warnings:
+                ui.notification_show(warning, type='warning', duration=12)
+        return providers['query'], providers['target']
+
     @reactive.effect
     @reactive.event(input.run)
     async def _run():
@@ -1254,16 +1379,8 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         raise ValueError('Please upload a PAF file.')
                     text = Path(files[0]['datapath']).read_text()
                     alignment = paf_alignment_from_text(text)
-                    query = None
-                    if input.paf_query_fasta():
-                        progress.set(2, message='Parsing query assembly…')
-                        query = _parse_upload(input.paf_query_fasta, 'query')
-                        for warning in validate_query_names(
-                            query.names,
-                            alignment.query_names,
-                            alignment.target_names,
-                        ):
-                            ui.notification_show(warning, type='warning', duration=12)
+                    progress.set(2, message='Parsing sequence files…')
+                    query, target = _parse_paf_sequences(alignment)
                     progress.set(3, message=f'{len(alignment)} alignment(s) loaded')
                     result.set(
                         (
@@ -1271,7 +1388,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             alignment,
                             {
                                 'query': query,
-                                'target': None,
+                                'target': target,
                                 'method': 'paf_upload',
                                 'params': {},
                             },
@@ -2195,7 +2312,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             auto_reverse=input.auto_reverse(),
             hide_internal_axes=input.hide_internal_axes(),
             dot_size=dot_size_settled(),
-            cap_style=input.cap_style() or 'projecting',
+            cap_style=normalise_cap_style(input.cap_style()),
             min_length=min_length_settled(),
             color_by_identity=bool(input.color_by_identity()),
             identity_palette=input.identity_palette() or 'viridis',
@@ -2232,7 +2349,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 'dot_size': float(dot_size_settled()),
                 # The wire carries the CSS value: the report applies the cap
                 # as a stroke-linecap override, not through matplotlib.
-                'cap_style': svg_linecap(input.cap_style() or 'projecting'),
+                'cap_style': svg_linecap(normalise_cap_style(input.cap_style())),
                 'min_length': int(min_length_settled()),
             },
         )
@@ -2253,12 +2370,87 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     # straight onto the per-pair list.
     paf_pair_index: dict = {}
 
+    # Query contigs the user flipped by hand (context menu in the report).
+    # Combined with the ordering mode's automatic reversals as a toggle
+    # (core.panels.apply_manual_flips); a new result starts clean.
+    manual_flips = reactive.value(frozenset())
+
+    @reactive.effect
+    @reactive.event(input.flip_query)
+    def _toggle_manual_flip():
+        info = input.flip_query() or {}
+        name = info.get('name')
+        res = result()
+        if not isinstance(name, str) or not name or res is None:
+            return
+        q_names, _t, _lengths = _axis_inputs(res)
+        if name not in q_names:
+            return
+        with reactive.isolate():
+            current = set(manual_flips())
+        current ^= {name}
+        manual_flips.set(frozenset(current))
+
+    @reactive.effect
+    @reactive.event(input.reset_flips)
+    def _reset_manual_flips():
+        manual_flips.set(frozenset())
+
+    @render.ui
+    def flip_status():
+        """List every contig displayed reverse-complemented, and why.
+
+        Covers the colinearity modes' automatic reversals as well as manual
+        flips, so the note always matches what the plot (and every export)
+        shows.  A manual flip of an auto-reversed contig cancels it, which
+        the note reports too.
+        """
+        if result() is None:
+            return None
+        flips = set(manual_flips())
+        lay = layout()
+        shown = set(lay['reverse'])
+        if not shown and not flips:
+            return None
+        parts = []
+        if shown:
+            parts.append(
+                ui.span(
+                    f'{len(shown)} contig(s) displayed reverse-complemented: '
+                    + _flip_list(shown, flips),
+                    class_='de-flip-note',
+                )
+            )
+        undone = sorted(flips - shown)
+        if undone:
+            parts.append(
+                ui.span(
+                    'Auto-reversal undone by hand: ' + ', '.join(undone),
+                    class_='de-flip-note',
+                )
+            )
+        if flips:
+            parts.append(
+                ui.input_action_button(
+                    'reset_flips',
+                    f'Reset {len(flips)} manual flip(s)',
+                    class_='btn-sm',
+                )
+            )
+        return ui.div(*parts, class_='de-flip-status')
+
+    def _flip_list(shown: set[str], flips: set[str], limit: int = 6) -> str:
+        names = sorted(shown)
+        tagged = [f'{n} (manual)' if n in flips else f'{n} (auto)' for n in names]
+        return ', '.join(tagged[:limit]) + (', …' if len(tagged) > limit else '')
+
     @reactive.effect
     def _reset_focus_on_new_result():
         result()
         focus.set(None)
         order_cache.clear()
         figure_ctx_cache.clear()
+        manual_flips.set(frozenset())
         # focus.set(None) is a no-op when the user re-runs from the overview,
         # so the focus-event clear below never fires and match lookups would
         # keep resolving against the previous run's records.
@@ -2407,11 +2599,18 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 if set(t_order) == set(q_order):
                     t_order = list(ordered)
                 reverse = set()
+        # Manual flips toggle on top of whatever the mode decided.  A flip
+        # is a draw-time coordinate mirror (DotPlotter), never a recompute.
+        reverse = apply_manual_flips(reverse, manual_flips())
         # Return copies so downstream mutation cannot poison the memo.
         return {
             'query_names': list(q_order),
             'target_names': list(t_order),
             'reverse': set(reverse),
+            # Self-comparison: the flipped contig is also a column, so it is
+            # mirrored on both axes and its self-panel keeps a forward
+            # diagonal.  Cross-assembly plots keep the target axis forward.
+            'reverse_targets': set(reverse) if self_mode() else set(),
             # Excluded by the length filter.  Kept so the FASTA export can
             # stay complete: CrossIndex.write_fasta writes exactly the names
             # it is given, so anything omitted here is silently lost.
@@ -2918,6 +3117,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         # Identity colouring is unreadable without a key.
         kwargs['identity_colorbar'] = bool(kwargs.get('color_by_identity'))
         kwargs['reverse_contigs'] = set(lay['reverse'])
+        kwargs['reverse_targets'] = set(lay.get('reverse_targets', ()))
         if pair is not None and cfg.title is None:
             kwargs['title'] = f'{pair[0]} vs {pair[1]}'
         if pair is None:
@@ -3011,7 +3211,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             )
             html = path.read_text(encoding='utf-8')
         plt.close(fig)
-        return strip_report_header(inject_panel_bridge(html))
+        return strip_report_header(inject_panel_bridge(html, self_mode=self_mode()))
 
     @reactive.calc
     def overview_html() -> str:
@@ -3025,10 +3225,34 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         req(pair)
         return _report_html(pair)
 
+    def _active_plot_tab() -> str | None:
+        """Return the active tab key of whichever navset is on screen.
+
+        ``None`` when the plot area has no tab strip.  A navset's id is a
+        Shiny input holding the active ``nav_panel`` value, but a removed
+        navset leaves its last value behind, so the server decides which
+        strip exists from the same state ``plot_area`` renders it from.
+        """
+        if result() is None:
+            return None
+        if focus() is None:
+            if cluster_result() is None or not input.overview_tabs.is_set():
+                return None
+            return input.overview_tabs()
+        if not feature_rows() or not input.drill_tabs.is_set():
+            return None
+        return input.drill_tabs()
+
     @render.ui
     def aligner_log_ui():
         entries = aligner_log()
         if not entries:
+            return None
+        # The log sits under the plot area in the page body, so on the
+        # Clusters / Matrix / Heatmap / Annotations panes it would paint
+        # over the tables.  Only the Plot pane shows it.
+        active = _active_plot_tab()
+        if active is not None and active != 'plot':
             return None
         blocks = []
         for e in entries:
@@ -3134,7 +3358,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             return ui.div(
                 ui.div(*toolbar, class_='de-plot-toolbar'),
                 ui.navset_tab(
-                    ui.nav_panel('Plot', body, hint),
+                    ui.nav_panel('Plot', body, hint, value='plot'),
                     ui.nav_panel(
                         'Clusters',
                         ui.div(
@@ -3146,6 +3370,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             class_='de-cluster-actions',
                         ),
                         ui.output_ui('cluster_table'),
+                        value='clusters',
                     ),
                     ui.nav_panel(
                         'Matrix',
@@ -3163,6 +3388,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             class_='de-cluster-actions',
                         ),
                         ui.output_ui('matrix_table'),
+                        value='matrix',
                     ),
                     ui.nav_panel(
                         'Heatmap',
@@ -3184,6 +3410,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                             ' = reset',
                             class_='de-nav-hint',
                         ),
+                        value='heatmap',
                     ),
                     id='overview_tabs',
                 ),
@@ -3200,7 +3427,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         return ui.div(
             ui.div(*toolbar, class_='de-plot-toolbar'),
             ui.navset_tab(
-                ui.nav_panel('Plot', body, hint),
+                ui.nav_panel('Plot', body, hint, value='plot'),
                 ui.nav_panel(
                     'Annotations',
                     ui.div(
@@ -3217,6 +3444,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                         class_='de-ft-apply',
                     ),
                     ui.output_ui('annotation_table'),
+                    value='annotations',
                 ),
                 id='drill_tabs',
             ),
@@ -3467,11 +3695,12 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         recs = _pair_records(obj, q, t)
         return recs[idx] if 0 <= idx < len(recs) else None
 
-    def _genomic_coords(info: dict, q: str, lay, qlen: int):
+    def _genomic_coords(info: dict, q: str, t: str, lay, qlen: int, tlen: int):
         """Map a clicked segment's payload coords to genomic values.
 
-        The payload's query side is mirrored on reverse-oriented contigs;
-        the target side is always genomic.
+        The payload holds display coordinates: mirrored on every axis whose
+        contig is shown reverse-complemented (query rows in ``lay['reverse']``,
+        target columns in ``lay['reverse_targets']``).
 
         Returns
         -------
@@ -3480,17 +3709,21 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             the message lacks usable coordinates.
         """
         try:
-            gqs, gqe = int(info['qs']), int(info['qe'])
+            qs, qe = int(info['qs']), int(info['qe'])
             ts_, te_ = int(info['ts']), int(info['te'])
         except (KeyError, TypeError, ValueError):
             return None
-        strand = info.get('strand', '+')
-        if strand not in ('+', '-'):
-            strand = '+'
-        if q in lay['reverse']:
-            gqs, gqe = qlen - gqe, qlen - gqs
-            strand = '-' if strand == '+' else '+'
-        return gqs, gqe, ts_, te_, strand
+        return genomic_coords(
+            qs,
+            qe,
+            ts_,
+            te_,
+            info.get('strand', '+'),
+            qlen=qlen,
+            tlen=tlen,
+            reverse_q=q in lay['reverse'],
+            reverse_t=t in lay.get('reverse_targets', ()),
+        )
 
     def _preview_slice(seq: str, start: int, end: int, minus: bool) -> str:
         """Return an alignment-oriented preview of ``seq[start:end]``.
@@ -3514,21 +3747,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         return s + f'… [truncated at {cap:,} bases]'
 
     def _sequence_for(meta: dict, name: str, side: str):
-        """Look up a lazily sliceable sequence by name, preferring *side*.
+        """Look up a lazily sliceable sequence by name on one side.
 
-        Falls back to the other assembly so self-align mode (one file) and
-        PAF uploads with a single FASTA still resolve.  The returned object
-        supports ``len()`` and ``[start:stop]`` slicing to ``str``; with a
-        faidx-backed provider only the sliced windows are ever read.
+        Only *side*'s own assembly is consulted, unless both roles share one
+        provider (self-alignment).  Two different assemblies can share a
+        contig name, so a cross-role fallback would hand back the wrong
+        sequence.  The returned object supports ``len()`` and
+        ``[start:stop]`` slicing to ``str``; with a faidx-backed provider
+        only the sliced windows are ever read.  ``None`` when that side has
+        no sequences.
         """
-        order = ('query', 'target') if side == 'query' else ('target', 'query')
-        for key in order:
-            provider = meta.get(key)
-            if provider is not None:
-                seq = provider.get_lazy(name)
-                if seq is not None:
-                    return seq
-        return None
+        provider = meta.get(side)
+        if provider is None:
+            return None
+        return provider.get_lazy(name)
 
     def _match_context(info):
         """Resolve a clicked segment to sequences and genomic coordinates.
@@ -3565,8 +3797,11 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 return None
         qseq = _sequence_for(meta, q, 'query')
         tseq = _sequence_for(meta, t, 'target')
-        if qseq is None or tseq is None:
+        if qseq is None and tseq is None:
             return None
+        _q_in, _t_in, lengths = _axis_inputs(res)
+        qlen = lengths.get(q, len(qseq) if qseq is not None else 0)
+        tlen = lengths.get(t, len(tseq) if tseq is not None else 0)
         rec = None
         if kind == 'paf' and info.get('layer') == 'identity':
             try:
@@ -3578,7 +3813,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         # match its record exactly — recover the CIGAR that way so runs
         # with -c get the gapped view without identity colouring on.
         if rec is None and kind == 'paf':
-            g = _genomic_coords(info, q, lay, len(qseq))
+            g = _genomic_coords(info, q, t, lay, qlen, tlen)
             if g is not None:
                 gqs0, gqe0, ts0, te0, gstrand0 = g
                 rec = next(
@@ -3598,10 +3833,11 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             ts_, te_ = rec.target_start, rec.target_end
             strand = rec.strand
         else:
-            g = _genomic_coords(info, q, lay, len(qseq))
+            g = _genomic_coords(info, q, t, lay, qlen, tlen)
             if g is None:
                 return None
             gqs, gqe, ts_, te_, strand = g
+        t_rev = t in lay.get('reverse_targets', ())
         return {
             'q': q,
             't': t,
@@ -3613,6 +3849,11 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             'ts': ts_,
             'te': te_,
             'strand': strand,
+            # Sequences are served as displayed: the target reads
+            # reverse-complemented when its column is mirrored, and the
+            # query in whichever orientation pairs with that target.
+            't_rev': t_rev,
+            'q_minus': (strand == '-') != t_rev,
         }
 
     @reactive.effect
@@ -3639,9 +3880,14 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             await session.send_custom_message('rd_match_seq', reply)
             return
         rec = ctx['rec']
-        # Full sequences are available for on-demand copy in either branch.
-        reply['copy'] = True
-        if rec is not None and rec.cigar is not None:
+        # Full sequences are available for on-demand copy, per side: a PAF
+        # run may carry only one of the two assemblies.
+        have_q = ctx['qseq'] is not None
+        have_t = ctx['tseq'] is not None
+        reply['copy_query'] = have_q
+        reply['copy_target'] = have_t
+        reply['copy'] = have_q and have_t
+        if rec is not None and rec.cigar is not None and have_q and have_t:
             view = aligned_text(rec, ctx['qseq'], ctx['tseq'])
             reply['aligned'] = True
             reply['text'] = (
@@ -3652,18 +3898,32 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             )
         else:
             reply['aligned'] = False
-            reply['text'] = (
-                f'{ctx["q"]}:{ctx["gqs"]:,}-{ctx["gqe"]:,} ({ctx["strand"]}) '
-                f'vs {ctx["t"]}:{ctx["ts"]:,}-{ctx["te"]:,}\n'
+            note = (
                 'No CIGAR for this match — sequences shown unaligned; run '
                 'minimap2 with base-level alignment (-c) for a gapped '
-                'alignment view.\n\n'
-                f'>query {ctx["q"]}:{ctx["gqs"]:,}-{ctx["gqe"]:,} '
-                f'({ctx["strand"]})\n'
-                f'{_preview_slice(ctx["qseq"], ctx["gqs"], ctx["gqe"], ctx["strand"] == "-")}\n'
-                f'>target {ctx["t"]}:{ctx["ts"]:,}-{ctx["te"]:,}\n'
-                f'{_preview_slice(ctx["tseq"], ctx["ts"], ctx["te"], False)}'
+                'alignment view.'
+                if have_q and have_t
+                else 'Only the '
+                + ('query' if have_q else 'target')
+                + ' assembly was uploaded, so only its sequence is shown.'
             )
+            parts = [
+                f'{ctx["q"]}:{ctx["gqs"]:,}-{ctx["gqe"]:,} ({ctx["strand"]}) '
+                f'vs {ctx["t"]}:{ctx["ts"]:,}-{ctx["te"]:,}\n{note}\n'
+            ]
+            if have_q:
+                q_flag = '-' if ctx['q_minus'] else '+'
+                parts.append(
+                    f'>query {ctx["q"]}:{ctx["gqs"]:,}-{ctx["gqe"]:,} ({q_flag})\n'
+                    f'{_preview_slice(ctx["qseq"], ctx["gqs"], ctx["gqe"], ctx["q_minus"])}'
+                )
+            if have_t:
+                t_flag = ' (-)' if ctx['t_rev'] else ''
+                parts.append(
+                    f'>target {ctx["t"]}:{ctx["ts"]:,}-{ctx["te"]:,}{t_flag}\n'
+                    f'{_preview_slice(ctx["tseq"], ctx["ts"], ctx["te"], ctx["t_rev"])}'
+                )
+            reply['text'] = '\n'.join(parts)
         await session.send_custom_message('rd_match_seq', reply)
 
     @reactive.effect
@@ -3684,14 +3944,89 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         reply = {k: (info or {}).get(k) for k in ('row', 'col', 'layer', 'idx')}
         reply['side'] = side
         ctx = _match_context(info)
-        if ctx is None or side not in ('query', 'target'):
+        if (
+            ctx is None
+            or side not in ('query', 'target')
+            or ctx[side[0] + 'seq'] is None
+        ):
             reply['error'] = 'no-sequences'
         elif side == 'query':
             seq = ctx['qseq'][ctx['gqs'] : ctx['gqe']]
-            reply['seq'] = revcomp(seq) if ctx['strand'] == '-' else seq
+            reply['seq'] = revcomp(seq) if ctx['q_minus'] else seq
         else:
-            reply['seq'] = ctx['tseq'][ctx['ts'] : ctx['te']]
+            seq = ctx['tseq'][ctx['ts'] : ctx['te']]
+            reply['seq'] = revcomp(seq) if ctx['t_rev'] else seq
         await session.send_custom_message('rd_copy_seq', reply)
+
+    # --- Bulk export of the match selection -------------------------------
+    # bridge.js mirrors the report's selection (view-independent display
+    # coordinates) into 'match_selection' on every change; the context
+    # menu's download request arrives as 'download_selected', and the
+    # server answers by asking the page to click the download link once
+    # the selection it holds is current (same websocket, so ordered).
+
+    def _selected_matches() -> list[dict]:
+        info = input.match_selection() if input.match_selection.is_set() else None
+        matches = (info or {}).get('matches') if isinstance(info, dict) else None
+        return [m for m in matches or [] if isinstance(m, dict)]
+
+    @reactive.effect
+    @reactive.event(input.download_selected)
+    async def _on_download_selected():
+        if not _selected_matches():
+            ui.notification_show('No alignments are selected.', type='warning')
+            return
+        await session.send_custom_message(
+            'rd_click_download', {'id': 'dl_selected_fasta'}
+        )
+
+    def _selection_regions(matches: list[dict]):
+        """Yield ``(contig, start, end, strand, side)`` for selected matches."""
+        res = result()
+        if res is None:
+            return
+        _kind, _obj, meta = res
+        lay = layout()
+        _q_in, _t_in, lengths = _axis_inputs(res)
+        for m in matches:
+            q, t = m.get('q'), m.get('t')
+            if q not in lengths or t not in lengths:
+                continue
+            g = _genomic_coords(m, q, t, lay, lengths[q], lengths[t])
+            if g is None:
+                continue
+            gqs, gqe, ts_, te_, strand = g
+            t_rev = t in lay.get('reverse_targets', ())
+            if meta.get('query') is not None:
+                yield (q, gqs, gqe, '-' if (strand == '-') != t_rev else '+', 'query')
+            if meta.get('target') is not None:
+                yield (t, ts_, te_, '-' if t_rev else '+', 'target')
+
+    @render.download_button(filename='selected_alignments.fasta')
+    def dl_selected_fasta():
+        res = result()
+        req(res)
+        _kind, _obj, meta = res
+        matches = _selected_matches()
+
+        def get_sequence(contig, start, end, side_hint=None):
+            for side in ('query', 'target'):
+                prov = meta.get(side)
+                seq = prov.get_lazy(contig) if prov is not None else None
+                if seq is not None:
+                    return seq[start:end]
+            return None
+
+        text = selected_regions_fasta(_selection_regions(matches), get_sequence)
+        if not text:
+            ui.notification_show(
+                'Nothing to export: select alignments in the plot first '
+                '(and upload the sequences they come from).',
+                type='warning',
+                duration=8,
+            )
+            req(False)
+        yield text
 
     # --- end W2 --------------------------------------------------------------
 
@@ -3790,15 +4125,27 @@ def server(input, output, session) -> None:  # noqa: A002, D103
     def _has_sequences(res) -> bool:
         """Whether a reordered-FASTA export is possible for this result."""
         kind, _obj, meta = res
-        return (
-            kind == 'kmer'
-            or isinstance(meta.get('query'), SequenceProvider)
-            or bool(input.paf_query_fasta())
-        )
+        return kind == 'kmer' or isinstance(meta.get('query'), SequenceProvider)
+
+    def _target_reordered(res) -> bool:
+        """Whether the plotted reference order differs from the upload order.
+
+        Only the "maximise colinearity" mode (and a tree) reorders the target
+        axis.  A self-comparison shares one assembly, so the reordered
+        *query* download already covers it.
+        """
+        _kind, _obj, meta = res
+        if self_mode() or not isinstance(meta.get('target'), SequenceProvider):
+            return False
+        _q_in, t_in, _lengths = _axis_inputs(res)
+        lay = layout()
+        return lay['target_names'] + lay['excluded_target'] != list(t_in)
 
     @render.ui
     def downloads():
         res = result()
+        if res is not None:
+            _kind, _obj, meta = res
         if res is None:
             return ui.div(
                 ui.tags.button(
@@ -3824,6 +4171,12 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         ]
         if _has_sequences(res):
             parts.append(ui.download_button('dl_fasta', 'Reordered query (FASTA)'))
+            if _target_reordered(res):
+                # The colinearity mode moved reference contigs too: offer
+                # the reference in its plotted order.
+                parts.append(
+                    ui.download_button('dl_target_fasta', 'Reordered target (FASTA)')
+                )
         else:
             parts += [
                 ui.tags.button(
@@ -3837,6 +4190,29 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                     class_='de-dl-note',
                 ),
             ]
+        if _has_sequences(res) or isinstance(meta.get('target'), SequenceProvider):
+            # Sequences of the matches selected in the interactive plot
+            # (also reachable from the plot's right-click menu).
+            if _selected_matches():
+                parts.append(
+                    ui.download_button(
+                        'dl_selected_fasta', 'Selected alignments (FASTA)'
+                    )
+                )
+            else:
+                parts += [
+                    ui.tags.button(
+                        'Selected alignments (FASTA)',
+                        class_='btn de-dl-disabled',
+                        disabled=True,
+                    ),
+                    ui.div(
+                        'Select alignments in the plot (click, Cmd/Ctrl+click, '
+                        'Shift+drag or the right-click menu) to export their '
+                        'sequences.',
+                        class_='de-dl-note',
+                    ),
+                ]
         if sim_matrix() is not None:
             # Clustering outputs: the matrix CSV exports whichever view the
             # Matrix tab currently shows (similarity/containment/coverage).
@@ -3845,6 +4221,10 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 ui.download_button('dl_heatmap_png', 'Heatmap (PNG)'),
                 ui.download_button('dl_matrix_csv', 'Pairwise matrix (CSV)'),
             ]
+        if cluster_result() is not None and _has_sequences(res):
+            parts.append(
+                ui.download_button('dl_cluster_fasta', 'Sequences by cluster (ZIP)')
+            )
         return ui.div(*parts)
 
     @render.plot
@@ -3880,14 +4260,23 @@ def server(input, output, session) -> None:  # noqa: A002, D103
 
     @render.download_button(filename='alignment.paf')
     def dl_paf():
+        # Exported against the same orientation as the reordered FASTA
+        # (automatic reversals plus manual flips), so the two files agree:
+        # a record on a flipped contig has its coordinates mirrored and its
+        # strand flipped once per flipped axis.
         res = result()
         req(res)
         kind, obj, _meta = res
-        if kind == 'kmer':
-            lines = obj.get_paf(group_pairs=[(QUERY_GROUP, TARGET_GROUP)], merge=True)
-            yield '\n'.join(lines) + '\n'
-        else:
-            yield paf_text_from_alignment(obj)
+        lay = layout()
+        records = (
+            obj.get_records_for_pair(QUERY_GROUP, TARGET_GROUP)
+            if kind == 'kmer'
+            else obj.records
+        )
+        records = reoriented_paf_records(
+            records, set(lay['reverse']), set(lay.get('reverse_targets', ()))
+        )
+        yield '\n'.join(rec.to_line() for rec in records) + '\n'
 
     @render.ui
     def cluster_table():
@@ -4178,10 +4567,7 @@ def server(input, output, session) -> None:  # noqa: A002, D103
             # either attached to the result or from the sidebar upload.
             query = meta.get('query')
             if not isinstance(query, SequenceProvider):
-                try:
-                    query = _parse_upload(input.paf_query_fasta, 'query')
-                except ValueError:
-                    query = None
+                query = None
             if query is None:
                 ui.notification_show(
                     'Reordered FASTA export needs sequences — upload the '
@@ -4192,6 +4578,66 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 )
                 req(False)
             yield reordered_fasta_text(list(query.iter_records()), order, reverse)
+
+    def _group_records(res, role: str) -> list[tuple[str, str]]:
+        """Every contig of *role* as ``(name, sequence)``, whatever the method."""
+        kind, obj, meta = res
+        group = QUERY_GROUP if role == 'query' else TARGET_GROUP
+        if kind == 'kmer':
+            names = obj.contig_order[group]
+            return [(n, obj.get_sequence(n, group=group)) for n in names]
+        prov = meta.get(role)
+        if not isinstance(prov, SequenceProvider):
+            return []
+        return list(prov.iter_records())
+
+    def _query_records(res) -> list[tuple[str, str]]:
+        """Every query contig as ``(name, sequence)``, whatever the method."""
+        return _group_records(res, 'query')
+
+    @render.download_button(filename='target_reordered.fasta')
+    def dl_target_fasta():
+        res = result()
+        req(res)
+        lay = layout()
+        records = _group_records(res, 'target')
+        if not records:
+            ui.notification_show(
+                'Reordered target FASTA needs the target sequences — upload '
+                'the reference assembly in the sidebar.',
+                type='warning',
+                duration=8,
+            )
+            req(False)
+        # Same completeness rule as the query export: length-filtered
+        # contigs follow the plotted ones.  Target contigs are only ever
+        # mirrored in self mode, which this download does not cover.
+        order = lay['target_names'] + lay['excluded_target']
+        yield reordered_fasta_text(records, order, set(lay.get('reverse_targets', ())))
+
+    @render.download_button(filename='sequences_by_cluster.zip')
+    def dl_cluster_fasta():
+        res = result()
+        req(res)
+        clusters = cluster_result()
+        req(clusters)
+        lay = layout()
+        records = _query_records(res)
+        if not records:
+            ui.notification_show(
+                'Cluster export needs sequences — upload the assembly in the sidebar.',
+                type='warning',
+                duration=8,
+            )
+            req(False)
+        # Same orientation as the plot and the reordered-FASTA download:
+        # automatic reversals plus manual flips.
+        yield cluster_fasta_zip(
+            records,
+            clusters.assignments,
+            reverse=set(lay['reverse']),
+            order=lay['query_names'] + lay['excluded_query'],
+        )
 
 
 app = App(app_ui, server, static_assets=APP_DIR / 'www')

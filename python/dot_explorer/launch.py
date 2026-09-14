@@ -14,8 +14,10 @@ build), hence the import lives inside :func:`main` behind a helpful error.
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 import sys
+import tempfile
 
 #: The packaged app directory (contains ``app.py``, ``core/`` and ``www/``).
 APP_DIR = Path(__file__).parent / 'app'
@@ -43,6 +45,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='dot-explorer-app',
         description='Launch the dot-explorer Shiny app in a local browser.',
+        epilog=(
+            'Uploads, decompressed FASTA copies, faidx indexes and rendered '
+            'reports are written under the system temporary directory; set '
+            'the TMPDIR environment variable before launching to use a '
+            'different location (the path in use is logged at startup).'
+        ),
     )
     parser.add_argument(
         '--host',
@@ -112,6 +120,18 @@ def main(argv: list[str] | None = None) -> int:
     # `shinylive export` do.  Prepending also means the app's `core` wins over
     # any unrelated module of that name.
     sys.path.insert(0, str(APP_DIR))
+
+    # Say where scratch files go before anything is uploaded: Shiny stages
+    # uploads under the system temp dir, and the app writes decompressed
+    # FASTA copies, faidx indexes and rendered reports next to them.  All of
+    # it resolves through tempfile, so TMPDIR redirects the lot.
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('dot_explorer_app').info(
+        'Temporary files (uploads, decompressed FASTA, faidx indexes, rendered '
+        'reports) are written under %s; set the TMPDIR environment variable '
+        'before launching to use a different location.',
+        tempfile.gettempdir(),
+    )
 
     # Import the App object and hand it to run_app directly rather than passing
     # a path or a "module:attr" string: run_app accepts `str | shiny.App`, and

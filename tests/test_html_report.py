@@ -641,3 +641,27 @@ def test_track_entry_carries_stamped_uid():
     # The app's override pass stamps the table's uid onto the record.
     feat.uid = 'query:0'
     assert _track_entry('x', 0, 0, feat)['uid'] == 'query:0'
+
+
+def test_payload_carries_reverse_flags(html_index, tmp_path):
+    """Every panel says which of its axes are drawn reverse-complemented."""
+    names = html_index.sequence_names()
+    q, t = names[0], names[1]
+    out = tmp_path / 'plain.html'
+    plt.close(DotPlotter(html_index).to_html(out))
+    for panel in _read_payload(out)['panels'].values():
+        assert panel['reverse_query'] is False
+        assert panel['reverse_target'] is False
+
+    out = tmp_path / 'flipped.html'
+    plt.close(
+        DotPlotter(html_index).to_html(out, reverse_contigs={q}, reverse_targets={t})
+    )
+    payload = _read_payload(out)
+    for panel in payload['panels'].values():
+        assert panel['reverse_query'] is (panel['query'] == q)
+        assert panel['reverse_target'] is (panel['target'] == t)
+        for layer in ('fwd', 'rev', 'identity'):
+            for seg in panel['segments'][layer]:
+                assert 0 <= seg[0] <= seg[1] <= panel['qlen']
+                assert 0 <= seg[2] <= seg[3] <= panel['tlen']

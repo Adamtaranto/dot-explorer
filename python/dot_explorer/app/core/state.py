@@ -22,14 +22,37 @@ ORDER_CHOICES: dict[str, str] = {
 COLINEARITY_MODES: frozenset[str] = frozenset({'colinearity', 'colinearity_ref'})
 
 #: Match line-cap choices exposed in the UI (matplotlib names), mapped to
-#: display labels.  Square is the default: with flat caps a match shorter than
-#: the line width draws wider across its diagonal than along it, so it reads as
-#: a mark rotated 90 degrees.
+#: display labels.  Square is the default.  matplotlib's ``'butt'`` (flat) cap
+#: is deliberately absent: with flat caps a match shorter than the line width
+#: draws wider across its diagonal than along it, so it reads as a mark
+#: rotated 90 degrees.
 CAP_STYLE_CHOICES: dict[str, str] = {
     'projecting': 'Square',
     'round': 'Round',
-    'butt': 'Flat',
 }
+
+#: Cap applied when the UI value is missing or no longer offered.
+DEFAULT_CAP_STYLE = 'projecting'
+
+
+def normalise_cap_style(value: str | None) -> str:
+    """Coerce a UI cap-style value to one of :data:`CAP_STYLE_CHOICES`.
+
+    A hidden ``select`` keeps its last value, so a session that picked the
+    since-removed ``'butt'`` (flat) cap would otherwise keep sending it.
+
+    Parameters
+    ----------
+    value : str or None
+        The raw ``input.cap_style()`` value.
+
+    Returns
+    -------
+    str
+        *value* when it is an offered choice, else :data:`DEFAULT_CAP_STYLE`.
+    """
+    return value if value in CAP_STYLE_CHOICES else DEFAULT_CAP_STYLE
+
 
 #: matplotlib cap name -> SVG ``stroke-linecap`` value.
 _SVG_LINECAPS: dict[str, str] = {
@@ -80,7 +103,7 @@ class PlotConfig:
         Line width for match segments.
     cap_style : str
         Line cap for match segments — a key of :data:`CAP_STYLE_CHOICES`
-        (matplotlib names: ``'butt'``, ``'round'`` or ``'projecting'``).
+        (matplotlib names: ``'round'`` or ``'projecting'``).
     min_length : int
         Minimum match length (bp) to draw.
     title : str or None

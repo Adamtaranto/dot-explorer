@@ -2,8 +2,8 @@
 // server-rendered plot toolbar (re-created on every plot_area render), so
 // the wiring is delegated and the on/off state is a class on <html> --
 // both survive re-renders, and app.css derives the overlay layout, the
-// hidden chrome (hints, tabs, memory note) and the button's icon from
-// that class alone.
+// hidden chrome (hints, memory note) and the button's icon from that
+// class alone.
 //
 // Entering also requests native browser fullscreen (hiding the URL bar
 // and tabs).  When that is unavailable -- e.g. the shinylive viewer
@@ -25,17 +25,13 @@
     );
   }
 
-  /* The drill-down tab strip is hidden in fullscreen, so make sure the
-   * Plot pane (always the first tab) is the visible one before entering. */
-  function activatePlotTab() {
-    var link = document.querySelector('.de-plot-area .nav-tabs .nav-link');
-    if (link && !link.classList.contains('active')) link.click();
-  }
-
+  /* The tab strip (Plot / Clusters / Matrix / Heatmap, or Plot /
+   * Annotations in the drill-down) stays visible in fullscreen, so whatever
+   * pane is active simply grows to fill the overlay -- entering from the
+   * Heatmap tab keeps the heatmap, and the user can still switch. */
   function setFullscreen(on) {
     applyState(on);
     if (on) {
-      activatePlotTab();
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(function () {});
       }

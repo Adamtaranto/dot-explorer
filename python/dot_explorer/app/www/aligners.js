@@ -259,6 +259,20 @@
     var mountKey = msg.query_id + '|' + msg.target_id;
     if (mountedOn[msg.tool] !== mountKey) {
       sendProgress(msg.request_id, msg.tool, 'mounting-data');
+      // The inputs always mount under the same two fixed names, and Aioli
+      // keeps whatever is already there: after a Q-vs-T run a Q-vs-Q
+      // (self-align) run would otherwise still read the OLD target.fa.
+      // Drop both before mounting so the new pair always lands; clear the
+      // mount record first so a mount that throws is retried next time.
+      mountedOn[msg.tool] = null;
+      var stale = [QUERY_FILENAME, TARGET_FILENAME];
+      for (var i = 0; i < stale.length; i++) {
+        try {
+          await CLI.fs.unlink(stale[i]);
+        } catch (err) {
+          // Not present (first run on this instance) -- fine.
+        }
+      }
       await CLI.mount([
         { name: QUERY_FILENAME, data: queryText },
         { name: TARGET_FILENAME, data: targetText },

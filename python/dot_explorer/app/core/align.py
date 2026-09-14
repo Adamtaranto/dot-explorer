@@ -35,6 +35,11 @@ METHOD_LABELS: dict[str, str] = {
 #: Methods implemented so far; the UI greys out the rest.
 AVAILABLE_METHODS: frozenset[str] = frozenset({'kmer', 'paf', 'minimap2', 'nucmer'})
 
+#: Method the selector starts on.  minimap2 handles assembly-scale input
+#: that the in-browser k-mer index cannot, and the size gate never has to
+#: move the user off it.
+DEFAULT_METHOD = 'minimap2'
+
 #: Methods that run in a biowasm (Aioli) WebWorker on the JS side.
 BIOWASM_TOOLS: frozenset[str] = frozenset({'minimap2', 'nucmer'})
 

@@ -129,3 +129,21 @@ def test_flip_item_only_on_plot_area_right_click():
     """A match or feature right-click offers its own actions, not the flip."""
     menu = REPORT_JS.split("svg.addEventListener('contextmenu'")[1].split('openCtx(')[0]
     assert 'if (embedded && panel && !entry && !annot && !track) {' in menu
+
+
+def test_flip_note_lists_auto_and_manual_flips():
+    body = APP_PY.split('def flip_status(')[1].split('\n    def _flip_list')[0]
+    assert "lay['reverse']" in body  # the displayed set, auto flips included
+    assert 'manual_flips()' in body
+    helper = APP_PY.split('def _flip_list(')[1].split('\n    @')[0]
+    assert '(manual)' in helper and '(auto)' in helper
+
+
+def test_reordered_target_download_when_reference_order_changes():
+    assert "'dl_target_fasta', 'Reordered target (FASTA)'" in APP_PY
+    gate = APP_PY.split('def _target_reordered(')[1].split('\n    @')[0]
+    assert "lay['target_names'] + lay['excluded_target'] != list(t_in)" in gate
+    assert 'self_mode()' in gate
+    handler = APP_PY.split('def dl_target_fasta(')[1].split('\n    @')[0]
+    assert "_group_records(res, 'target')" in handler
+    assert "lay['target_names'] + lay['excluded_target']" in handler

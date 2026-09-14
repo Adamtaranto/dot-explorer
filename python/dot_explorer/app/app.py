@@ -2398,19 +2398,51 @@ def server(input, output, session) -> None:  # noqa: A002, D103
 
     @render.ui
     def flip_status():
-        flips = manual_flips()
-        if not flips:
+        """List every contig displayed reverse-complemented, and why.
+
+        Covers the colinearity modes' automatic reversals as well as manual
+        flips, so the note always matches what the plot (and every export)
+        shows.  A manual flip of an auto-reversed contig cancels it, which
+        the note reports too.
+        """
+        if result() is None:
             return None
-        names = sorted(flips)
-        shown = ', '.join(names[:4]) + (', …' if len(names) > 4 else '')
-        return ui.div(
-            ui.span(
-                f'{len(names)} contig(s) flipped by hand: {shown}',
-                class_='de-flip-note',
-            ),
-            ui.input_action_button('reset_flips', 'Reset flips', class_='btn-sm'),
-            class_='de-flip-status',
-        )
+        flips = set(manual_flips())
+        lay = layout()
+        shown = set(lay['reverse'])
+        if not shown and not flips:
+            return None
+        parts = []
+        if shown:
+            parts.append(
+                ui.span(
+                    f'{len(shown)} contig(s) displayed reverse-complemented: '
+                    + _flip_list(shown, flips),
+                    class_='de-flip-note',
+                )
+            )
+        undone = sorted(flips - shown)
+        if undone:
+            parts.append(
+                ui.span(
+                    'Auto-reversal undone by hand: ' + ', '.join(undone),
+                    class_='de-flip-note',
+                )
+            )
+        if flips:
+            parts.append(
+                ui.input_action_button(
+                    'reset_flips',
+                    f'Reset {len(flips)} manual flip(s)',
+                    class_='btn-sm',
+                )
+            )
+        return ui.div(*parts, class_='de-flip-status')
+
+    def _flip_list(shown: set[str], flips: set[str], limit: int = 6) -> str:
+        names = sorted(shown)
+        tagged = [f'{n} (manual)' if n in flips else f'{n} (auto)' for n in names]
+        return ', '.join(tagged[:limit]) + (', …' if len(tagged) > limit else '')
 
     @reactive.effect
     def _reset_focus_on_new_result():
@@ -4095,6 +4127,20 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         kind, _obj, meta = res
         return kind == 'kmer' or isinstance(meta.get('query'), SequenceProvider)
 
+    def _target_reordered(res) -> bool:
+        """Whether the plotted reference order differs from the upload order.
+
+        Only the "maximise colinearity" mode (and a tree) reorders the target
+        axis.  A self-comparison shares one assembly, so the reordered
+        *query* download already covers it.
+        """
+        _kind, _obj, meta = res
+        if self_mode() or not isinstance(meta.get('target'), SequenceProvider):
+            return False
+        _q_in, t_in, _lengths = _axis_inputs(res)
+        lay = layout()
+        return lay['target_names'] + lay['excluded_target'] != list(t_in)
+
     @render.ui
     def downloads():
         res = result()
@@ -4125,6 +4171,12 @@ def server(input, output, session) -> None:  # noqa: A002, D103
         ]
         if _has_sequences(res):
             parts.append(ui.download_button('dl_fasta', 'Reordered query (FASTA)'))
+            if _target_reordered(res):
+                # The colinearity mode moved reference contigs too: offer
+                # the reference in its plotted order.
+                parts.append(
+                    ui.download_button('dl_target_fasta', 'Reordered target (FASTA)')
+                )
         else:
             parts += [
                 ui.tags.button(
@@ -4527,16 +4579,41 @@ def server(input, output, session) -> None:  # noqa: A002, D103
                 req(False)
             yield reordered_fasta_text(list(query.iter_records()), order, reverse)
 
+    def _group_records(res, role: str) -> list[tuple[str, str]]:
+        """Every contig of *role* as ``(name, sequence)``, whatever the method."""
+        kind, obj, meta = res
+        group = QUERY_GROUP if role == 'query' else TARGET_GROUP
+        if kind == 'kmer':
+            names = obj.contig_order[group]
+            return [(n, obj.get_sequence(n, group=group)) for n in names]
+        prov = meta.get(role)
+        if not isinstance(prov, SequenceProvider):
+            return []
+        return list(prov.iter_records())
+
     def _query_records(res) -> list[tuple[str, str]]:
         """Every query contig as ``(name, sequence)``, whatever the method."""
-        kind, obj, meta = res
-        if kind == 'kmer':
-            names = obj.contig_order[QUERY_GROUP]
-            return [(n, obj.get_sequence(n, group=QUERY_GROUP)) for n in names]
-        query = meta.get('query')
-        if not isinstance(query, SequenceProvider):
-            return []
-        return list(query.iter_records())
+        return _group_records(res, 'query')
+
+    @render.download_button(filename='target_reordered.fasta')
+    def dl_target_fasta():
+        res = result()
+        req(res)
+        lay = layout()
+        records = _group_records(res, 'target')
+        if not records:
+            ui.notification_show(
+                'Reordered target FASTA needs the target sequences — upload '
+                'the reference assembly in the sidebar.',
+                type='warning',
+                duration=8,
+            )
+            req(False)
+        # Same completeness rule as the query export: length-filtered
+        # contigs follow the plotted ones.  Target contigs are only ever
+        # mirrored in self mode, which this download does not cover.
+        order = lay['target_names'] + lay['excluded_target']
+        yield reordered_fasta_text(records, order, set(lay.get('reverse_targets', ())))
 
     @render.download_button(filename='sequences_by_cluster.zip')
     def dl_cluster_fasta():

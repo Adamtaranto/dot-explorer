@@ -29,6 +29,11 @@ and this project adheres to
   target slices, de-duplicated on contig/coordinates/strand, minus-strand
   slices reverse-complemented. Right-click an annotation square or
   side-track feature to select the alignments in its shadow.
+- App: the sidebar lists every contig displayed reverse-complemented,
+  tagged auto (colinearity ordering) or manual, with a reset for manual
+  flips.
+- App: "Reordered target (FASTA)" download when a colinearity ordering (or
+  a tree) changes the reference contig order.
 - App: "Sequences by cluster (ZIP)" download — one multi-FASTA per cluster
   (plus `unassigned.fasta`), in display order and orientation.
 - App: the "Alignment (PAF)" download now follows the plotted orientation

@@ -14,7 +14,7 @@ name = "dot-explorer"
 path = "src/main.rs"
 
 [dependencies]
-pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3 = { version = "0.30", features = ["extension-module"] }
 # needletail is optional so that wasm32-unknown-emscripten builds (which use
 # --no-default-features) can exclude it entirely.  emcc cannot link needletail
 # even without its C compression backends because it tries to produce a
@@ -46,7 +46,7 @@ parallel = ["dep:rayon"]
 tempfile = "3.27"
 # Drop-in criterion API that also registers benchmarks with cargo-codspeed, so
 # the same bench targets run under both `cargo bench` and `cargo codspeed run`.
-codspeed-criterion-compat = "5"
+codspeed-criterion-compat = "6"
 
 [[bench]]
 name = "bench_index"
